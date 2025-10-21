@@ -23,7 +23,6 @@ const SAMPLE_DATA = [
     residencePersonne: "abobo",
     employeEnregistreur: "ISMOSOG",
   },
-  // Ajoute tes enregistrements réels ici…
 ];
 
 /* ====================== Helpers ====================== */
@@ -70,7 +69,8 @@ export default function ImpressionsPelerins() {
       alert("Sélectionne un enregistrement avant d’imprimer.");
       return;
     }
-    window.print();
+    // Laisse un frame pour appliquer @media print avant d'ouvrir la boîte d'impression.
+    requestAnimationFrame(() => window.print());
   }
 
   return (
@@ -78,15 +78,15 @@ export default function ImpressionsPelerins() {
       {/* ====== Styles portés par le composant (modernes + thème) ====== */}
       <style>{`
         :root {
-          --bg: #0f172a;           /* slate-900 */
-          --card: #111827;         /* gray-900 */
-          --muted: #94a3b8;        /* slate-400 */
-          --text: #e5e7eb;         /* gray-200 */
-          --accent: #22c55e;       /* green-500 */
-          --accent-2: #60a5fa;     /* blue-400 */
-          --warn: #f59e0b;         /* amber-500 */
-          --chip: #1f2937;         /* gray-800 */
-          --border: #1f2937;       /* gray-800 */
+          --bg: #0f172a;
+          --card: #111827;
+          --muted: #94a3b8;
+          --text: #e5e7eb;
+          --accent: #22c55e;
+          --accent-2: #60a5fa;
+          --warn: #f59e0b;
+          --chip: #1f2937;
+          --border: #1f2937;
           --row: rgba(255,255,255,0.03);
           --row-alt: rgba(255,255,255,0.06);
           --shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -102,18 +102,9 @@ export default function ImpressionsPelerins() {
           font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
         }
 
-        .ip-shell {
-          max-width: 1280px;
-          margin: 0 auto;
-        }
-
-        .ip-header {
-          display:flex; align-items:center; justify-content:space-between; gap:16px;
-          margin-bottom: 18px;
-        }
-        .ip-title {
-          display:flex; align-items:center; gap:12px;
-        }
+        .ip-shell { max-width: 1280px; margin: 0 auto; }
+        .ip-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px; }
+        .ip-title { display:flex; align-items:center; gap:12px; }
         .ip-badge {
           background: linear-gradient(135deg,#0ea5e9 0%, #22c55e 100%);
           color: white; font-weight: 800; letter-spacing: .5px;
@@ -128,26 +119,14 @@ export default function ImpressionsPelerins() {
           box-shadow: var(--shadow);
         }
 
-        .ip-controls {
-          padding: 16px;
-          display:flex; gap:10px; align-items:center; flex-wrap: wrap;
-        }
+        .ip-controls { padding: 16px; display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
         .ip-input {
-          background:#0b1220;
-          border:1px solid #1f2937;
-          color: var(--text);
-          padding:10px 12px;
-          border-radius:10px;
-          outline:none;
-          width: 320px;
+          background:#0b1220; border:1px solid #1f2937; color: var(--text);
+          padding:10px 12px; border-radius:10px; outline:none; width: 320px;
         }
         .ip-btn {
-          border:1px solid #1f2937;
-          color:var(--text);
-          padding:10px 14px;
-          border-radius:10px;
-          background:#0b1220;
-          cursor:pointer; font-weight:600;
+          border:1px solid #1f2937; color:var(--text);
+          padding:10px 14px; border-radius:10px; background:#0b1220; cursor:pointer; font-weight:600;
         }
         .ip-btn:hover { border-color:#334155; }
         .ip-btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); border-color: transparent; }
@@ -156,27 +135,16 @@ export default function ImpressionsPelerins() {
         .ip-btn.print:hover { filter: brightness(1.05); }
         .ip-btn.ghost { background: transparent; }
 
-        .ip-layout {
-          display:grid;
-          grid-template-columns: 1.15fr 0.85fr;
-          gap: 16px;
-        }
-        @media (max-width: 1100px) {
-          .ip-layout { grid-template-columns: 1fr; }
-        }
+        .ip-layout { display:grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; }
+        @media (max-width: 1100px) { .ip-layout { grid-template-columns: 1fr; } }
 
-        /* ===== Table ===== */
         .ip-table { width:100%; border-collapse: collapse; overflow:hidden; border-radius:16px; }
         .ip-table thead th {
           text-align:left; padding:12px 12px; font-size:12px; letter-spacing:.4px; color:var(--muted);
           background:#0b1220; border-bottom:1px solid var(--border);
         }
-        .ip-table tbody td {
-          padding:12px; font-size:14px; border-bottom:1px solid #11182766;
-        }
-        .ip-table tbody tr {
-          background: var(--row);
-        }
+        .ip-table tbody td { padding:12px; font-size:14px; border-bottom:1px solid #11182766; }
+        .ip-table tbody tr { background: var(--row); }
         .ip-table tbody tr:nth-child(even) { background: var(--row-alt); }
         .ip-table tbody tr:hover {
           background: linear-gradient(90deg, rgba(34,197,94,.25), rgba(96,165,250,.25));
@@ -187,26 +155,13 @@ export default function ImpressionsPelerins() {
         }
         .chip { display:inline-flex; align-items:center; gap:6px; background: var(--chip); padding:6px 10px; border-radius:999px; font-size:12px; }
 
-        /* ===== Aperçu ===== */
         .ip-aside { padding: 16px; }
-        .ip-preview {
-          background: #0b1220;
-          border:1px solid #1f2937;
-          border-radius: 14px;
-          padding: 14px;
-        }
+        .ip-preview { background: #0b1220; border:1px solid #1f2937; border-radius: 14px; padding: 14px; }
 
-        /* ===== Impression ===== */
         .print-area { margin-top: 18px; }
         .print-card {
-          width: 210mm;
-          background: white;
-          color: #111;
-          padding: 18mm;
-          border-radius: 4px;
-          border: 1px solid #e5e7eb;
-          position: relative;
-          box-sizing: border-box;
+          width: 210mm; background: white; color: #111; padding: 18mm;
+          border-radius: 4px; border: 1px solid #e5e7eb; position: relative; box-sizing: border-box;
         }
         .wm {
           position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-8deg);
@@ -228,13 +183,11 @@ export default function ImpressionsPelerins() {
         .right-photo { width: 120px; text-align: center; }
 
         .footer {
-          margin-top: 16px; padding-top: 10px;
-          border-top: 1px dashed #d1d5db;
+          margin-top: 16px; padding-top: 10px; border-top: 1px dashed #d1d5db;
           display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px;
         }
         .signature { height: 56px; display:block; }
 
-        /* N'imprime que la carte */
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
@@ -319,7 +272,7 @@ export default function ImpressionsPelerins() {
                     </td>
                     <td style={{ width: 52 }}>
                       <img
-                        alt=""
+                        alt={r.nom ? `Photo de ${r.nom}` : "Photo"}
                         src={r.photo || "https://via.placeholder.com/36x44?text=ID"}
                         style={{
                           width: 36,
@@ -354,10 +307,8 @@ export default function ImpressionsPelerins() {
             <div className="ip-preview">
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <img
-                  alt="photo"
-                  src={
-                    selected?.photo || "https://via.placeholder.com/88x106?text=Photo"
-                  }
+                  alt={selected ? `Photo de ${selected.nom}` : "Photo"}
+                  src={selected?.photo || "https://via.placeholder.com/88x106?text=Photo"}
                   style={{
                     width: 88,
                     height: 106,
@@ -404,7 +355,7 @@ export default function ImpressionsPelerins() {
                   <img
                     className="logo"
                     alt="Logo"
-                    src="https://via.placeholder.com/120x60?text=LOGO" /* Remplacer par ton logo */
+                    src="https://via.placeholder.com/120x60?text=LOGO"
                   />
                   <div>
                     <div className="doc-title">FICHE D'INSCRIPTION</div>
@@ -431,7 +382,7 @@ export default function ImpressionsPelerins() {
                 </div>
                 <div className="right-photo">
                   <img
-                    alt="Photo pèlerin"
+                    alt={selected ? `Photo de ${selected.nom}` : "Photo"}
                     src={selected.photo || "https://via.placeholder.com/120x160?text=Photo"}
                     style={{ width: 120, height: 160, objectFit: "cover", border: "1px solid #e5e7eb", borderRadius: 4 }}
                   />
@@ -464,7 +415,7 @@ export default function ImpressionsPelerins() {
                   <img
                     className="signature"
                     alt="signature"
-                    src="https://via.placeholder.com/160x44?text=Signature" /* Remplacer par ta signature */
+                    src="https://via.placeholder.com/160x44?text=Signature"
                   />
                 </div>
               </div>

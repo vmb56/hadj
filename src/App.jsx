@@ -14,9 +14,15 @@ import Medicale from "./pages/medicales/Medicale.jsx";
 import AjoutMedicale from "./pages/medicales/sections/AjoutMedicale.jsx";
 import ImpressionMedicale from "./pages/medicales/sections/ImpressionMedicale.jsx";
 import ListeMedicale from "./pages/medicales/sections/ListeMedicale.jsx";
+import ModifierMedicale from "./pages/medicales/modifier/ModifierMedicale.jsx";
+// Paiement
+import Paiement from "./pages/paiements/Paiement.jsx";
+import RecherchePaiement from "./pages/paiements/sections/RecherchePaiement.jsx";
+import HistoriquesPaiement from "./pages/paiements/sections/HistoriquesPaiement.jsx";
+import HistoriquesVersements from "./pages/paiements/sections/HistoriquesVersements.jsx";
 
 // Autres sections
-import Paiement from "./pages/Paiement";
+
 import Factures from "./pages/Factures";
 import Voyage from "./pages/Voyage";
 import Utilisateurs from "./pages/Utilisateurs";
@@ -52,7 +58,16 @@ export default function App() {
           <Route path="ajout" element={<AjoutMedicale />} />
           <Route path="liste" element={<ListeMedicale />} />
           <Route path="impression" element={<ImpressionMedicale />} />
+          <Route path=":id/edit" element={<ModifierMedicale/>} />
         </Route>
+
+        {/* paiemenmts */}
+        <Route path="paiement" element={<Paiement />}>
+  <Route index element={<Navigate to="recherche" replace />} />
+  <Route path="recherche" element={<RecherchePaiement />} />
+  <Route path="historiques" element={<HistoriquesPaiement />} />
+  <Route path="versements" element={<HistoriquesVersements />} />
+    </Route>
 
         {/* Impression des passeports (photos) */}
         <Route path="impressions-passeports" element={<ImpressionsPasseports />} />
