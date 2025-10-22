@@ -69,125 +69,30 @@ export default function ImpressionsPelerins() {
       alert("Sélectionne un enregistrement avant d’imprimer.");
       return;
     }
-    // Laisse un frame pour appliquer @media print avant d'ouvrir la boîte d'impression.
     requestAnimationFrame(() => window.print());
   }
 
   return (
-    <div className="ip-page">
-      {/* ====== Styles portés par le composant (modernes + thème) ====== */}
+    <div className="space-y-6 text-dyn">
+      {/* ====== Styles impression A4 uniquement ====== */}
       <style>{`
-        :root {
-          --bg: #0f172a;
-          --card: #111827;
-          --muted: #94a3b8;
-          --text: #e5e7eb;
-          --accent: #22c55e;
-          --accent-2: #60a5fa;
-          --warn: #f59e0b;
-          --chip: #1f2937;
-          --border: #1f2937;
-          --row: rgba(255,255,255,0.03);
-          --row-alt: rgba(255,255,255,0.06);
-          --shadow: 0 10px 30px rgba(0,0,0,.35);
-        }
-
-        .ip-page {
-          min-height: 100dvh;
-          background: radial-gradient(1200px 700px at 10% -10%, #172554 0%, transparent 70%),
-                      radial-gradient(1000px 600px at 110% 10%, #064e3b 0%, transparent 60%),
-                      var(--bg);
-          padding: 24px;
-          color: var(--text);
-          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
-        }
-
-        .ip-shell { max-width: 1280px; margin: 0 auto; }
-        .ip-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px; }
-        .ip-title { display:flex; align-items:center; gap:12px; }
-        .ip-badge {
-          background: linear-gradient(135deg,#0ea5e9 0%, #22c55e 100%);
-          color: white; font-weight: 800; letter-spacing: .5px;
-          padding: 8px 12px; border-radius: 999px; font-size: 12px;
-          box-shadow: var(--shadow);
-        }
-
-        .ip-card {
-          background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          box-shadow: var(--shadow);
-        }
-
-        .ip-controls { padding: 16px; display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
-        .ip-input {
-          background:#0b1220; border:1px solid #1f2937; color: var(--text);
-          padding:10px 12px; border-radius:10px; outline:none; width: 320px;
-        }
-        .ip-btn {
-          border:1px solid #1f2937; color:var(--text);
-          padding:10px 14px; border-radius:10px; background:#0b1220; cursor:pointer; font-weight:600;
-        }
-        .ip-btn:hover { border-color:#334155; }
-        .ip-btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); border-color: transparent; }
-        .ip-btn.primary:hover { filter: brightness(1.05); }
-        .ip-btn.print { background: linear-gradient(135deg, #60a5fa, #2563eb); border-color: transparent; }
-        .ip-btn.print:hover { filter: brightness(1.05); }
-        .ip-btn.ghost { background: transparent; }
-
-        .ip-layout { display:grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; }
-        @media (max-width: 1100px) { .ip-layout { grid-template-columns: 1fr; } }
-
-        .ip-table { width:100%; border-collapse: collapse; overflow:hidden; border-radius:16px; }
-        .ip-table thead th {
-          text-align:left; padding:12px 12px; font-size:12px; letter-spacing:.4px; color:var(--muted);
-          background:#0b1220; border-bottom:1px solid var(--border);
-        }
-        .ip-table tbody td { padding:12px; font-size:14px; border-bottom:1px solid #11182766; }
-        .ip-table tbody tr { background: var(--row); }
-        .ip-table tbody tr:nth-child(even) { background: var(--row-alt); }
-        .ip-table tbody tr:hover {
-          background: linear-gradient(90deg, rgba(34,197,94,.25), rgba(96,165,250,.25));
-          cursor:pointer;
-        }
-        .ip-table tr.selected {
-          background: linear-gradient(90deg, #fb923c, #f59e0b) !important; color:#111827;
-        }
-        .chip { display:inline-flex; align-items:center; gap:6px; background: var(--chip); padding:6px 10px; border-radius:999px; font-size:12px; }
-
-        .ip-aside { padding: 16px; }
-        .ip-preview { background: #0b1220; border:1px solid #1f2937; border-radius: 14px; padding: 14px; }
-
-        .print-area { margin-top: 18px; }
         .print-card {
-          width: 210mm; background: white; color: #111; padding: 18mm;
-          border-radius: 4px; border: 1px solid #e5e7eb; position: relative; box-sizing: border-box;
+          width: 210mm;
+          background: #fff;
+          color: #111;
+          padding: 18mm;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+          box-sizing: border-box;
+          position: relative;
         }
         .wm {
-          position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-8deg);
-          font-weight:900; font-size:120px; color: rgba(245,158,11,0.08); letter-spacing: 2px; user-select:none; pointer-events:none;
+          position:absolute; left:50%; top:50%;
+          transform:translate(-50%,-50%) rotate(-8deg);
+          font-weight:900; font-size:120px;
+          color: rgba(37,99,235,0.06); letter-spacing: 2px;
+          user-select:none; pointer-events:none;
         }
-        .ph-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
-        .brand { display:flex; align-items:center; gap: 12px; }
-        .brand .logo { width: 72px; height: 72px; object-fit: contain; }
-        .doc-title { font-size: 18px; font-weight: 900; }
-        .doc-sub { color:#374151; font-size: 13px; margin-top: 2px; }
-        .meta { text-align: right; font-size: 12px; color:#6b7280; }
-        .section { background:#fbbf24; font-weight: 800; padding: 6px 10px; margin: 10px 0; color:#111; }
-        .row { display:flex; gap:8px; margin:6px 0; }
-        .label { width: 220px; font-weight: 700; color:#374151; }
-        .value { flex:1; }
-
-        .two-col { display:flex; gap: 20px; }
-        .col { flex: 1; }
-        .right-photo { width: 120px; text-align: center; }
-
-        .footer {
-          margin-top: 16px; padding-top: 10px; border-top: 1px dashed #d1d5db;
-          display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px;
-        }
-        .signature { height: 56px; display:block; }
-
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
@@ -196,104 +101,118 @@ export default function ImpressionsPelerins() {
         }
       `}</style>
 
-      <div className="ip-shell">
-        <div className="ip-header">
-          <div className="ip-title">
-            <span className="ip-badge">BMVT</span>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 0.3 }}>
-                Impressions – Fiche Pèlerin
-              </div>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                Recherche par numéro de passeport · Sélection · Impression A4
-              </div>
-            </div>
-          </div>
-
-          <div className="chip" title="Total enregistrements">
-            <span>📄</span>
-            <strong>{SAMPLE_DATA.length}</strong> au total
-          </div>
+      {/* ===== En-tête ===== */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400" />
+        <div className="p-6">
+          <h1 className="text-dyn-title text-slate-900">Impressions — Fiche Pèlerin</h1>
+          <p className="mt-1 text-slate-600 text-dyn-sm">
+            Recherche par numéro de passeport · Sélection · Impression A4
+          </p>
         </div>
+      </div>
 
-        {/* Barre de recherche & actions */}
-        <div className="ip-card">
-          <form className="ip-controls" onSubmit={handleSearch}>
-            <input
-              className="ip-input"
-              placeholder="Rechercher par N° de passeport (ex : 20AD24295)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button type="submit" className="ip-btn primary">Rechercher</button>
-            <button type="button" className="ip-btn ghost" onClick={handleClear}>
-              Effacer
-            </button>
-            <button type="button" className="ip-btn print" onClick={handlePrint}>
-              Imprimer la fiche
-            </button>
-            <div style={{ marginLeft: "auto", color: "var(--muted)", fontSize: 13 }}>
-              {selected
-                ? `Sélectionné : ${selected.nom} ${selected.prenoms}`
-                : `${data.length} résultat(s)`}
-            </div>
-          </form>
-        </div>
+      {/* ===== Barre de recherche & actions ===== */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <form
+          className="p-4 flex flex-wrap items-center gap-2 md:gap-3"
+          onSubmit={handleSearch}
+        >
+          <input
+            className="w-full sm:w-[320px] rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+            placeholder="Rechercher par N° de passeport (ex : 20AD24295)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+          >
+            Rechercher
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+            onClick={handleClear}
+          >
+            Effacer
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
+            onClick={handlePrint}
+          >
+            Imprimer la fiche
+          </button>
+          <div className="ml-auto text-slate-500 text-dyn-sm">
+            {selected
+              ? `Sélectionné : ${selected.nom} ${selected.prenoms}`
+              : `${data.length} résultat(s)`}
+          </div>
+        </form>
+      </div>
 
-        {/* Layout principal */}
-        <div className="ip-layout" style={{ marginTop: 16 }}>
-          {/* Tableau */}
-          <div className="ip-card" style={{ padding: 12 }}>
-            <table className="ip-table">
+      {/* ===== Layout principal : Tableau + Aperçu ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
+        {/* Tableau */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left">
               <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nom voyage</th>
-                  <th>Photo</th>
-                  <th>Nom</th>
-                  <th>Prénoms</th>
-                  <th>Date naissance</th>
-                  <th>Passeport</th>
+                <tr className="text-slate-500 text-dyn-xs">
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">ID</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Nom voyage</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Photo</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Nom</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Prénoms</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Date naissance</th>
+                  <th className="px-3 py-2 border-b border-slate-200 font-semibold">Passeport</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((r) => (
                   <tr
                     key={r.id}
-                    className={selectedId === r.id ? "selected" : ""}
                     onClick={() => setSelectedId(r.id)}
                     title="Cliquer pour sélectionner"
+                    className={[
+                      "cursor-pointer transition",
+                      selectedId === r.id
+                        ? "bg-blue-50/60"
+                        : "hover:bg-slate-50"
+                    ].join(" ")}
                   >
-                    <td>{r.id}</td>
-                    <td>
-                      <span className="chip">
-                        ✈️ <strong>{r.nomVoyage}</strong>
+                    <td className="px-3 py-2 border-b border-slate-100">{r.id}</td>
+                    <td className="px-3 py-2 border-b border-slate-100">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 ring-1 ring-blue-200 text-dyn-xs">
+                        ✈️ <strong className="font-semibold">{r.nomVoyage}</strong>
                       </span>
                     </td>
-                    <td style={{ width: 52 }}>
+                    <td className="px-3 py-2 border-b border-slate-100" style={{ width: 52 }}>
                       <img
                         alt={r.nom ? `Photo de ${r.nom}` : "Photo"}
                         src={r.photo || "https://via.placeholder.com/36x44?text=ID"}
-                        style={{
-                          width: 36,
-                          height: 44,
-                          objectFit: "cover",
-                          borderRadius: 6,
-                          border: "1px solid #1f2937",
-                        }}
+                        className="h-11 w-9 rounded-md object-cover border border-slate-200"
                       />
                     </td>
-                    <td style={{ fontWeight: 700 }}>{r.nom}</td>
-                    <td>{r.prenoms}</td>
-                    <td>{formatDate(r.dateNaissance)}</td>
-                    <td style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                    <td className="px-3 py-2 border-b border-slate-100 font-semibold text-slate-900">
+                      {r.nom}
+                    </td>
+                    <td className="px-3 py-2 border-b border-slate-100">{r.prenoms}</td>
+                    <td className="px-3 py-2 border-b border-slate-100">
+                      {formatDate(r.dateNaissance)}
+                    </td>
+                    <td className="px-3 py-2 border-b border-slate-100 font-mono">
                       {r.passport}
                     </td>
                   </tr>
                 ))}
                 {data.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center", color: "var(--muted)", padding: 18 }}>
+                    <td
+                      colSpan={7}
+                      className="px-3 py-4 text-center text-slate-500"
+                    >
                       Aucun enregistrement
                     </td>
                   </tr>
@@ -301,128 +220,146 @@ export default function ImpressionsPelerins() {
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Aside : aperçu */}
-          <div className="ip-aside">
-            <div className="ip-preview">
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <img
-                  alt={selected ? `Photo de ${selected.nom}` : "Photo"}
-                  src={selected?.photo || "https://via.placeholder.com/88x106?text=Photo"}
-                  style={{
-                    width: 88,
-                    height: 106,
-                    objectFit: "cover",
-                    borderRadius: 8,
-                    border: "1px solid #1f2937",
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 900 }}>
-                    {selected ? `${selected.nom} ${selected.prenoms}` : "Aucune sélection"}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {selected ? `${selected.nomVoyage} · ${selected.anneeVoyage}` : "Sélectionne une ligne pour prévisualiser"}
-                  </div>
-                  {selected && (
-                    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                      <div><strong>📇 Passeport :</strong> {selected.passport}</div>
-                      <div><strong>📞 Contact :</strong> {selected.contacts}</div>
-                      <div><strong>📍 Adresse :</strong> {selected.adresse}</div>
-                    </div>
-                  )}
-                </div>
+        {/* Aperçu */}
+        <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+          <div className="flex items-start gap-3">
+            <img
+              alt={selected ? `Photo de ${selected.nom}` : "Photo"}
+              src={selected?.photo || "https://via.placeholder.com/88x106?text=Photo"}
+              className="h-[106px] w-[88px] rounded-lg object-cover border border-slate-200"
+            />
+            <div className="min-w-0">
+              <div className="font-extrabold text-slate-900">
+                {selected ? `${selected.nom} ${selected.prenoms}` : "Aucune sélection"}
               </div>
-              <button
-                onClick={handlePrint}
-                className="ip-btn print"
-                style={{ width: "100%", marginTop: 12 }}
-              >
-                Imprimer cette fiche
-              </button>
+              <div className="text-slate-500 text-dyn-xs">
+                {selected
+                  ? `${selected.nomVoyage} · ${selected.anneeVoyage}`
+                  : "Sélectionne une ligne pour prévisualiser"}
+              </div>
+              {selected && (
+                <div className="mt-2 grid gap-1.5 text-slate-700 text-dyn-sm">
+                  <div><strong>📇 Passeport :</strong> {selected.passport}</div>
+                  <div><strong>📞 Contact :</strong> {selected.contacts}</div>
+                  <div><strong>📍 Adresse :</strong> {selected.adresse}</div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+          <button
+            onClick={handlePrint}
+            className="mt-4 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100"
+          >
+            Imprimer cette fiche
+          </button>
+        </aside>
+      </div>
 
-        {/* Zone d'impression A4 */}
-        <div className="print-area" ref={printRef}>
-          {selected && (
-            <div className="print-card" role="document" aria-label="Fiche d'inscription">
-              <div className="wm">BMVT</div>
+      {/* ===== Zone d'impression A4 ===== */}
+      <div className="print-area" ref={printRef}>
+        {selected && (
+          <div className="print-card" role="document" aria-label="Fiche d'inscription">
+            <div className="wm">BMVT</div>
 
-              <div className="ph-header">
-                <div className="brand">
-                  <img
-                    className="logo"
-                    alt="Logo"
-                    src="https://via.placeholder.com/120x60?text=LOGO"
-                  />
-                  <div>
-                    <div className="doc-title">FICHE D'INSCRIPTION</div>
-                    <div className="doc-sub">{selected.nomVoyage}</div>
-                  </div>
-                </div>
-                <div className="meta">
-                  <div>{new Date().toLocaleDateString("fr-FR")}</div>
-                  <div>{new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>
-                </div>
-              </div>
-
-              <div className="section">INFORMATIONS PERSONNELLES DU PÈLERIN</div>
-              <div className="two-col">
-                <div className="col">
-                  <div className="row"><div className="label">Identifiant de Pèlerin :</div><div className="value">{selected.id}</div></div>
-                  <div className="row"><div className="label">Nom du Pèlerin :</div><div className="value">{selected.nom}</div></div>
-                  <div className="row"><div className="label">Prénoms du Pèlerin :</div><div className="value">{selected.prenoms}</div></div>
-                  <div className="row"><div className="label">Date de naissance :</div><div className="value">{formatDate(selected.dateNaissance)}</div></div>
-                  <div className="row"><div className="label">Lieu de naissance :</div><div className="value">{selected.lieuNaissance}</div></div>
-                  <div className="row"><div className="label">Adresse :</div><div className="value">{selected.adresse}</div></div>
-                  <div className="row"><div className="label">Contacts :</div><div className="value">{selected.contacts}</div></div>
-                  <div className="row"><div className="label">Sexe :</div><div className="value">{selected.sexe}</div></div>
-                </div>
-                <div className="right-photo">
-                  <img
-                    alt={selected ? `Photo de ${selected.nom}` : "Photo"}
-                    src={selected.photo || "https://via.placeholder.com/120x160?text=Photo"}
-                    style={{ width: 120, height: 160, objectFit: "cover", border: "1px solid #e5e7eb", borderRadius: 4 }}
-                  />
+            {/* Header doc */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <img
+                  alt="Logo"
+                  src="https://via.placeholder.com/120x60?text=LOGO"
+                  className="h-16 w-auto object-contain"
+                />
+                <div>
+                  <div className="text-[18px] font-black">FICHE D'INSCRIPTION</div>
+                  <div className="text-[13px] text-slate-600">{selected.nomVoyage}</div>
                 </div>
               </div>
-
-              <div className="section">INFORMATIONS CONCERNANT LE VOYAGE</div>
-              <div>
-                <div className="row"><div className="label">Numéro de passeport :</div><div className="value">{selected.passport}</div></div>
-                <div className="row"><div className="label">Offre choisie :</div><div className="value">{selected.offre}</div></div>
-                <div className="row"><div className="label">Hôtel du pèlerin :</div><div className="value">{selected.hotel}</div></div>
-                <div className="row"><div className="label">Année de voyage :</div><div className="value">{selected.anneeVoyage}</div></div>
-                <div className="row"><div className="label">Nom du voyage :</div><div className="value">{selected.nomVoyage}</div></div>
-              </div>
-
-              <div className="section">PERSONNE À CONTACTER EN CAS D’URGENCE</div>
-              <div>
-                <div className="row"><div className="label">Nom :</div><div className="value">{selected.nomPersonneContact}</div></div>
-                <div className="row"><div className="label">Contact :</div><div className="value">{selected.contactPersonne}</div></div>
-                <div className="row"><div className="label">Résidence :</div><div className="value">{selected.residencePersonne}</div></div>
-              </div>
-
-              <div style={{ textAlign: "center", marginTop: 14, fontWeight: 900, color: "#9ca3af" }}>
-                BMVT – Voyages & Tourismes
-              </div>
-
-              <div className="footer">
-                <div>Nom_Employeur_Enregistreur : <strong>{selected.employeEnregistreur}</strong></div>
-                <div style={{ textAlign: "center" }}>
-                  <img
-                    className="signature"
-                    alt="signature"
-                    src="https://via.placeholder.com/160x44?text=Signature"
-                  />
+              <div className="text-right text-[12px] text-slate-500">
+                <div>{new Date().toLocaleDateString("fr-FR")}</div>
+                <div>
+                  {new Date().toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Section 1 */}
+            <div className="rounded-md bg-blue-50 px-2.5 py-1.5 text-blue-800 font-extrabold mb-2">
+              INFORMATIONS PERSONNELLES DU PÈLERIN
+            </div>
+            <div className="flex gap-5">
+              <div className="flex-1">
+                <Row label="Identifiant de Pèlerin :" value={selected.id} />
+                <Row label="Nom du Pèlerin :" value={selected.nom} />
+                <Row label="Prénoms du Pèlerin :" value={selected.prenoms} />
+                <Row label="Date de naissance :" value={formatDate(selected.dateNaissance)} />
+                <Row label="Lieu de naissance :" value={selected.lieuNaissance} />
+                <Row label="Adresse :" value={selected.adresse} />
+                <Row label="Contacts :" value={selected.contacts} />
+                <Row label="Sexe :" value={selected.sexe} />
+              </div>
+              <div className="w-[120px] text-center">
+                <img
+                  alt={selected ? `Photo de ${selected.nom}` : "Photo"}
+                  src={selected.photo || "https://via.placeholder.com/120x160?text=Photo"}
+                  className="h-[160px] w-[120px] object-cover rounded border border-slate-200"
+                />
+              </div>
+            </div>
+
+            {/* Section 2 */}
+            <div className="rounded-md bg-blue-50 px-2.5 py-1.5 text-blue-800 font-extrabold mt-3 mb-2">
+              INFORMATIONS CONCERNANT LE VOYAGE
+            </div>
+            <div>
+              <Row label="Numéro de passeport :" value={selected.passport} />
+              <Row label="Offre choisie :" value={selected.offre} />
+              <Row label="Hôtel du pèlerin :" value={selected.hotel} />
+              <Row label="Année de voyage :" value={selected.anneeVoyage} />
+              <Row label="Nom du voyage :" value={selected.nomVoyage} />
+            </div>
+
+            {/* Section 3 */}
+            <div className="rounded-md bg-blue-50 px-2.5 py-1.5 text-blue-800 font-extrabold mt-3 mb-2">
+              PERSONNE À CONTACTER EN CAS D’URGENCE
+            </div>
+            <div>
+              <Row label="Nom :" value={selected.nomPersonneContact} />
+              <Row label="Contact :" value={selected.contactPersonne} />
+              <Row label="Résidence :" value={selected.residencePersonne} />
+            </div>
+
+            <div className="text-center mt-3 font-black text-slate-400">
+              BMVT – Voyages & Tourismes
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-dashed border-slate-300 flex items-center justify-between text-[12px]">
+              <div>
+                Nom_Employeur_Enregistreur : <strong>{selected.employeEnregistreur}</strong>
+              </div>
+              <img
+                alt="signature"
+                src="https://via.placeholder.com/160x44?text=Signature"
+                className="h-14 w-auto object-contain"
+              />
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+/* ————— Petits sous-composants (impression) ————— */
+function Row({ label, value }) {
+  return (
+    <div className="flex gap-2 my-1">
+      <div className="w-[220px] font-bold text-slate-700">{label}</div>
+      <div className="flex-1">{String(value ?? "—")}</div>
     </div>
   );
 }

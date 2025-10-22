@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Bell,
+  LayoutDashboard,
   Search,
 } from "lucide-react";
 
@@ -138,6 +139,11 @@ export default function MainLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
+          <Section title="Tableau de bord" collapsed={collapsed}>
+            <Item to="/tableau-de-bord" icon  ={LayoutDashboard} label="Tableau de bord" collapsed={collapsed}/>
+          </Section>
+
+          
           <Section title="Pèlerins" collapsed={collapsed}>
             <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
             <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />

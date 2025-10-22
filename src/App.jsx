@@ -21,6 +21,9 @@ import RecherchePaiement from "./pages/paiements/sections/RecherchePaiement.jsx"
 import HistoriquesPaiement from "./pages/paiements/sections/HistoriquesPaiement.jsx";
 import HistoriquesVersements from "./pages/paiements/sections/HistoriquesVersements.jsx";
 
+
+//tableau de bord
+import Dashboard from "./pages/Dashboard.jsx";
 // Autres sections
 
 import Factures from "./pages/Factures";
@@ -48,8 +51,13 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MainLayout />}>
+
         {/* Redirection racine → pelerins */}
-        <Route index element={<Navigate to="pelerins" replace />} />
+        <Route index element={<Navigate to="tableau-de-bord" replace />} />
+
+
+        {/* Tableau de bord */}
+        <Route path="tableau-de-bord" element={< Dashboard />} />
 
         {/* Pèlerins avec sous-routes */}
         <Route path="pelerins" element={<Pelerins />}>
@@ -71,7 +79,7 @@ export default function App() {
           <Route path="impression" element={<ImpressionMedicale />} />
           <Route path=":id/edit" element={<ModifierMedicale/>} />
         </Route>
-        
+
 {/* Voyage avec sous-routes */}
 <Route path="/voyage" element={<Voyage />}>
     {/* redirige /voyage vers /voyage/vols */}

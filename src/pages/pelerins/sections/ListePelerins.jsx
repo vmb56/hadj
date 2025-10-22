@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ===========================
    Démo 100% front : échantillon
-   Remplace par tes données API plus tard
+   (remplace avec ton API)
 =========================== */
 const SAMPLE = [
   {
@@ -56,36 +56,20 @@ const SAMPLE = [
 ];
 
 /* ===========================
-   Tailles des vignettes
-=========================== */
-const THUMB_DESKTOP = "h-16 w-16"; // 64×64
-const THUMB_MOBILE = "h-18 w-18"; // ~72×72 visuel
-const BIG_THUMB = { h: "h-56", w: "w-44" }; // Aperçu modale
-
-/* ===========================
-   Helpers UI
+   Helpers
 =========================== */
 function formatDate(d) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString();
+    return new Date(d).toLocaleDateString("fr-FR");
   } catch {
     return d;
   }
 }
 
-function Badge({ children, tone = "slate" }) {
-  const tones = {
-    slate: "bg-white/10 text-slate-200",
-    amber: "bg-amber-500/15 text-amber-300",
-    emerald: "bg-emerald-500/15 text-emerald-300",
-  };
+function Badge({ children }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${
-        tones[tone] || tones.slate
-      }`}
-    >
+    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 ring-1 ring-blue-200 text-dyn-xs font-semibold">
       {children}
     </span>
   );
@@ -93,17 +77,17 @@ function Badge({ children, tone = "slate" }) {
 
 function ActionButton({ children, onClick, tone = "default" }) {
   const styles = {
-    default: "bg-white/10 hover:bg-white/15 text-slate-100",
-    primary: "bg-amber-500/20 hover:bg-amber-500/30 text-amber-200",
-    warn: "bg-rose-500/20 hover:bg-rose-500/30 text-rose-200",
+    default:
+      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    primary:
+      "border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+    warn: "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
   };
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-        styles[tone] || styles.default
-      }`}
       type="button"
+      className={`rounded-xl px-3 py-2 text-dyn-sm font-semibold transition ${styles[tone] || styles.default}`}
     >
       {children}
     </button>
@@ -113,7 +97,7 @@ function ActionButton({ children, onClick, tone = "default" }) {
 function Th({ children, className = "" }) {
   return (
     <th
-      className={`text-left px-4 py-3 first:rounded-l-lg last:rounded-r-lg whitespace-nowrap text-[13px] uppercase tracking-wide text-amber-300 ${className}`}
+      className={`text-left px-3 py-2 border-b border-slate-200 text-slate-500 text-dyn-xs font-semibold ${className}`}
     >
       {children}
     </th>
@@ -122,43 +106,31 @@ function Th({ children, className = "" }) {
 function Td({ children, className = "" }) {
   return (
     <td
-      className={`px-4 py-3 text-slate-200 whitespace-nowrap first:rounded-l-lg last:rounded-r-lg ${className}`}
+      className={`px-3 py-3 border-b border-slate-100 text-slate-800 whitespace-nowrap ${className}`}
     >
       {children}
     </td>
   );
 }
 
-function Thumb({ src, alt, mobile = false }) {
-  const size = mobile ? THUMB_MOBILE : THUMB_DESKTOP;
+function Thumb({ src, alt, size = "md" }) {
+  const cls =
+    size === "md"
+      ? "h-16 w-16"
+      : size === "sm"
+      ? "h-[72px] w-[72px]"
+      : "h-16 w-16";
   return src ? (
     <img
       src={src}
       alt={alt}
-      className={`${size} rounded-xl object-cover border border-white/15 shadow-sm`}
+      className={`${cls} rounded-xl object-cover border border-slate-200 bg-white`}
     />
   ) : (
     <div
-      className={`${size} rounded-xl grid place-content-center text-[10px] text-slate-400 border border-white/15 bg-white/5`}
+      className={`${cls} rounded-xl grid place-content-center text-dyn-xs text-slate-400 border border-slate-200 bg-slate-50`}
     >
       N/A
-    </div>
-  );
-}
-
-function BigThumb({ src, label }) {
-  return (
-    <div className="grid gap-2">
-      <div
-        className={`${BIG_THUMB.h} ${BIG_THUMB.w} rounded-2xl overflow-hidden border border-white/15 bg-white/5 grid place-content-center`}
-      >
-        {src ? (
-          <img src={src} alt={label} className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-sm text-slate-400">Aperçu</span>
-        )}
-      </div>
-      <span className="text-xs text-slate-300">{label}</span>
     </div>
   );
 }
@@ -167,10 +139,10 @@ function BigThumb({ src, label }) {
    Composant principal
 =========================== */
 export default function ListePelerins() {
-  const navigate = useNavigate(); // ✅ Hook utilisé DANS le composant
+  const navigate = useNavigate();
   const [data, setData] = useState(SAMPLE);
   const [q, setQ] = useState("");
-  const [selected, setSelected] = useState(null); // pour la modale "Détails"
+  const [selected, setSelected] = useState(null); // pour la modale
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -195,91 +167,92 @@ export default function ListePelerins() {
   function onDelete(row) {
     if (window.confirm(`Supprimer ${row.nom} ${row.prenoms} ?`)) {
       setData((prev) => prev.filter((x) => x.id !== row.id));
+      if (selected?.id === row.id) setSelected(null);
     }
   }
 
   function onEdit(row) {
-    // ✅ navigation vers la page d’édition avec state
     navigate(`/pelerins/${row.id}/edit`, { state: { row } });
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 lg:p-8 backdrop-blur text-white shadow-lg">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-orange-400">Liste des Pèlerins</h2>
-          <p className="text-slate-300/90 text-sm">
-            Toutes les informations enregistrées (photos, infos personnelles,
-            Hajj, urgence, agent…)
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (nom, passeport, agent...)"
-            className="w-full sm:w-72 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm placeholder:text-slate-400 outline-none ring-2 ring-transparent focus:ring-amber-400/40"
-          />
+    <div className="space-y-6 text-dyn">
+      {/* En-tête / barre d'action */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400" />
+        <div className="p-4 md:p-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-dyn-title text-slate-900">Liste des Pèlerins</h2>
+            <p className="text-slate-600 text-dyn-sm">
+              Photos, informations personnelles, Hajj, urgence, agent…
+            </p>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Rechercher (nom, passeport, agent...)"
+              className="w-full md:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+            />
+          </div>
         </div>
       </div>
 
       {/* ===== Mobile : Cartes ===== */}
-      <div className="mt-6 grid gap-3 sm:hidden">
+      <div className="grid gap-3 sm:hidden">
         {filtered.length === 0 ? (
-          <p className="text-slate-400">Aucun résultat.</p>
+          <p className="text-slate-500">Aucun résultat.</p>
         ) : (
-          filtered.map((p, i) => (
+          filtered.map((p) => (
             <article
-              key={p.id ?? i}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3"
+              key={p.id}
+              className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
             >
               <div className="flex items-start gap-3">
-                <Thumb src={p.photoPelerin} alt="Pèlerin" mobile />
+                <Thumb src={p.photoPelerin} alt="Pèlerin" size="sm" />
                 <div className="min-w-0">
-                  <div className="font-semibold text-white truncate">
+                  <div className="font-semibold text-slate-900 truncate">
                     {p.nom} {p.prenoms}
                   </div>
-                  <div className="text-xs text-slate-300">
+                  <div className="text-dyn-xs text-slate-500">
                     Passeport:{" "}
-                    <span className="font-mono">
+                    <span className="font-mono text-slate-800">
                       {p.numPasseport || "—"}
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-300">
-                    {p.voyage || "—"} •{" "}
-                    <Badge tone="amber">{p.anneeVoyage || "—"}</Badge>
+                  <div className="mt-1 text-dyn-xs text-slate-600">
+                    {p.voyage || "—"} • <Badge>{p.anneeVoyage || "—"}</Badge>
                   </div>
                 </div>
                 <div className="ml-auto">
-                  <Thumb src={p.photoPasseport} alt="Passeport" mobile />
+                  <Thumb src={p.photoPasseport} alt="Passeport" size="sm" />
                 </div>
               </div>
 
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-dyn-sm">
                 <div>
-                  <dt className="text-slate-400">Contact</dt>
-                  <dd className="text-slate-200">{p.contacts || "—"}</dd>
+                  <dt className="text-slate-500">Contact</dt>
+                  <dd className="text-slate-800">{p.contacts || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400">Sexe</dt>
-                  <dd className="text-slate-200">{p.sexe || "—"}</dd>
+                  <dt className="text-slate-500">Sexe</dt>
+                  <dd className="text-slate-800">{p.sexe || "—"}</dd>
                 </div>
                 <div className="col-span-2">
-                  <dt className="text-slate-400">Adresse</dt>
-                  <dd className="text-slate-200">{p.adresse || "—"}</dd>
+                  <dt className="text-slate-500">Adresse</dt>
+                  <dd className="text-slate-800">{p.adresse || "—"}</dd>
                 </div>
                 <div className="col-span-2">
-                  <dt className="text-slate-400">Urgence</dt>
-                  <dd className="text-slate-200">
+                  <dt className="text-slate-500">Urgence</dt>
+                  <dd className="text-slate-800">
                     {p.urgenceNom} {p.urgencePrenoms} • {p.urgenceContact} •{" "}
                     {p.urgenceResidence}
                   </dd>
                 </div>
-                <div className="col-span-2 text-slate-300">
+                <div className="col-span-2 text-slate-600">
                   Enregistré par :{" "}
-                  <span className="text-amber-300 font-semibold">
+                  <span className="text-slate-900 font-semibold">
                     {p.enregistrePar || "—"}
                   </span>
                 </div>
@@ -299,14 +272,14 @@ export default function ListePelerins() {
         )}
       </div>
 
-      {/* ===== Desktop : Tableau large ===== */}
-      <div className="mt-6 overflow-x-auto hidden sm:block">
+      {/* ===== Desktop : Tableau ===== */}
+      <div className="overflow-x-auto hidden sm:block">
         {filtered.length === 0 ? (
-          <p className="text-slate-400">Aucun résultat.</p>
+          <p className="text-slate-500">Aucun résultat.</p>
         ) : (
-          <table className="min-w-[1280px] border-separate border-spacing-y-3 text-[15px]">
-            <thead>
-              <tr className="bg-amber-500/10">
+          <table className="min-w-[1280px] text-dyn">
+            <thead className="bg-blue-50">
+              <tr>
                 <Th>#</Th>
                 <Th>Photo</Th>
                 <Th>Nom & Prénoms</Th>
@@ -324,56 +297,50 @@ export default function ListePelerins() {
                 <Th className="text-right">Actions</Th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-white">
               {filtered.map((p, i) => (
                 <tr
                   key={p.id ?? i}
-                  className="bg-white/6 hover:bg-white/12 transition-all"
+                  className="hover:bg-slate-50 transition-colors"
                 >
-                  <Td className="text-slate-400">{i + 1}</Td>
+                  <Td className="text-slate-500">{i + 1}</Td>
 
                   <Td>
                     <Thumb src={p.photoPelerin} alt="Pèlerin" />
                   </Td>
 
                   <Td>
-                    <div className="font-semibold text-white">
+                    <div className="font-semibold text-slate-900">
                       {p.nom} {p.prenoms}
                     </div>
                   </Td>
 
                   <Td>
-                    <div className="text-slate-200">
+                    <div className="text-slate-800">
                       {formatDate(p.dateNaissance)}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-dyn-xs text-slate-500">
                       {p.lieuNaissance || "—"}
                     </div>
                   </Td>
 
                   <Td>{p.sexe || "—"}</Td>
-                  <Td className="max-w-[220px] truncate">
-                    {p.adresse || "—"}
-                  </Td>
+                  <Td className="max-w-[240px] truncate">{p.adresse || "—"}</Td>
                   <Td>{p.contacts || "—"}</Td>
 
-                  <Td>
-                    <div className="font-mono">{p.numPasseport || "—"}</div>
-                  </Td>
+                  <Td className="font-mono">{p.numPasseport || "—"}</Td>
 
                   <Td>{p.offre || "—"}</Td>
 
-                  <Td className="max-w-[220px] truncate">
-                    {p.voyage || "—"}
-                  </Td>
+                  <Td className="max-w-[260px] truncate">{p.voyage || "—"}</Td>
 
                   <Td>
-                    <Badge tone="amber">{p.anneeVoyage || "—"}</Badge>
+                    <Badge>{p.anneeVoyage || "—"}</Badge>
                   </Td>
 
-                  <Td className="max-w-[280px]">
+                  <Td className="max-w-[320px]">
                     <div className="truncate">
-                      <span className="font-semibold">
+                      <span className="font-semibold text-slate-900">
                         {p.urgenceNom} {p.urgencePrenoms}
                       </span>{" "}
                       • {p.urgenceContact} • {p.urgenceResidence}
@@ -384,7 +351,7 @@ export default function ListePelerins() {
                     <Thumb src={p.photoPasseport} alt="Passeport" />
                   </Td>
 
-                  <Td className="text-amber-300 font-semibold">
+                  <Td className="text-slate-900 font-semibold">
                     {p.enregistrePar || "—"}
                   </Td>
 
@@ -408,90 +375,99 @@ export default function ListePelerins() {
 
       {/* ===== Modale Détails ===== */}
       {selected && (
-        <div className="fixed inset-0 z-50 grid place-items-center">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSelected(null)}
-          />
-          <div className="relative z-10 w-[min(980px,95vw)] max-h-[90vh] overflow-auto rounded-2xl border border-white/10 bg-slate-900/90 p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-xl font-bold text-orange-300">
-                Détails — {selected.nom} {selected.prenoms}
-              </h3>
-              <button
-                className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
-                onClick={() => setSelected(null)}
-                type="button"
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-6 md:grid-cols-[auto,1fr,auto]">
-              <BigThumb src={selected.photoPelerin} label="Photo pèlerin" />
-
-              <div className="grid gap-3">
-                <DetailSection title="Informations personnelles">
-                  <Info
-                    label="Nom & Prénoms"
-                    value={`${selected.nom} ${selected.prenoms}`}
-                  />
-                  <Info
-                    label="Naissance"
-                    value={`${formatDate(selected.dateNaissance)} — ${
-                      selected.lieuNaissance || "—"
-                    }`}
-                  />
-                  <Info label="Sexe" value={selected.sexe || "—"} />
-                  <Info label="Adresse" value={selected.adresse || "—"} />
-                  <Info label="Contacts" value={selected.contacts || "—"} />
-                </DetailSection>
-
-                <DetailSection title="Hajj">
-                  <Info label="Passeport" value={selected.numPasseport || "—"} />
-                  <Info label="Offre" value={selected.offre || "—"} />
-                  <Info label="Voyage" value={selected.voyage || "—"} />
-                  <Info label="Année" value={selected.anneeVoyage || "—"} />
-                </DetailSection>
-
-                <DetailSection title="Urgence">
-                  <Info
-                    label="Nom & Prénoms"
-                    value={
-                      `${selected.urgenceNom || ""} ${
-                        selected.urgencePrenoms || ""
-                      }`.trim() || "—"
-                    }
-                  />
-                  <Info label="Contact" value={selected.urgenceContact || "—"} />
-                  <Info
-                    label="Résidence"
-                    value={selected.urgenceResidence || "—"}
-                  />
-                </DetailSection>
-
-                <DetailSection title="Enregistrement">
-                  <Info label="Agent" value={selected.enregistrePar || "—"} />
-                  <Info label="Date" value={formatDate(selected.createdAt)} />
-                </DetailSection>
-              </div>
-
-              <BigThumb src={selected.photoPasseport} label="Photo passeport" />
-            </div>
-          </div>
-        </div>
+        <DetailsModal data={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );
 }
 
 /* ===========================
-   Sous-blocs pour la modale
+   Modale Détails (bleu & blanc)
 =========================== */
+function DetailsModal({ data, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="absolute left-1/2 top-1/2 w-[min(980px,95vw)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <h3 className="text-dyn-title text-slate-900">
+            Détails — {data.nom} {data.prenoms}
+          </h3>
+          <button
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            Fermer
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-6 md:grid-cols-[auto,1fr,auto]">
+          <BigThumbW src={data.photoPelerin} label="Photo pèlerin" />
+
+          <div className="grid gap-3">
+            <DetailSection title="Informations personnelles">
+              <Info label="Nom & Prénoms" value={`${data.nom} ${data.prenoms}`} />
+              <Info
+                label="Naissance"
+                value={`${formatDate(data.dateNaissance)} — ${data.lieuNaissance || "—"}`}
+              />
+              <Info label="Sexe" value={data.sexe || "—"} />
+              <Info label="Adresse" value={data.adresse || "—"} />
+              <Info label="Contacts" value={data.contacts || "—"} />
+            </DetailSection>
+
+            <DetailSection title="Hajj">
+              <Info label="Passeport" value={data.numPasseport || "—"} />
+              <Info label="Offre" value={data.offre || "—"} />
+              <Info label="Voyage" value={data.voyage || "—"} />
+              <Info label="Année" value={data.anneeVoyage || "—"} />
+            </DetailSection>
+
+            <DetailSection title="Urgence">
+              <Info
+                label="Nom & Prénoms"
+                value={`${data.urgenceNom || ""} ${data.urgencePrenoms || ""}`.trim() || "—"}
+              />
+              <Info label="Contact" value={data.urgenceContact || "—"} />
+              <Info label="Résidence" value={data.urgenceResidence || "—"} />
+            </DetailSection>
+
+            <DetailSection title="Enregistrement">
+              <Info label="Agent" value={data.enregistrePar || "—"} />
+              <Info label="Date" value={formatDate(data.createdAt)} />
+            </DetailSection>
+          </div>
+
+          <BigThumbW src={data.photoPasseport} label="Photo passeport" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BigThumbW({ src, label }) {
+  return (
+    <div className="grid gap-2">
+      <div className="h-56 w-44 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 grid place-content-center">
+        {src ? (
+          <img src={src} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-dyn-sm text-slate-500">Aperçu</span>
+        )}
+      </div>
+      <span className="text-dyn-xs text-slate-500">{label}</span>
+    </div>
+  );
+}
+
 function DetailSection({ title, children }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-      <div className="mb-2 text-[12px] font-extrabold uppercase tracking-wider text-amber-300">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="mb-2 text-dyn-xs font-extrabold uppercase tracking-wider text-blue-700">
         {title}
       </div>
       <div className="grid gap-1.5">{children}</div>
@@ -500,9 +476,9 @@ function DetailSection({ title, children }) {
 }
 function Info({ label, value }) {
   return (
-    <div className="text-sm">
-      <span className="text-slate-400">{label} : </span>
-      <span className="text-slate-100">{value || "—"}</span>
+    <div className="text-dyn-sm">
+      <span className="text-slate-500">{label} : </span>
+      <span className="text-slate-900">{value || "—"}</span>
     </div>
   );
 }

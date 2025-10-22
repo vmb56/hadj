@@ -66,13 +66,13 @@ function cityFrom(address, fallback = "") {
   return candidate.replace(/\s{2,}/g, " ");
 }
 
-/* ====== Palette + logique d'état (coloré) ====== */
+/* ====== Palette + logique d'état (bleu-centric) ====== */
 const ETAT_COLORS = {
-  "Complet": { bar: "from-emerald-400/90 to-emerald-500/90", chip: "bg-emerald-500/15 text-emerald-200" },
-  "Photo pèlerin manquante": { bar: "from-amber-400/90 to-amber-500/90", chip: "bg-amber-500/15 text-amber-200" },
-  "Photo passeport manquante": { bar: "from-amber-400/90 to-amber-500/90", chip: "bg-amber-500/15 text-amber-200" },
-  "N° passeport manquant": { bar: "from-sky-400/90 to-sky-500/90", chip: "bg-sky-500/15 text-sky-200" },
-  "À compléter": { bar: "from-rose-400/90 to-rose-500/90", chip: "bg-rose-500/15 text-rose-200" },
+  "Complet": { bar: "from-emerald-400/90 to-emerald-500/90", chip: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" },
+  "Photo pèlerin manquante": { bar: "from-blue-300/90 to-blue-500/90", chip: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
+  "Photo passeport manquante": { bar: "from-sky-300/90 to-sky-500/90", chip: "bg-sky-50 text-sky-700 ring-1 ring-sky-200" },
+  "N° passeport manquant": { bar: "from-indigo-300/90 to-indigo-500/90", chip: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" },
+  "À compléter": { bar: "from-rose-300/90 to-rose-500/90", chip: "bg-rose-50 text-rose-700 ring-1 ring-rose-200" },
 };
 function dossierState(x) {
   const lacksPhoto = !x.photoPelerin;
@@ -158,24 +158,24 @@ export default function StatsPelerins({ data = SAMPLE }) {
   }
 
   return (
-    <div className="space-y-6" ref={printRef}>
+    <div className="space-y-6 text-dyn" ref={printRef}>
       {/* BARRE D’ACTIONS (non imprimée) */}
       <div className="print:hidden flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 backdrop-blur text-white shadow-lg flex-1">
-          <h1 className="text-2xl font-bold text-orange-300">Statistiques — Pèlerins</h1>
-          <p className="text-sm text-slate-300/90">Vue d’ensemble des inscriptions</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 text-slate-900 shadow-sm flex-1">
+          <h1 className="text-dyn-title font-bold text-slate-900">Statistiques — Pèlerins</h1>
+          <p className="text-dyn-sm text-slate-600">Vue d’ensemble des inscriptions</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher (nom, passeport, agent, ville...)"
-              className="w-full sm:w-72 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm placeholder:text-slate-400 outline-none ring-2 ring-transparent focus:ring-amber-400/40"
+              className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-dyn-sm text-slate-900 outline-none ring-2 ring-transparent focus:ring-blue-300"
             />
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm outline-none ring-2 ring-transparent focus:ring-amber-400/40"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-dyn-sm text-slate-900 outline-none ring-2 ring-transparent focus:ring-blue-300"
             >
               {years.map((y) => (
                 <option key={y} value={y}>{y === "all" ? "Toutes les années" : y}</option>
@@ -187,9 +187,9 @@ export default function StatsPelerins({ data = SAMPLE }) {
         <div className="print:hidden flex gap-2">
           <button
             onClick={handlePrint}
-            className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 font-semibold text-white shadow hover:opacity-95"
+            className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white shadow-sm hover:bg-blue-700"
           >
-            Imprimer / PDF (BMVT)
+            Imprimer / PDF
           </button>
         </div>
       </div>
@@ -198,7 +198,7 @@ export default function StatsPelerins({ data = SAMPLE }) {
       <div className="hidden print:block">
         <div className="mb-4 rounded-2xl border border-black/10 bg-white p-4 text-black">
           <div className="flex items-center justify-between">
-            <div className="text-xl font-extrabold">BMVT HADJ & OUMRA — Tableau de bord statistiques</div>
+            <div className="text-xl font-extrabold">BMVT — Tableau de bord statistiques</div>
             <div className="text-sm">Généré le : {new Date().toLocaleString()}</div>
           </div>
           <div className="text-sm mt-1">
@@ -217,7 +217,10 @@ export default function StatsPelerins({ data = SAMPLE }) {
         <Kpi title="Dossier complet" value={`${completeCount}/${total}`} hint={`${completenessPct}%`}>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {Object.entries(byEtat).map(([label, n]) => (
-              <span key={label} className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${ETAT_COLORS[label]?.chip || "bg-white/10 text-slate-200"}`}>
+              <span
+                key={label}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${ETAT_COLORS[label]?.chip || "bg-slate-100 text-slate-700 ring-1 ring-slate-200"}`}
+              >
                 {label}: {n}
               </span>
             ))}
@@ -247,9 +250,12 @@ export default function StatsPelerins({ data = SAMPLE }) {
 
         <Card title="État du dossier (coloré)">
           <ColoredBars data={byEtat} total={total} />
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <div className="mt-3 flex flex-wrap gap-2 text-dyn-sm">
             {Object.entries(byEtat).map(([label, n]) => (
-              <span key={label} className={`rounded-lg px-2 py-1 font-semibold ${ETAT_COLORS[label]?.chip || "bg-white/10 text-slate-200"}`}>
+              <span
+                key={label}
+                className={`rounded-lg px-2 py-1 font-semibold ${ETAT_COLORS[label]?.chip || "bg-slate-100 text-slate-700 ring-1 ring-slate-200"}`}
+              >
                 {label}: {n} • {pct(n, total)}%
               </span>
             ))}
@@ -265,12 +271,9 @@ export default function StatsPelerins({ data = SAMPLE }) {
         </Card>
       </section>
 
-      {/* Styles d’impression (A4, couleurs, polices lisibles) */}
+      {/* Styles d’impression */}
       <style>{`
-        @page {
-          size: A4 portrait;
-          margin: 14mm;
-        }
+        @page { size: A4 portrait; margin: 14mm; }
         @media print {
           html, body {
             background: #fff !important;
@@ -278,16 +281,13 @@ export default function StatsPelerins({ data = SAMPLE }) {
             print-color-adjust: exact;
           }
           .print\\:hidden { display: none !important; }
-          .print\\:text-black { color: #000 !important; }
           .print-card {
             background: #fff !important;
             border: 1px solid #e5e7eb !important;
             box-shadow: none !important;
             color: #111827 !important;
           }
-          .print-title {
-            color: #111827 !important;
-          }
+          .print-title { color: #111827 !important; }
         }
       `}</style>
     </div>
@@ -297,8 +297,8 @@ export default function StatsPelerins({ data = SAMPLE }) {
 /* ================= UI building blocks ================= */
 function Card({ title, children }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 backdrop-blur text-white shadow-lg print-card">
-      <div className="mb-3 text-[13px] font-extrabold uppercase tracking-wider text-amber-300 print-title">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 text-slate-900 shadow-sm print-card">
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-blue-800 ring-1 ring-blue-200 text-dyn-sm font-extrabold print-title">
         {title}
       </div>
       {children}
@@ -307,29 +307,29 @@ function Card({ title, children }) {
 }
 function Kpi({ title, value, hint, children }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur text-white shadow-lg print-card">
-      <div className="text-[11px] md:text-[12px] uppercase tracking-wider text-slate-300/80 print:text-black">{title}</div>
-      <div className="mt-1 text-xl md:text-2xl font-extrabold text-orange-300 print:text-black">{value}</div>
-      {hint ? <div className="text-xs text-slate-400 print:text-black mt-1">{hint}</div> : null}
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 text-slate-900 shadow-sm print-card">
+      <div className="text-[11px] md:text-[12px] uppercase tracking-wider text-slate-500 print:text-black">{title}</div>
+      <div className="mt-1 text-xl md:text-2xl font-extrabold text-blue-700 print:text-black">{value}</div>
+      {hint ? <div className="text-dyn-sm text-slate-500 print:text-black mt-1">{hint}</div> : null}
       {children}
     </div>
   );
 }
 function Bars({ data, total }) {
   const entries = Object.entries(data || {});
-  if (!entries.length) return <p className="text-slate-400 print:text-black">—</p>;
+  if (!entries.length) return <p className="text-slate-500 print:text-black">—</p>;
   const max = Math.max(...entries.map(([, v]) => v || 0), 1);
   return (
     <ul className="space-y-2">
       {entries.map(([label, count]) => (
         <li key={label} className="grid grid-cols-1 gap-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="truncate text-slate-200 print:text-black">{label}</span>
-            <span className="text-slate-400 print:text-black">{count} • {pct(count, total)}%</span>
+          <div className="flex items-center justify-between text-dyn-sm">
+            <span className="truncate text-slate-800 print:text-black">{label}</span>
+            <span className="text-slate-500 print:text-black">{count} • {pct(count, total)}%</span>
           </div>
-          <div className="mt-1 h-2 w-full rounded-full bg-white/10 overflow-hidden print:bg-gray-200">
+          <div className="mt-1 h-2 w-full rounded-full bg-slate-100 overflow-hidden print:bg-gray-200">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-400/80 to-orange-400/80 print:bg-amber-500"
+              className="h-full rounded-full bg-gradient-to-r from-blue-400/80 to-blue-600/80 print:bg-blue-600"
               style={{ width: `${(count / max) * 100}%` }}
             />
           </div>
@@ -340,7 +340,7 @@ function Bars({ data, total }) {
 }
 function ColoredBars({ data, total }) {
   const entries = Object.entries(data || {});
-  if (!entries.length) return <p className="text-slate-400 print:text-black">—</p>;
+  if (!entries.length) return <p className="text-slate-500 print:text-black">—</p>;
   const max = Math.max(...entries.map(([, v]) => v || 0), 1);
 
   return (
@@ -349,13 +349,13 @@ function ColoredBars({ data, total }) {
         const grad = ETAT_COLORS[label]?.bar || "from-slate-300/70 to-slate-400/70";
         return (
           <li key={label} className="grid grid-cols-1 gap-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="truncate text-slate-200 print:text-black">{label}</span>
-              <span className="text-slate-400 print:text-black">{count} • {pct(count, total)}%</span>
+            <div className="flex items-center justify-between text-dyn-sm">
+              <span className="truncate text-slate-800 print:text-black">{label}</span>
+              <span className="text-slate-500 print:text-black">{count} • {pct(count, total)}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden print:bg-gray-200">
+            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden print:bg-gray-200">
               <div
-                className={`h-full rounded-full bg-gradient-to-r ${grad} print:bg-amber-500`}
+                className={`h-full rounded-full bg-gradient-to-r ${grad} print:bg-blue-600`}
                 style={{ width: `${(count / max) * 100}%` }}
               />
             </div>
@@ -374,18 +374,23 @@ function Donut({ label, value, total }) {
   return (
     <div className="grid place-items-center gap-2">
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={r} stroke="rgba(255,255,255,.15)" strokeWidth={stroke} fill="none" className="print:stroke-gray-200" />
-        <circle cx={size/2} cy={size/2} r={r} stroke="url(#grad)" strokeWidth={stroke} strokeLinecap="round" fill="none" strokeDasharray={`${dash} ${c-dash}`} className="print:stroke-amber-500" />
+        <circle cx={size/2} cy={size/2} r={r} stroke="#e5e7eb" strokeWidth={stroke} fill="none" className="print:stroke-gray-200" />
+        <circle
+          cx={size/2} cy={size/2} r={r}
+          stroke="url(#grad)"
+          strokeWidth={stroke} strokeLinecap="round" fill="none"
+          strokeDasharray={`${dash} ${c-dash}`} className="print:stroke-blue-600"
+        />
         <defs>
           <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="rgba(251,191,36,.9)" />
-            <stop offset="100%" stopColor="rgba(249,115,22,.9)" />
+            <stop offset="0%" stopColor="rgba(96,165,250,.95)" />
+            <stop offset="100%" stopColor="rgba(37,99,235,.95)" />
           </linearGradient>
         </defs>
       </svg>
       <div className="text-center">
-        <div className="text-lg font-extrabold text-orange-300 print:text-black">{pct(value, total)}%</div>
-        <div className="text-[12px] text-slate-300 print:text-black">{label}</div>
+        <div className="text-lg font-extrabold text-blue-700 print:text-black">{pct(value, total)}%</div>
+        <div className="text-dyn-sm text-slate-600 print:text-black">{label}</div>
       </div>
     </div>
   );
@@ -393,13 +398,13 @@ function Donut({ label, value, total }) {
 function Progress({ label, value }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-slate-300 print:text-black">{label}</span>
-        <span className="text-amber-300 font-semibold print:text-black">{value}%</span>
+      <div className="mb-1 flex items-center justify-between text-dyn-sm">
+        <span className="text-slate-700 print:text-black">{label}</span>
+        <span className="text-blue-700 font-semibold print:text-black">{value}%</span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden print:bg-gray-200">
+      <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden print:bg-gray-200">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-400/80 to-orange-400/80 print:bg-amber-500"
+          className="h-full rounded-full bg-gradient-to-r from-blue-400/80 to-blue-600/80 print:bg-blue-600"
           style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
         />
       </div>
@@ -408,13 +413,13 @@ function Progress({ label, value }) {
 }
 function TopList({ counts, total, top = 5 }) {
   const items = Object.entries(counts || {}).sort((a, b) => b[1] - a[1]).slice(0, top);
-  if (!items.length) return <p className="text-slate-400 print:text-black">—</p>;
+  if (!items.length) return <p className="text-slate-500 print:text-black">—</p>;
   return (
     <ul className="space-y-2">
       {items.map(([label, n]) => (
         <li key={label} className="grid grid-cols-[1fr_auto] items-center gap-3">
           <span className="truncate print:text-black">{label}</span>
-          <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-amber-200 text-sm print:bg-amber-100 print:text-amber-700">
+          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 text-dyn-sm ring-1 ring-blue-200 print:bg-blue-100 print:text-blue-800">
             {n} • {pct(n, total)}%
           </span>
         </li>
@@ -425,24 +430,24 @@ function TopList({ counts, total, top = 5 }) {
 function Recap({ total, bySexe, byYear, byOffre }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[520px] text-sm">
-        <tbody className="[&_tr+tr]:border-t [&_tr+tr]:border-white/10 print:[&_tr+tr]:border-gray-200">
+      <table className="min-w-[520px] text-dyn-sm">
+        <tbody className="[&_tr+tr]:border-t [&_tr+tr]:border-slate-200 print:[&_tr+tr]:border-gray-200">
           <tr>
-            <td className="py-2 pr-3 text-slate-300 print:text-black">Total</td>
+            <td className="py-2 pr-3 text-slate-600 print:text-black">Total</td>
             <td className="py-2 print:text-black">{total}</td>
           </tr>
           <tr>
-            <td className="py-2 pr-3 text-slate-300 print:text-black">Masculin / Féminin</td>
+            <td className="py-2 pr-3 text-slate-600 print:text-black">Masculin / Féminin</td>
             <td className="py-2 print:text-black">{(bySexe["Masculin"] || 0)} / {(bySexe["Féminin"] || 0)}</td>
           </tr>
           <tr>
-            <td className="py-2 pr-3 text-slate-300 print:text-black">Années</td>
+            <td className="py-2 pr-3 text-slate-600 print:text-black">Années</td>
             <td className="py-2 print:text-black">
               {Object.entries(byYear).sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(([y, n]) => `${y}: ${n}`).join(" • ")}
             </td>
           </tr>
           <tr>
-            <td className="py-2 pr-3 text-slate-300 print:text-black">Offres</td>
+            <td className="py-2 pr-3 text-slate-600 print:text-black">Offres</td>
             <td className="py-2 print:text-black">
               {Object.entries(byOffre).sort((a, b) => b[1] - a[1]).map(([o, n]) => `${o}: ${n}`).join(" • ")}
             </td>

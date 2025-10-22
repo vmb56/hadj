@@ -2,14 +2,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-/* ---------- Styles réutilisables ---------- */
-const card =
-  "rounded-2xl border border-white/10 bg-white/5 backdrop-blur shadow-lg text-white";
-const labelCls = "text-[12px] font-semibold text-slate-300";
+/* ---------- Styles réutilisables (thème bleu & blanc) ---------- */
+const card = "rounded-2xl border border-slate-200 bg-white shadow-sm";
+const labelCls = "text-dyn-xs font-semibold text-slate-700";
 const baseInput =
-  "w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm outline-none ring-2 ring-transparent focus:ring-amber-400/40 placeholder:text-slate-400";
+  "w-full rounded-xl border bg-white px-3 py-2 text-dyn-sm text-slate-900 outline-none ring-2 ring-transparent border-slate-300 focus:ring-blue-300";
 const baseSelect =
-  "w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm outline-none ring-2 ring-transparent focus:ring-amber-400/40";
+  "w-full rounded-xl border bg-white px-3 py-2 text-dyn-sm text-slate-900 outline-none ring-2 ring-transparent border-slate-300 focus:ring-blue-300";
 
 /* ---------- Helpers ---------- */
 const emptyRow = {
@@ -36,11 +35,11 @@ const emptyRow = {
 
 function Section({ title, children }) {
   return (
-    <div className={`${card} p-4 sm:p-5`}>
-      <div className="mb-3 text-[12px] font-extrabold uppercase tracking-wider text-amber-300">
+    <div className={`${card} p-4 md:p-5`}>
+      <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-blue-800 ring-1 ring-blue-200 text-dyn-sm font-extrabold">
         {title}
       </div>
-      <div className="grid gap-3">{children}</div>
+      <div className="mt-3 grid gap-3">{children}</div>
     </div>
   );
 }
@@ -57,14 +56,14 @@ function Field({ label, children }) {
 function PhotoInput({ label, preview, onChange }) {
   return (
     <div className="grid gap-2">
-      <div className="grid place-content-center rounded-2xl border border-white/10 bg-white/5 h-56 w-full sm:w-48 overflow-hidden">
+      <div className="grid place-content-center rounded-2xl border border-slate-200 bg-white h-56 w-full sm:w-48 overflow-hidden shadow-sm">
         {preview ? (
           <img src={preview} alt={label} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-slate-400 text-sm">Aperçu</span>
+          <span className="text-slate-400 text-dyn-sm">Aperçu</span>
         )}
       </div>
-      <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm hover:bg-white/15">
+      <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-dyn-sm font-semibold text-blue-700 hover:bg-blue-100">
         <input
           type="file"
           accept="image/*"
@@ -76,7 +75,7 @@ function PhotoInput({ label, preview, onChange }) {
             onChange(url, f);
           }}
         />
-        <span>{label}</span>
+        {label}
       </label>
     </div>
   );
@@ -91,7 +90,7 @@ export default function ModifierPelerin() {
 
   const [form, setForm] = useState(initial);
 
-  // si arrivées directes sans state, on pourrait fetch par id plus tard
+  // si arrivée directe sans state, on pourrait fetch par id plus tard
   useEffect(() => {
     setForm(initial);
   }, [initial]);
@@ -102,34 +101,33 @@ export default function ModifierPelerin() {
 
   function onSubmit(e) {
     e.preventDefault();
-    // Ici tu brancheras ton PUT/PATCH vers l’API
-    // await axios.put(`/api/pelerins/${id}`, form)
+    // ICI: branche ton PUT/PATCH API (ex: await axios.put(`/api/pelerins/${id}`, form))
     alert("Modifications enregistrées (démo front-end) ✔️");
     navigate(-1); // retour
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 text-dyn">
+      {/* ===== Header ===== */}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-orange-400">Modifier un pèlerin</h1>
-          <p className="text-slate-300/90 text-sm">
-            Mets à jour les informations du pèlerin. Les champs marqués <b>Obligatoire</b>
-            doivent être fournis.
+          <h1 className="text-dyn-title font-bold text-slate-900">Modifier un pèlerin</h1>
+          <p className="text-slate-600 text-dyn-sm">
+            Mets à jour les informations du pèlerin. Les champs marqués <b>Obligatoire</b> doivent être fournis.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
           >
             Annuler
           </button>
           <button
             form="edit-pelerin"
             type="submit"
-            className="rounded-xl bg-amber-500/90 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-400"
+            className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
           >
             Enregistrer
           </button>
@@ -137,8 +135,8 @@ export default function ModifierPelerin() {
       </header>
 
       <form id="edit-pelerin" onSubmit={onSubmit} className="grid gap-5">
-        {/* Bande photos + intro */}
-        <div className={`grid gap-4 ${card} p-4 sm:p-5`}>
+        {/* ===== Bande photos + intro ===== */}
+        <div className={`${card} p-4 md:p-5`}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[auto,1fr,auto]">
             <PhotoInput
               label="Photo pèlerin"
@@ -148,12 +146,11 @@ export default function ModifierPelerin() {
 
             <div className="grid gap-3">
               <div className={`${card} p-3`}>
-                <div className="text-[12px] font-extrabold uppercase tracking-wider text-amber-300">
+                <div className="text-dyn-sm font-extrabold uppercase tracking-wider text-blue-800">
                   Informations personnelles du pèlerin
                 </div>
-                <p className="text-slate-300/90 text-sm">
-                  Remplis les champs ci-dessous. Les champs marqués{" "}
-                  <b>Obligatoire</b> doivent être fournis.
+                <p className="text-slate-600 text-dyn-sm">
+                  Remplis les champs ci-dessous. Les champs marqués <b>Obligatoire</b> doivent être fournis.
                 </p>
               </div>
 
@@ -234,7 +231,7 @@ export default function ModifierPelerin() {
           </div>
         </div>
 
-        {/* Hajj */}
+        {/* ===== Hajj ===== */}
         <Section title="Informations concernant le Hajj">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             <Field label="Numéro de passeport">
@@ -284,7 +281,7 @@ export default function ModifierPelerin() {
           </div>
         </Section>
 
-        {/* Urgence */}
+        {/* ===== Urgence ===== */}
         <Section title="Personnes à contacter en cas d’urgence">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Field label="Nom personne à contacter">
@@ -323,8 +320,8 @@ export default function ModifierPelerin() {
           </div>
         </Section>
 
-        {/* Infos d’enregistrement (lecture seule) */}
-        <div className={`${card} p-4 sm:p-5`}>
+        {/* ===== Infos d’enregistrement (lecture seule) ===== */}
+        <div className={`${card} p-4 md:p-5`}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Enregistré par">
               <input className={`${baseInput} opacity-80`} value={form.enregistrePar || ""} readOnly />
@@ -335,18 +332,18 @@ export default function ModifierPelerin() {
           </div>
         </div>
 
-        {/* Actions bas de page (dupliquées pour confort) */}
+        {/* ===== Actions bas de page ===== */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
           >
             Annuler
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-amber-500/90 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-400"
+            className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
           >
             Enregistrer
           </button>
