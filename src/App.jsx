@@ -24,8 +24,19 @@ import HistoriquesVersements from "./pages/paiements/sections/HistoriquesVerseme
 // Autres sections
 
 import Factures from "./pages/Factures";
-import Voyage from "./pages/Voyage";
-import Utilisateurs from "./pages/Utilisateurs";
+// Voyages
+import Voyage from "./pages/Voyages/Voyage.jsx";
+import Vols from "./pages/Voyages/sections/Vols.jsx";
+import Chambres from "./pages/Voyages/sections/Chambres.jsx";
+
+// Utilisateurs
+import Utilisateurs from "./pages/utilisateurs/Utilisateurs.jsx";
+import ListeUtilisateurs from "./pages/utilisateurs/sections/ListeUtilisateurs.jsx";
+import HistoriqueConnexion from "./pages/utilisateurs/sections/HistoriqueConnexion.jsx";
+import InscriptionUtilisateur from "./pages/utilisateurs/sections/InscriptionUtilisateur.jsx";
+
+// Paramètres, Profil, Stats
+
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import StatsPelerins from "./pages/StatsPelerins";
@@ -60,6 +71,14 @@ export default function App() {
           <Route path="impression" element={<ImpressionMedicale />} />
           <Route path=":id/edit" element={<ModifierMedicale/>} />
         </Route>
+        
+{/* Voyage avec sous-routes */}
+<Route path="/voyage" element={<Voyage />}>
+    {/* redirige /voyage vers /voyage/vols */}
+    <Route index element={<Navigate to="vols" replace />} />
+    <Route path="vols" element={<Vols />} />
+    <Route path="chambres" element={<Chambres />} />
+  </Route>
 
         {/* paiemenmts */}
         <Route path="paiement" element={<Paiement />}>
@@ -71,6 +90,14 @@ export default function App() {
 
         {/* Impression des passeports (photos) */}
         <Route path="impressions-passeports" element={<ImpressionsPasseports />} />
+
+{/* Utilisateurs avec sous-routes */}
+<Route path="utilisateurs" element={<Utilisateurs />}>
+  <Route index element={<Navigate to="liste" replace />} />
+  <Route path="liste" element={<ListeUtilisateurs />} />
+  <Route path="historique" element={<HistoriqueConnexion />} />
+  <Route path="inscription" element={<InscriptionUtilisateur />} />
+</Route>
 
         {/* Autres sections */}
         <Route path="paiement" element={<Paiement />} />

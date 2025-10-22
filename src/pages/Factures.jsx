@@ -8,6 +8,12 @@ const fmt = (n) =>
     ? "0"
     : Number(n).toLocaleString("fr-FR");
 
+const toISO = (d) => new Date(d).toISOString().slice(0, 10);
+const todayISO = toISO(new Date());
+const startOfMonthISO = toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+const addDaysISO = (baseISO, n) =>
+  toISO(new Date(new Date(baseISO).getTime() + n * 86400000));
+
 /** Données fallback si le store est vide (démo) */
 const FALLBACK = [
   {
@@ -45,14 +51,26 @@ const FALLBACK = [
 ];
 
 export default function Factures() {
-  const today = new Date().toISOString().slice(0, 10);
-
-  // 🔎 Filtres “live” (appliqués automatiquement)
+  // 🔎 Filtres live
   const [passeport, setPasseport] = useState("");
-  const [du, setDu] = useState(today);
-  const [au, setAu] = useState(today);
+  const [du, setDu] = useState(todayISO);
+  const [au, setAu] = useState(todayISO);
 
-  /* Source : store → normalisation */
+  // Raccourcis de période
+  const setRange = (kind) => {
+    if (kind === "today") {
+      setDu(todayISO);
+      setAu(todayISO);
+    } else if (kind === "last7") {
+      setDu(addDaysISO(todayISO, -6)); // 7 jours inclus
+      setAu(todayISO);
+    } else if (kind === "thisMonth") {
+      setDu(startOfMonthISO);
+      setAu(todayISO);
+    }
+  };
+
+  /* Source */
   const all = useMemo(() => {
     const list = getPayments();
     if (Array.isArray(list) && list.length > 0) {
@@ -82,16 +100,14 @@ export default function Factures() {
     return FALLBACK;
   }, []);
 
-  /* Filtre “live” : passeport + intervalle de dates (inclusif) */
+  /* Filtre live */
   const filtered = useMemo(() => {
     const s = (passeport || "").trim().toLowerCase();
-    const d1 = du || "";
-    const d2 = au || "";
     return all.filter((r) => {
       const okPass = !s || (r.passeport || "").toLowerCase().includes(s);
       const d = (r.date || "").slice(0, 10);
-      const okDu = !d1 || d >= d1;
-      const okAu = !d2 || d <= d2;
+      const okDu = !du || d >= du;
+      const okAu = !au || d <= au;
       return okPass && okDu && okAu;
     });
   }, [all, passeport, du, au]);
@@ -104,16 +120,13 @@ export default function Factures() {
     return { ttc, red, pay, reste };
   }, [filtered]);
 
-  /* Actions UI */
   const onClear = () => {
-    const t = new Date().toISOString().slice(0, 10);
     setPasseport("");
-    setDu(t);
-    setAu(t);
+    setRange("today");
   };
+
   const onPrint = () => window.print();
 
-  /* Export CSV */
   const exportCSV = () => {
     const headers = [
       "Identifiant de paiement",
@@ -163,7 +176,6 @@ export default function Factures() {
     URL.revokeObjectURL(url);
   };
 
-  /* Export PDF (mini-rapport imprimable) */
   const exportPDF = () => {
     const pop = window.open("", "_blank", "width=1200,height=800");
     if (!pop) return;
@@ -252,9 +264,14 @@ export default function Factures() {
         .btn.csv{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:transparent}
         .btn.pdf{background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:transparent}
         .btn.print{background:linear-gradient(135deg,#60a5fa,#2563eb);border-color:transparent}
-        .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
-        thead th{padding:10px 12px;text-align:left;font-size:12px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase}
-        .row{background:#0b1f25;border:1px solid var(--border);border-radius:12px}
+        .quick{display:flex;gap:8px;flex-wrap:wrap}
+        .quick button{background:#123041;border:1px solid #1b4d64;color:#e6f4f1;padding:8px 10px;border-radius:10px;font-weight:700;cursor:pointer}
+        .quick button:hover{filter:brightness(1.08)}
+        /* ===== Tableau contrasté (toujours lisible clair) ===== */
+        .contrast-wrap{background:#ffffff;padding:14px 16px}
+        .tbl{width:100%;border-collapse:separate;border-spacing:0 8px;color:#0f172a}
+        thead th{padding:10px 12px;text-align:left;font-size:12px;letter-spacing:.4px;color:#0f172a;background:#e5e7eb;border-radius:10px}
+        .row{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
         .row td{padding:12px}
         .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
         .sum{display:flex;gap:12px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--panel)}
@@ -275,14 +292,14 @@ export default function Factures() {
               <div>
                 <div className="fx-title">Factures & Paiements</div>
                 <div className="fx-sub">
-                  Recherche <b>automatique</b> par passeport • Période <b>DU → AU</b> • Export CSV • Export PDF • Impression
+                  Recherche <b>automatique</b> par passeport • Raccourcis de période • Export CSV/PDF • Impression
                 </div>
               </div>
               <div className="chip">📄 <strong>{filtered.length}</strong> enregistrements</div>
             </div>
           </div>
 
-          {/* Filtres automatiques (pas de bouton Rechercher) */}
+          {/* Filtres auto + raccourcis */}
           <div className="fx-controls">
             <label className="text-sm text-slate-300">Passeport</label>
             <input
@@ -300,17 +317,25 @@ export default function Factures() {
             <label className="text-sm text-slate-300">Au</label>
             <input type="date" className="input" value={au} onChange={(e) => setAu(e.target.value)} />
 
-            <button type="button" onClick={onClear} className="btn">Effacer</button>
+            <div className="quick" style={{ marginLeft: 8 }}>
+              <button type="button" onClick={() => setRange("today")}>Aujourd’hui</button>
+              <button type="button" onClick={() => setRange("last7")}>7 derniers jours</button>
+              <button type="button" onClick={() => setRange("thisMonth")}>Mois en cours</button>
+            </div>
 
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            <button type="button" onClick={onClear} className="btn" style={{ marginLeft: "auto" }}>
+              Effacer
+            </button>
+
+            <div style={{ display: "flex", gap: 8 }}>
               <button type="button" onClick={exportCSV} className="btn csv">Exporter CSV</button>
               <button type="button" onClick={exportPDF} className="btn pdf">Exporter PDF</button>
               <button type="button" onClick={onPrint} className="btn print">Imprimer 🖨️</button>
             </div>
           </div>
 
-          {/* Tableau */}
-          <div className="px-3 pb-3 overflow-x-auto" style={{ background: "var(--panel)" }}>
+          {/* Tableau à contraste élevé (toujours fond clair) */}
+          <div className="contrast-wrap overflow-x-auto">
             <table className="tbl min-w-[1200px]">
               <thead>
                 <tr>
@@ -345,23 +370,25 @@ export default function Factures() {
                 ))}
                 {filtered.length === 0 && (
                   <tr className="row">
-                    <Td colSpan={11} className="text-center text-slate-400">Aucun résultat</Td>
+                    <Td colSpan={11} className="text-center" style={{ color: "#475569" }}>
+                      Aucun résultat
+                    </Td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Totaux */}
+          {/* Totaux (bar sombre) */}
           <div className="sum">
-            <div className="pill">TTC : {fmt(totals.ttc)} FCFA</div>
-            <div className="pill">Réductions : {fmt(totals.red)} FCFA</div>
-            <div className="pill">Payé : {fmt(totals.pay)} FCFA</div>
-            <div className="pill">Reste : {fmt(totals.reste)} FCFA</div>
+            <div className="pill text-white">TTC : {fmt(totals.ttc)} FCFA</div>
+            <div className="pill text-white">Réductions : {fmt(totals.red)} FCFA</div>
+            <div className="pill text-white">Payé : {fmt(totals.pay)} FCFA</div>
+            <div className="pill text-white">Reste : {fmt(totals.reste)} FCFA</div>
           </div>
         </div>
 
-        {/* Zone imprimable */}
+        {/* Zone imprimable (clarte forcée) */}
         <div className="print-area">
           <div style={{ padding: 24, color: "#111", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial" }}>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Rapport des paiements — Factures</h1>
