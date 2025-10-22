@@ -5,108 +5,122 @@ import { FilePlus2, ClipboardList, Printer } from "lucide-react";
 
 export default function Medicale() {
   return (
-    <div className="space-y-6">
-      {/* En-tête (identique à Pèlerins) */}
-      <div className="rounded-2xl p-[1px] bg-[linear-gradient(135deg,#ffbc54,#ff8f33)]">
-        <div className="rounded-2xl border border-black/20 bg-black/20 backdrop-blur p-6 shadow-lg">
-          <h1 className="text-2xl font-extrabold mb-2 text-white drop-shadow">
-            Médicale
-          </h1>
-          <p className="text-slate-200/90">
-            Saisir, consulter et imprimer les informations médicales des pèlerins.
-          </p>
-        </div>
+    <div className="space-y-6 text-dyn">
+      {/* En-tête */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-dyn-title font-extrabold text-slate-900">
+          Médicale
+        </h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Saisir, consulter et imprimer les informations médicales des pèlerins.
+        </p>
       </div>
 
       {/* Sections d’accès : Ajout / Liste / Impression */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Ajout */}
-        <NavLink
-          to="ajout"
-          className={({ isActive }) =>
-            [
-              "group relative overflow-hidden rounded-2xl border border-black/20 bg-white/5 backdrop-blur p-5 text-white shadow-lg transition",
-              "hover:shadow-2xl hover:bg-white/10",
-              isActive ? "ring-2 ring-white/30" : "",
-            ].join(" ")
-          }
-        >
-          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-orange-500/20 p-2 ring-1 ring-white/20">
-              <FilePlus2 className="h-6 w-6 text-orange-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Saisir les informations médicales</h2>
-              <p className="mt-1 text-sm text-slate-300">
-                Examens, antécédents, traitements et remarques.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 inline-flex items-center gap-2 text-sm text-orange-300 group-hover:translate-x-0.5 transition">
-            Ouvrir le formulaire <span aria-hidden>→</span>
-          </div>
-        </NavLink>
+        <TileLink to="ajout" icon={FilePlus2} accent="blue" title="Saisir les informations médicales"
+          desc="Examens, antécédents, traitements et remarques."
+          cta="Ouvrir le formulaire"
+        />
 
         {/* Liste */}
-        <NavLink
-          to="liste"
-          className={({ isActive }) =>
-            [
-              "group relative overflow-hidden rounded-2xl border border-black/20 bg-white/5 backdrop-blur p-5 text-white shadow-lg transition",
-              "hover:shadow-2xl hover:bg-white/10",
-              isActive ? "ring-2 ring-white/30" : "",
-            ].join(" ")
-          }
-        >
-          <div className="absolute -left-10 -bottom-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-amber-500/20 p-2 ring-1 ring-white/20">
-              <ClipboardList className="h-6 w-6 text-amber-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Liste infos médicales</h2>
-              <p className="mt-1 text-sm text-slate-300">
-                Rechercher, consulter et mettre à jour les dossiers.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 inline-flex items-center gap-2 text-sm text-amber-300 group-hover:translate-x-0.5 transition">
-            Voir la liste <span aria-hidden>→</span>
-          </div>
-        </NavLink>
+        <TileLink to="liste" icon={ClipboardList} accent="indigo" title="Liste infos médicales"
+          desc="Rechercher, consulter et mettre à jour les dossiers."
+          cta="Voir la liste"
+        />
 
         {/* Impression */}
-        <NavLink
-          to="impression"
-          className={({ isActive }) =>
-            [
-              "group relative overflow-hidden rounded-2xl border border-black/20 bg-white/5 backdrop-blur p-5 text-white shadow-lg transition",
-              "hover:shadow-2xl hover:bg-white/10",
-              isActive ? "ring-2 ring-white/30" : "",
-            ].join(" ")
-          }
-        >
-          <div className="absolute -right-10 -bottom-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-amber-500/20 p-2 ring-1 ring-white/20">
-              <Printer className="h-6 w-6 text-amber-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Impression fiche médicale</h2>
-              <p className="mt-1 text-sm text-slate-300">
-                Générer une fiche PDF prête à l’impression (BMVT).
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 inline-flex items-center gap-2 text-sm text-amber-300 group-hover:translate-x-0.5 transition">
-            Préparer l’impression <span aria-hidden>→</span>
-          </div>
-        </NavLink>
+        <TileLink to="impression" icon={Printer} accent="sky" title="Impression fiche médicale"
+          desc="Générer une fiche PDF prête à l’impression (BMVT)."
+          cta="Préparer l’impression"
+        />
       </section>
 
-      {/* Sous-pages (ajout / liste / impression) */}
+      {/* Sous-pages */}
       <Outlet />
     </div>
   );
+}
+
+/* ================== Sous-composant tuile ================== */
+function TileLink({ to, icon: Icon, title, desc, cta, accent = "blue" }) {
+  const tone = getTone(accent);
+
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        [
+          // carte
+          "group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition",
+          "border-slate-200 hover:shadow-md",
+          isActive ? "ring-2 ring-blue-200" : "ring-0",
+        ].join(" ")
+      }
+    >
+      {/* halos discrets */}
+      <div
+        className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full blur-2xl"
+        style={{ background: tone.halo }}
+      />
+      <div
+        className="pointer-events-none absolute -left-16 -bottom-16 h-40 w-40 rounded-full blur-2xl opacity-70"
+        style={{ background: tone.haloSoft }}
+      />
+
+      <div className="flex items-start gap-3 relative">
+        <div
+          className="rounded-xl p-2 ring-1"
+          style={{ background: tone.iconBg, color: tone.iconFg, borderColor: tone.iconRing }}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-900">{title}</h2>
+          <p className="mt-1 text-dyn-sm text-slate-600">{desc}</p>
+        </div>
+      </div>
+
+      <div
+        className="mt-4 inline-flex items-center gap-2 font-semibold transition group-hover:translate-x-0.5"
+        style={{ color: tone.cta }}
+      >
+        {cta} <span aria-hidden>→</span>
+      </div>
+    </NavLink>
+  );
+}
+
+function getTone(accent) {
+  switch (accent) {
+    case "indigo":
+      return {
+        iconBg: "rgba(199,210,254,.35)",
+        iconRing: "rgba(199,210,254,.9)",
+        iconFg: "#4338ca",
+        cta: "#4338ca",
+        halo: "rgba(129,140,248,.25)",
+        haloSoft: "rgba(129,140,248,.18)",
+      };
+    case "sky":
+      return {
+        iconBg: "rgba(186,230,253,.35)",
+        iconRing: "rgba(186,230,253,.9)",
+        iconFg: "#0369a1",
+        cta: "#0369a1",
+        halo: "rgba(125,211,252,.25)",
+        haloSoft: "rgba(125,211,252,.18)",
+      };
+    case "blue":
+    default:
+      return {
+        iconBg: "rgba(191,219,254,.35)",
+        iconRing: "rgba(191,219,254,.9)",
+        iconFg: "#1d4ed8",
+        cta: "#1d4ed8",
+        halo: "rgba(96,165,250,.25)",
+        haloSoft: "rgba(96,165,250,.18)",
+      };
+  }
 }

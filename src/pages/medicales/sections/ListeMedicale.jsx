@@ -1,3 +1,4 @@
+// src/pages/medicales/ListeMedicale.jsx
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -48,20 +49,20 @@ const SAMPLE = [
 ];
 
 /* ==========================
-   Helpers UI
+   Helpers UI (thème bleu)
 ========================== */
 function Badge({ children, tone = "slate" }) {
   const tones = {
-    slate: "bg-white/10 text-slate-200",
-    amber: "bg-amber-500/15 text-amber-300",
-    emerald: "bg-emerald-500/15 text-emerald-300",
-    rose: "bg-rose-500/15 text-rose-300",
+    slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
+    blue: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+    indigo: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
+    sky: "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
+    rose: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+    amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   };
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${
-        tones[tone] || tones.slate
-      }`}
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tones[tone] || tones.slate}`}
     >
       {children}
     </span>
@@ -70,18 +71,20 @@ function Badge({ children, tone = "slate" }) {
 
 function ActionButton({ children, onClick, tone = "default" }) {
   const styles = {
-    default: "bg-white/10 hover:bg-white/15 text-slate-100",
-    primary: "bg-amber-500/20 hover:bg-amber-500/30 text-amber-200",
-    warn: "bg-rose-500/20 hover:bg-rose-500/30 text-rose-200",
-    edit: "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200",
+    default:
+      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    primary:
+      "border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
+    edit:
+      "border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+    warn:
+      "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
   };
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-        styles[tone] || styles.default
-      }`}
       type="button"
+      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${styles[tone] || styles.default}`}
     >
       {children}
     </button>
@@ -90,14 +93,17 @@ function ActionButton({ children, onClick, tone = "default" }) {
 
 function Th({ children }) {
   return (
-    <th className="text-left px-4 py-3 whitespace-nowrap text-[13px] uppercase tracking-wide text-emerald-300">
+    <th className="text-left px-4 py-3 whitespace-nowrap text-[13px] uppercase tracking-wide text-blue-700">
       {children}
     </th>
   );
 }
-
-function Td({ children }) {
-  return <td className="px-4 py-3 text-slate-200 whitespace-nowrap">{children}</td>;
+function Td({ children, className = "" }) {
+  return (
+    <td className={`px-4 py-3 whitespace-nowrap text-slate-700 ${className}`}>
+      {children}
+    </td>
+  );
 }
 
 /* ==========================
@@ -133,20 +139,19 @@ export default function ListeMedicale() {
       setData((prev) => prev.filter((x) => x.id !== row.id));
     }
   }
-
   function onEdit(row) {
     navigate(`/medicale/${row.id}/edit`, { state: { row } });
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 lg:p-8 backdrop-blur text-white shadow-lg">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 text-slate-900 shadow-sm">
       {/* En-tête + recherche */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-emerald-400">
+          <h2 className="text-dyn-title font-extrabold text-slate-900">
             Liste Médicale des Pèlerins
           </h2>
-          <p className="text-slate-300/90 text-sm">
+          <p className="text-dyn-sm text-slate-600">
             Toutes les informations médicales enregistrées (pouls, tension, groupe sanguin, etc.)
           </p>
         </div>
@@ -157,48 +162,48 @@ export default function ListeMedicale() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher (nom, passeport, CMAH...)"
-            className="w-full sm:w-72 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm placeholder:text-slate-400 outline-none ring-2 ring-transparent focus:ring-emerald-400/40"
+            className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none ring-2 ring-transparent focus:ring-blue-500"
           />
         </div>
       </div>
 
-      {/* ======= Vue Mobile ======= */}
+      {/* ======= Vue Mobile (cartes) ======= */}
       <div className="mt-6 grid gap-3 sm:hidden">
         {filtered.length === 0 ? (
-          <p className="text-slate-400">Aucune donnée trouvée.</p>
+          <p className="text-slate-500">Aucune donnée trouvée.</p>
         ) : (
           filtered.map((m) => (
             <article
               key={m.id}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3"
+              className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
             >
-              <div className="font-bold text-white text-base">
+              <div className="font-bold text-slate-900 text-base">
                 {m.nom} {m.prenoms}
               </div>
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-slate-600">
                 Passeport: <span className="font-mono">{m.passeport}</span>
               </div>
-              <div className="text-xs text-slate-400 mt-1">
-                CMAH: {m.numeroCMAH} •{" "}
-                <Badge tone="amber">{m.groupeSanguin}</Badge>
+              <div className="text-xs text-slate-600 mt-1 flex items-center gap-2">
+                CMAH: {m.numeroCMAH}
+                <Badge tone="blue">{m.groupeSanguin}</Badge>
               </div>
 
               <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
                 <div>
-                  <dt className="text-slate-400">Poids</dt>
-                  <dd>{m.poids}</dd>
+                  <dt className="text-slate-500">Poids</dt>
+                  <dd className="text-slate-800">{m.poids}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400">Tension</dt>
-                  <dd>{m.tension}</dd>
+                  <dt className="text-slate-500">Tension</dt>
+                  <dd className="text-slate-800">{m.tension}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400">Diabète</dt>
-                  <dd>{m.diabete}</dd>
+                  <dt className="text-slate-500">Diabète</dt>
+                  <dd className="text-slate-800">{m.diabete}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-400">Cardiaque</dt>
-                  <dd>{m.maladieCardiaque}</dd>
+                  <dt className="text-slate-500">Cardiaque</dt>
+                  <dd className="text-slate-800">{m.maladieCardiaque}</dd>
                 </div>
               </dl>
 
@@ -218,14 +223,14 @@ export default function ListeMedicale() {
         )}
       </div>
 
-      {/* ======= Vue Desktop/Tablette ======= */}
+      {/* ======= Vue Desktop/Tablette (tableau) ======= */}
       <div className="mt-6 overflow-x-auto hidden sm:block">
         {filtered.length === 0 ? (
-          <p className="text-slate-400">Aucune donnée médicale trouvée.</p>
+          <p className="text-slate-500">Aucune donnée médicale trouvée.</p>
         ) : (
-          <table className="min-w-[1280px] border-separate border-spacing-y-3 text-[14px]">
+          <table className="min-w-[1280px] border-separate border-spacing-y-6 text-[14px]">
             <thead>
-              <tr className="bg-emerald-500/10">
+              <tr className="bg-blue-50 border border-blue-100">
                 <Th>#</Th>
                 <Th>CMAH</Th>
                 <Th>Nom & Prénoms</Th>
@@ -247,17 +252,15 @@ export default function ListeMedicale() {
               {filtered.map((m, i) => (
                 <tr
                   key={m.id}
-                  className="bg-white/6 hover:bg-white/12 transition-all"
+                  className="bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all"
                 >
-                  <Td>{i + 1}</Td>
-                  <Td>{m.numeroCMAH}</Td>
-                  <Td className="font-semibold text-white">
+                  <Td className="text-slate-500">{i + 1}</Td>
+                  <Td className="font-medium">{m.numeroCMAH}</Td>
+                  <Td className="font-semibold text-slate-900">
                     {m.nom} {m.prenoms}
                   </Td>
-                  <Td className="font-mono text-slate-300">{m.passeport}</Td>
-                  <Td>
-                    <Badge tone="amber">{m.groupeSanguin}</Badge>
-                  </Td>
+                  <Td className="font-mono text-slate-600">{m.passeport}</Td>
+                  <Td><Badge tone="blue">{m.groupeSanguin}</Badge></Td>
                   <Td>{m.poids}</Td>
                   <Td>{m.tension}</Td>
                   <Td>{m.pouls}</Td>
@@ -291,16 +294,16 @@ export default function ListeMedicale() {
       {selected && (
         <div className="fixed inset-0 z-50 grid place-items-center">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
             onClick={() => setSelected(null)}
           />
-          <div className="relative z-10 w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl border border-white/10 bg-slate-900/90 p-5 shadow-2xl">
+          <div className="relative z-10 w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-lg text-slate-900">
             <div className="flex items-start justify-between gap-4">
-              <h3 className="text-xl font-bold text-emerald-300">
+              <h3 className="text-xl font-bold text-slate-900">
                 Détails Médicaux — {selected.nom} {selected.prenoms}
               </h3>
               <button
-                className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
                 onClick={() => setSelected(null)}
               >
                 Fermer
@@ -311,10 +314,7 @@ export default function ListeMedicale() {
               <DetailSection title="Informations de base">
                 <Info label="CMAH" value={selected.numeroCMAH} />
                 <Info label="Passeport" value={selected.passeport} />
-                <Info
-                  label="Nom & Prénoms"
-                  value={`${selected.nom} ${selected.prenoms}`}
-                />
+                <Info label="Nom & Prénoms" value={`${selected.nom} ${selected.prenoms}`} />
                 <Info label="Groupe sanguin" value={selected.groupeSanguin} />
               </DetailSection>
 
@@ -334,14 +334,8 @@ export default function ListeMedicale() {
               <DetailSection title="Examens et Observations">
                 <Info label="Examens" value={selected.examenParaclinique} />
                 <Info label="Antécédents" value={selected.antecedents} />
-                <Info
-                  label="Accompagnements"
-                  value={selected.accompagnements}
-                />
-                <Info
-                  label="Analyse psychiatrique"
-                  value={selected.analysePsychiatrique}
-                />
+                <Info label="Accompagnements" value={selected.accompagnements} />
+                <Info label="Analyse psychiatrique" value={selected.analysePsychiatrique} />
               </DetailSection>
             </div>
           </div>
@@ -352,24 +346,23 @@ export default function ListeMedicale() {
 }
 
 /* ==========================
-   Sous-blocs
+   Sous-blocs (bleu & blanc)
 ========================== */
 function DetailSection({ title, children }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-      <div className="mb-2 text-[12px] font-extrabold uppercase tracking-wider text-emerald-300">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="mb-2 text-[12px] font-extrabold uppercase tracking-wider text-blue-700">
         {title}
       </div>
       <div className="grid gap-1.5">{children}</div>
     </div>
   );
 }
-
 function Info({ label, value }) {
   return (
     <div className="text-sm">
-      <span className="text-slate-400">{label} : </span>
-      <span className="text-slate-100">{value || "—"}</span>
+      <span className="text-slate-500">{label} : </span>
+      <span className="text-slate-900 font-medium">{value || "—"}</span>
     </div>
   );
 }

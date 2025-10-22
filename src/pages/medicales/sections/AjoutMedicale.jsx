@@ -98,19 +98,13 @@ export default function AjoutMedicale() {
         setSearching(true);
         setFetchError("");
         // GET /api/pelerins/by-passport?passport=XXXX
-        const res = await axios.get(PASSPORT_LOOKUP_URL, {
-          params: { passport: p },
-        });
-        // backend peut renvoyer un objet ou un tableau → on uniformise en tableau
+        const res = await axios.get(PASSPORT_LOOKUP_URL, { params: { passport: p } });
         const payload = res?.data;
         let list = [];
         if (Array.isArray(payload)) list = payload;
         else if (payload && typeof payload === "object") list = [payload];
         else list = [];
-
         setMatches(list);
-
-        // si un seul match → auto-remplir direct
         if (list.length === 1) {
           applyMatch(list[0]);
         } else {
@@ -128,21 +122,19 @@ export default function AjoutMedicale() {
       } finally {
         setSearching(false);
       }
-    }, 500); // 500ms de debounce
-
+    }, 500);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [formData.passeport]);
 
   function applyMatch(match) {
-    // On préremplit nom/prénoms si disponibles
     setFormData((f) => ({
       ...f,
       nom: match?.nom ? String(match.nom).toUpperCase() : f.nom,
       prenoms: match?.prenoms ?? f.prenoms,
-      // Si tu veux pré-remplir d’autres champs (adresse, contact…), ajoute-les ici :
-      // exemple: groupeSanguin: match.groupeSanguin ?? f.groupeSanguin,
+      // exemple d’extension possible :
+      // groupeSanguin: match.groupeSanguin ?? f.groupeSanguin,
     }));
     setAutofilled(true);
   }
@@ -150,151 +142,123 @@ export default function AjoutMedicale() {
   function resetAutofill() {
     setAutofilled(false);
     setMatches([]);
-    // on ne touche pas au passeport saisi
   }
 
   return (
     <div className="medical-page">
       <style>{`
-        :root {
-          --bg: #022b2e;
-          --card: #08363a;
-          --border: #0d4d52;
-          --text: #f1f5f9;
-          --accent: #22c55e;
-          --muted: #94a3b8;
-          --warn: #f43f5e;
-          --info: #38bdf8;
+        :root{
+          --bg:#f8fafc;
+          --bg-accent:rgba(191,219,254,.35);
+          --card:#ffffff;
+          --text:#0f172a;     /* slate-900 */
+          --muted:#475569;    /* slate-600 */
+          --border:#e2e8f0;   /* slate-200 */
+          --chip:#e2e8f0;     /* slate-200 */
+          --focus:#2563eb;    /* blue-600 */
+          --focus2:#60a5fa;   /* sky-400 */
+          --ok:#16a34a;       /* green-600 */
+          --warn:#f59e0b;     /* amber-500 */
+          --err:#ef4444;      /* red-500 */
+          --shadow:0 12px 30px rgba(2,6,23,.08);
         }
-        .medical-page {
-          min-height: 100%;
-          background: var(--bg);
-          color: var(--text);
-          font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+        .medical-page{
+          min-height:100%;
+          background:
+            radial-gradient(1000px 700px at -10% 0%, var(--bg-accent) 0%, transparent 60%),
+            radial-gradient(900px 600px at 110% -10%, rgba(96,165,250,.22) 0%, transparent 65%),
+            var(--bg);
+          color:var(--text);
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
           padding: clamp(16px, 2.5vw, 28px);
         }
-        h2 {
-          text-align: center;
-          color: #ef4444;
-          letter-spacing: .8px;
-          margin-bottom: 24px;
-          text-transform: uppercase;
+        .page-title{
+          text-align:center;
+          font-weight:900;
+          letter-spacing:.3px;
+          margin-bottom:20px;
+          color:#1e40af; /* blue-800 */
+          font-size:clamp(1.25rem,1.05rem + .9vw,1.75rem);
+          text-transform:uppercase;
         }
-        form {
-          width: min(1200px, 100%);
-          margin: 0 auto;
-          background: var(--card);
-          padding: clamp(16px, 2.2vw, 24px);
-          border-radius: 14px;
-          box-shadow: 0 12px 30px rgba(0,0,0,.35);
-          border: 1px solid var(--border);
+        form{
+          width:min(1200px,100%);
+          margin:0 auto;
+          background:var(--card);
+          padding: clamp(18px, 2.2vw, 26px);
+          border-radius:16px;
+          border:1px solid var(--border);
+          box-shadow:var(--shadow);
         }
-        .grid {
-          display: grid;
+        .grid{
+          display:grid;
           grid-template-columns: repeat(3, 1fr);
           gap: clamp(12px, 1.6vw, 20px);
         }
-        @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-        label {
-          display: block;
-          font-weight: 700;
-          font-size: 14px;
-          margin-bottom: 4px;
-          color: var(--muted);
-        }
-        input, select, textarea {
-          width: 100%;
-          background: #0a4045;
-          color: var(--text);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px;
-          font-size: 14px;
-          outline: none;
-          transition: 0.2s ease;
-        }
-        input::placeholder, textarea::placeholder { color: #9fb3bd; opacity: .75; }
-        input:focus, select:focus, textarea:focus {
-          border-color: var(--accent);
-          box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
-        }
-        .hint { display:block; margin-top:6px; font-size:12px; color:#cbd5e1; opacity:.85; }
+        @media (max-width: 1000px){ .grid{grid-template-columns: repeat(2,1fr);} }
+        @media (max-width: 700px){ .grid{grid-template-columns:1fr;} }
 
-        .inline-note {
-          margin-top: 6px;
-          font-size: 12px;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          border-radius: 8px;
-          background: rgba(56,189,248,.12);
-          border: 1px solid rgba(56,189,248,.35);
-          color: #e0f2fe;
+        label{
+          display:block;
+          font-weight:800;
+          font-size:13px;
+          color:#1e3a8a; /* blue-800 */
+          text-transform:uppercase;
+          letter-spacing:.4px;
+          margin-bottom:6px;
         }
-        .inline-note.success {
-          background: rgba(34,197,94,.12);
-          border-color: rgba(34,197,94,.35);
-          color: #dcfce7;
+        input, select, textarea{
+          width:100%;
+          background:#ffffff;
+          color:var(--text);
+          border:1px solid var(--border);
+          border-radius:12px;
+          padding:12px 12px;
+          font-size:15px;
+          outline:none;
+          transition:.15s ease;
         }
-        .inline-actions {
-          display: inline-flex;
-          gap: 10px;
-          margin-left: 8px;
-        }
-        .link {
-          color: #93c5fd;
-          cursor: pointer;
-          text-decoration: underline;
+        input::placeholder, textarea::placeholder{ color:#94a3b8; }
+        input:focus, select:focus, textarea:focus{
+          border-color:#93c5fd; /* blue-300 */
+          box-shadow:0 0 0 3px rgba(37,99,235,.18);
         }
 
-        .results {
-          margin-top: 8px;
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          overflow: hidden;
-          background: #0a4045;
+        .hint{display:block;margin-top:6px;font-size:12px;color:#64748b;}
+        .inline-note{
+          margin-top:8px;font-size:12px;display:inline-flex;align-items:center;gap:8px;
+          padding:8px 10px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#0f172a;
         }
-        .results button {
-          width: 100%;
-          text-align: left;
-          background: transparent;
-          color: var(--text);
-          border: 0;
-          padding: 10px 12px;
-          font-size: 14px;
-          cursor: pointer;
-        }
-        .results button:hover {
-          background: rgba(255,255,255,.06);
-        }
+        .inline-note.success{ background:#ecfdf5; border-color:#bbf7d0; color:#065f46; }
+        .inline-note.error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
 
-        .actions {
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-          justify-content: space-between;
-          margin-top: clamp(18px, 3vw, 28px);
+        .results{
+          margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#ffffff;
         }
-        .actions > * { flex: 1 1 180px; }
-        button {
-          border: none;
-          border-radius: 10px;
-          font-weight: 700;
-          letter-spacing: .4px;
-          cursor: pointer;
-          padding: 12px 24px;
-          font-size: 15px;
-          transition: 0.3s;
+        .results button{
+          width:100%;text-align:left;background:transparent;color:var(--text);border:0;
+          padding:12px 12px;font-size:14px;cursor:pointer;
         }
-        button.cancel { background: linear-gradient(135deg, #6b7280, #4b5563); color: white; }
-        button.cancel:hover { filter: brightness(1.06); }
-        button.submit { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
-        button.submit:hover { filter: brightness(1.06); }
+        .results button:hover{background:#f1f5f9;}
+
+        .actions{
+          display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-top: clamp(20px, 3vw, 28px);
+        }
+        .actions > *{flex:1 1 200px;}
+        button{
+          border:none;border-radius:12px;font-weight:800;letter-spacing:.4px;cursor:pointer;padding:12px 20px;
+          font-size:15px;transition:.25s ease;
+        }
+        button.cancel{background:linear-gradient(135deg,#94a3b8,#64748b);color:#fff;}
+        button.cancel:hover{filter:brightness(1.06);}
+        button.submit{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
+        button.submit:hover{filter:brightness(1.06);}
+
+        /* Petits helpers de typo + grande, homogènes au layout */
+        .t-sm{font-size:14px;}
       `}</style>
 
-      <h2>INFORMATIONS MÉDICALES PÈLERINS</h2>
+      <h2 className="page-title">Informations médicales pèlerins</h2>
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="grid">
@@ -329,14 +293,10 @@ export default function AjoutMedicale() {
 
             {/* États de recherche */}
             {searching && (
-              <div className="inline-note" style={{ marginTop: 8 }}>
-                Recherche en cours…
-              </div>
+              <div className="inline-note t-sm">Recherche en cours…</div>
             )}
             {fetchError && (
-              <div className="inline-note" style={{ marginTop: 8 }}>
-                {fetchError}
-              </div>
+              <div className="inline-note error t-sm">{fetchError}</div>
             )}
 
             {/* Plusieurs résultats → liste à choisir */}
@@ -349,7 +309,7 @@ export default function AjoutMedicale() {
                     onClick={() => applyMatch(m)}
                     title="Appliquer ces informations"
                   >
-                    {m.passeport || formData.passeport} — {m.nom} {m.prenoms}
+                    {(m.passeport || formData.passeport) + " — " + (m.nom || "") + " " + (m.prenoms || "")}
                   </button>
                 ))}
               </div>
@@ -357,12 +317,13 @@ export default function AjoutMedicale() {
 
             {/* Auto-remplissage confirmé */}
             {autofilled && (
-              <div className="inline-note success">
-                Données récupérées (nom/prénoms préremplis).
-                <span className="inline-actions">
-                  <span className="link" onClick={resetAutofill}>
-                    Réinitialiser
-                  </span>
+              <div className="inline-note success t-sm">
+                Données récupérées (nom/prénoms préremplis).{" "}
+                <span
+                  style={{ textDecoration: "underline", cursor: "pointer", marginLeft: 6 }}
+                  onClick={resetAutofill}
+                >
+                  Réinitialiser
                 </span>
               </div>
             )}

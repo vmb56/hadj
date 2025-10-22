@@ -4,12 +4,12 @@ import React, { useMemo, useRef, useState } from "react";
 /* ====================== Données de démo (remplace par API plus tard) ====================== */
 const SAMPLE_MED = [
   {
-    idInfo: 1001,             // Identifiant fiche médicale
-    idPelerin: 51,            // id du pèlerin (référence)
+    idInfo: 1001,
+    idPelerin: 51,
     passport: "20AD24295",
     nom: "BAMBA",
     prenoms: "Yaya",
-    photo: null,              // URL/base64 de la photo du pèlerin
+    photo: null,
     dateNaissance: "1954-10-15",
     lieuNaissance: "Odienné",
     adresse: "Abobo",
@@ -128,121 +128,128 @@ export default function ImpressionMedicale() {
 
   return (
     <div className="ip-page">
-      {/* ====== Styles (mêmes codes que ta page d’impression pèlerins, adaptés au médical) ====== */}
+      {/* ====== Styles (thème bleu & blanc moderne) ====== */}
       <style>{`
-        :root {
-          --bg: #0f172a;
-          --card: #111827;
-          --muted: #94a3b8;
-          --text: #e5e7eb;
-          --accent: #22c55e;
-          --accent-2: #60a5fa;
-          --warn: #f59e0b;
-          --chip: #1f2937;
-          --border: #1f2937;
-          --row: rgba(255,255,255,0.03);
-          --row-alt: rgba(255,255,255,0.06);
-          --shadow: 0 10px 30px rgba(0,0,0,.35);
+        :root{
+          --bg:#f8fafc;
+          --card:#ffffff;
+          --muted:#64748b;     /* slate-500/600 */
+          --text:#0f172a;      /* slate-900 */
+          --accent:#2563eb;    /* blue-600 */
+          --accent-2:#60a5fa;  /* sky-400 */
+          --ok:#16a34a;        /* green-600 */
+          --warn:#f59e0b;      /* amber-500 */
+          --chip:#e2e8f0;      /* slate-200 */
+          --border:#e2e8f0;    /* slate-200 */
+          --row:rgba(15,23,42,.02);
+          --row-alt:rgba(15,23,42,.05);
+          --shadow:0 10px 30px rgba(2,6,23,.08);
         }
-        .ip-page {
-          min-height: 100dvh;
-          background: radial-gradient(1200px 700px at 10% -10%, #172554 0%, transparent 70%),
-                      radial-gradient(1000px 600px at 110% 10%, #064e3b 0%, transparent 60%),
-                      var(--bg);
-          padding: 24px;
-          color: var(--text);
+        .ip-page{
+          min-height:100dvh;
+          background:
+            radial-gradient(1000px 600px at 95% -10%, rgba(96,165,250,.26) 0%, transparent 65%),
+            radial-gradient(1000px 700px at -10% 10%, rgba(191,219,254,.4) 0%, transparent 60%),
+            var(--bg);
+          padding:24px;
+          color:var(--text);
           font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
         }
-        .ip-shell { max-width: 1280px; margin: 0 auto; }
-        .ip-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px; }
-        .ip-title { display:flex; align-items:center; gap:12px; }
-        .ip-badge {
-          background: linear-gradient(135deg,#0ea5e9 0%, #22c55e 100%);
-          color: white; font-weight: 800; letter-spacing: .5px;
+        .ip-shell{max-width:1280px;margin:0 auto;}
+        .ip-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;}
+        .ip-title{display:flex;align-items:center;gap:12px;}
+        .ip-badge{
+          background: linear-gradient(135deg,#3b82f6 0%,#22c55e 100%);
+          color: white; font-weight: 900; letter-spacing: .4px;
           padding: 8px 12px; border-radius: 999px; font-size: 12px;
           box-shadow: var(--shadow);
         }
-        .ip-card {
-          background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-          border: 1px solid var(--border);
-          border-radius: 16px;
+
+        .ip-card{
+          background: var(--card);
+          border:1px solid var(--border);
+          border-radius:16px;
           box-shadow: var(--shadow);
         }
-        .ip-controls { padding: 16px; display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
-        .ip-input {
-          background:#0b1220; border:1px solid #1f2937; color: var(--text);
-          padding:10px 12px; border-radius:10px; outline:none; width: 260px;
-        }
-        .ip-btn {
-          border:1px solid #1f2937; color:var(--text);
-          padding:10px 14px; border-radius:10px; background:#0b1220; cursor:pointer; font-weight:600;
-        }
-        .ip-btn:hover { border-color:#334155; }
-        .ip-btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); border-color: transparent; }
-        .ip-btn.primary:hover { filter: brightness(1.05); }
-        .ip-btn.print { background: linear-gradient(135deg, #60a5fa, #2563eb); border-color: transparent; }
-        .ip-btn.print:hover { filter: brightness(1.05); }
-        .ip-btn.ghost { background: transparent; }
 
-        .ip-layout { display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
-        @media (max-width: 1100px) { .ip-layout { grid-template-columns: 1fr; } }
+        .ip-controls{padding:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+        .ip-input{
+          background:#fff;border:1px solid var(--border);color:var(--text);
+          padding:10px 12px;border-radius:12px;outline:none;width:260px;
+        }
+        .ip-input:focus{box-shadow:0 0 0 2px rgba(37,99,235,.25);border-color:#93c5fd;}
 
-        .ip-table { width:100%; border-collapse: collapse; overflow:hidden; border-radius:16px; }
-        .ip-table thead th {
-          text-align:left; padding:12px 12px; font-size:12px; letter-spacing:.4px; color:var(--muted);
-          background:#0b1220; border-bottom:1px solid var(--border);
+        .ip-btn{
+          border:1px solid var(--border); color:var(--text);
+          padding:10px 14px;border-radius:12px;background:#fff;cursor:pointer;font-weight:700;
         }
-        .ip-table tbody td { padding:12px; font-size:14px; border-bottom:1px solid #11182766; }
-        .ip-table tbody tr { background: var(--row); }
-        .ip-table tbody tr:nth-child(even) { background: var(--row-alt); }
-        .ip-table tbody tr:hover {
-          background: linear-gradient(90deg, rgba(34,197,94,.25), rgba(96,165,250,.25));
-          cursor:pointer;
-        }
-        .ip-table tr.selected {
-          background: linear-gradient(90deg, #fb923c, #f59e0b) !important; color:#111827;
-        }
-        .chip { display:inline-flex; align-items:center; gap:6px; background: var(--chip); padding:6px 10px; border-radius:999px; font-size:12px; }
+        .ip-btn:hover{background:#f8fafc;}
+        .ip-btn.primary{background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border-color:transparent;}
+        .ip-btn.primary:hover{filter:brightness(1.05);}
+        .ip-btn.print{background: linear-gradient(135deg,#38bdf8,#2563eb); color:#fff; border-color:transparent;}
+        .ip-btn.print:hover{filter:brightness(1.05);}
+        .ip-btn.ghost{background:transparent;}
 
-        .ip-aside { padding: 16px; }
-        .ip-preview { background: #0b1220; border:1px solid #1f2937; border-radius: 14px; padding: 14px; }
+        .ip-layout{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;}
+        @media (max-width:1100px){.ip-layout{grid-template-columns:1fr;}}
 
-        .print-area { margin-top: 18px; }
-        .print-card {
-          width: 210mm; background: white; color: #111; padding: 18mm;
-          border-radius: 4px; border: 1px solid #e5e7eb; position: relative; box-sizing: border-box;
+        .ip-table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:16px;}
+        .ip-table thead th{
+          text-align:left;padding:12px 12px;font-size:12px;letter-spacing:.4px;color:#1e3a8a;
+          background:#eff6ff;border-bottom:1px solid var(--border);text-transform:uppercase;
         }
-        .wm {
-          position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-8deg);
-          font-weight:900; font-size:120px; color: rgba(245,158,11,0.08); letter-spacing: 2px; user-select:none; pointer-events:none;
-        }
-        .ph-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
-        .brand { display:flex; align-items:center; gap: 12px; }
-        .brand .logo { width: 72px; height: 72px; object-fit: contain; }
-        .doc-title { font-size: 18px; font-weight: 900; }
-        .doc-sub { color:#374151; font-size: 13px; margin-top: 2px; }
-        .meta { text-align: right; font-size: 12px; color:#6b7280; }
-        .section { background:#fbbf24; font-weight: 800; padding: 6px 10px; margin: 10px 0; color:#111; }
-        .row { display:flex; gap:8px; margin:6px 0; }
-        .label { width: 220px; font-weight: 700; color:#374151; }
-        .value { flex:1; }
+        .ip-table tbody td{padding:12px;font-size:14px;border-bottom:1px solid #e5e7eb;}
+        .ip-table tbody tr{background:var(--row);}
+        .ip-table tbody tr:nth-child(even){background:var(--row-alt);}
+        .ip-table tbody tr:hover{background:#f1f5f9;cursor:pointer;}
+        .ip-table tr.selected{background:linear-gradient(90deg,#dbeafe,#bfdbfe)!important;color:#0f172a;}
 
-        .two-col { display:flex; gap: 20px; }
-        .col { flex: 1; }
-        .right-photo { width: 120px; text-align: center; }
+        .chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);padding:6px 10px;border-radius:999px;font-size:12px;}
 
-        .footer {
-          margin-top: 16px; padding-top: 10px; border-top: 1px dashed #d1d5db;
-          display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px;
-        }
-        .signature { height: 56px; display:block; }
+        .ip-aside{padding:16px;}
+        .ip-preview{background:#ffffff;border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow);}
 
-        @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; inset: 0; margin: 0; }
-          @page { size: A4; margin: 10mm; }
+        .print-area{margin-top:18px;}
+        .print-card{
+          width:210mm;background:white;color:#111;padding:18mm;
+          border-radius:4px;border:1px solid #e5e7eb;position:relative;box-sizing:border-box;
         }
+        .wm{
+          position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);
+          font-weight:900;font-size:120px;color: rgba(37,99,235,0.08);letter-spacing: 2px;user-select:none;pointer-events:none;
+        }
+        .ph-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+        .brand{display:flex;align-items:center;gap:12px;}
+        .brand .logo{width:72px;height:72px;object-fit:contain;}
+        .doc-title{font-size:20px;font-weight:900;}
+        .doc-sub{color:#374151;font-size:13px;margin-top:2px;}
+        .meta{text-align:right;font-size:12px;color:#6b7280;}
+        .section{background:#dbeafe;font-weight:800;padding:6px 10px;margin:10px 0;color:#111;border:1px solid #bfdbfe;}
+        .row{display:flex;gap:8px;margin:6px 0;}
+        .label{width:230px;font-weight:700;color:#1f2937;}
+        .value{flex:1;}
+
+        .two-col{display:flex;gap:20px;}
+        .col{flex:1;}
+        .right-photo{width:120px;text-align:center;}
+
+        .footer{
+          margin-top:16px;padding-top:10px;border-top:1px dashed #d1d5db;
+          display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;
+        }
+        .signature{height:56px;display:block;}
+
+        /* Impression */
+        @media print{
+          body *{visibility:hidden;}
+          .print-area, .print-area *{visibility:visible;}
+          .print-area{position:absolute;inset:0;margin:0;}
+          @page{size:A4;margin:10mm;}
+        }
+
+        /* Polices un peu plus grandes (cohérent avec layout) */
+        .dyn-title{font-size:clamp(1.35rem,1.2rem + .8vw,1.65rem);}
+        .dyn-sm{font-size:clamp(.95rem,.9rem + .2vw,1.05rem);}
       `}</style>
 
       <div className="ip-shell">
@@ -250,10 +257,10 @@ export default function ImpressionMedicale() {
           <div className="ip-title">
             <span className="ip-badge">BMVT</span>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 0.3 }}>
+              <div className="dyn-title" style={{ fontWeight: 900, letterSpacing: 0.2 }}>
                 Impressions – Fiche Médicale
               </div>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>
+              <div className="dyn-sm" style={{ color: "var(--muted)" }}>
                 Recherche par nom/prénoms · Sélection · Impression A4
               </div>
             </div>
@@ -281,7 +288,7 @@ export default function ImpressionMedicale() {
               onChange={(e) => setQPrenom(e.target.value)}
             />
             <button type="submit" className="ip-btn primary">Rechercher</button>
-            <button type="button" className="ip-btn ghost" onClick={handleClear}>
+            <button type="button" className="ip-btn" onClick={handleClear}>
               Effacer
             </button>
             <button type="button" className="ip-btn print" onClick={handlePrint}>
@@ -334,7 +341,7 @@ export default function ImpressionMedicale() {
                           height: 44,
                           objectFit: "cover",
                           borderRadius: 6,
-                          border: "1px solid #1f2937",
+                          border: "1px solid #e5e7eb",
                         }}
                       />
                     </td>
@@ -373,11 +380,11 @@ export default function ImpressionMedicale() {
                     height: 106,
                     objectFit: "cover",
                     borderRadius: 8,
-                    border: "1px solid #1f2937",
+                    border: "1px solid var(--border)",
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 900 }}>
+                  <div style={{ fontSize: 17, fontWeight: 900 }}>
                     {selected ? `${selected.nom} ${selected.prenoms}` : "Aucune sélection"}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
@@ -394,11 +401,7 @@ export default function ImpressionMedicale() {
                   )}
                 </div>
               </div>
-              <button
-                onClick={handlePrint}
-                className="ip-btn print"
-                style={{ width: "100%", marginTop: 12 }}
-              >
+              <button onClick={handlePrint} className="ip-btn print" style={{ width: "100%", marginTop: 12 }}>
                 Imprimer cette fiche
               </button>
             </div>
@@ -413,11 +416,7 @@ export default function ImpressionMedicale() {
 
               <div className="ph-header">
                 <div className="brand">
-                  <img
-                    className="logo"
-                    alt="Logo"
-                    src="https://via.placeholder.com/120x60?text=LOGO"
-                  />
+                  <img className="logo" alt="Logo" src="https://via.placeholder.com/120x60?text=LOGO" />
                   <div>
                     <div className="doc-title">FICHE MÉDICALE</div>
                     <div className="doc-sub">{selected.nomVoyage} — {selected.anneeVoyage}</div>
@@ -504,11 +503,7 @@ export default function ImpressionMedicale() {
               <div className="footer">
                 <div>Agent enregistreur : <strong>{selected.employeEnregistreur}</strong></div>
                 <div style={{ textAlign: "center" }}>
-                  <img
-                    className="signature"
-                    alt="signature"
-                    src="https://via.placeholder.com/160x44?text=Signature"
-                  />
+                  <img className="signature" alt="signature" src="https://via.placeholder.com/160x44?text=Signature" />
                 </div>
                 <div>Date création : {formatDate(selected.createdAt)}</div>
               </div>
