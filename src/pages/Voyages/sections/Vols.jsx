@@ -13,9 +13,9 @@ const initialFlights = [
     to:   { code: "JED", date: "2025-06-01 12:30" },
     duration: "10h30",
     passengers: [
-      { id: 1, fullname: "DIALLO Mamadou", seat: "Siège 1A", passport: "P1234567", photoUrl: "" },
-      { id: 2, fullname: "TOURE Fatou",    seat: "Siège 2A", passport: "P2345678", photoUrl: "" },
-      { id: 3, fullname: "KONE Ibrahim",   seat: "Siège 3A", passport: "P3456789", photoUrl: "" },
+      { id: 1, fullname: "DIALLO Mamadou", seat: "1A", passport: "P1234567", photoUrl: "" },
+      { id: 2, fullname: "TOURE Fatou",    seat: "2A", passport: "P2345678", photoUrl: "" },
+      { id: 3, fullname: "KONE Ibrahim",   seat: "3A", passport: "P3456789", photoUrl: "" },
     ],
   },
 ];
@@ -48,8 +48,8 @@ export default function Vols() {
     const nextDeparture = flights.map((f) => f.from?.date).filter(Boolean).sort()[0];
     const nextLabel = nextDeparture ? formatDateLabel(nextDeparture) : "—";
     return [
-      { icon: "✈️", label: "Total Vols", value: totalFlights, tone: "emerald" },
-      { icon: "👥", label: "Total Passagers", value: totalPassengers, tone: "amber" },
+      { icon: "✈️", label: "Total Vols", value: totalFlights, tone: "sky" },
+      { icon: "👥", label: "Total Passagers", value: totalPassengers, tone: "indigo" },
       { icon: "🕘", label: "Prochain Départ", value: nextLabel, tone: "sky" },
     ];
   }, [flights]);
@@ -78,6 +78,22 @@ export default function Vols() {
   function saveFlight(e) {
     e?.preventDefault?.();
     const payload = normalizeFlightForm(form);
+
+    // Validations utiles
+    if (!/^[A-Z0-9]{2,4}\d{1,4}$/i.test(payload.code.replace(/\s+/g, ""))) {
+      alert("Code vol invalide (ex: AS401).");
+      return;
+    }
+    if (!/^[A-Z]{3}$/.test(payload.from.code) || !/^[A-Z]{3}$/.test(payload.to.code)) {
+      alert("Codes aéroport IATA attendus (ex: DSS, JED).");
+      return;
+    }
+    const tFrom = Date.parse(payload.from.date.replace(" ", "T"));
+    const tTo = Date.parse(payload.to.date.replace(" ", "T"));
+    if (isNaN(tFrom) || isNaN(tTo) || tTo <= tFrom) {
+      alert("L’heure d’arrivée doit être postérieure au départ.");
+      return;
+    }
 
     if (editingFlightId) {
       setFlights((arr) => arr.map((f) => (f.id === editingFlightId ? { ...f, ...payload } : f)));
@@ -124,6 +140,19 @@ export default function Vols() {
     e?.preventDefault?.();
     if (!assignName.trim()) return;
 
+    const seat = formatSeat(assignSeat); // normalise "Siège 12C" -> "12C"
+    const willSetSeat = Boolean(seat);
+    const flight = flights.find((f) => f.id === assignFlightId);
+    if (!flight) return;
+
+    if (willSetSeat) {
+      const seatTaken = flight.passengers.some((p) => (p.seat || "").toUpperCase() === seat.toUpperCase());
+      if (seatTaken) {
+        alert(`Le siège ${seat} est déjà attribué sur ce vol.`);
+        return;
+      }
+    }
+
     setFlights((arr) =>
       arr.map((f) =>
         f.id === assignFlightId
@@ -134,7 +163,7 @@ export default function Vols() {
                 {
                   id: nextPassengerId(f.passengers),
                   fullname: assignName.trim(),
-                  seat: (assignSeat || "Siège —").trim(),
+                  seat: willSetSeat ? seat : "—",
                   passport: assignPassport.trim(),
                   photoUrl: assignPhotoPreview || "",
                 },
@@ -162,7 +191,7 @@ export default function Vols() {
     );
   }
 
-  /* ---------- Export CSV ---------- */
+  /* ---------- Export CSV (avec BOM pour Excel) ---------- */
   function exportPassengersCSV(f) {
     const rows = [
       ["Vol", f.code],
@@ -171,16 +200,18 @@ export default function Vols() {
       ["Arrivée", `${f.to.code} - ${formatDateLabel(f.to.date)}`],
       [],
       ["#", "Nom", "Passeport", "Siège"],
-      ...f.passengers.map((p, i) => [String(i + 1), p.fullname, p.passport || "", p.seat]),
+      ...f.passengers.map((p, i) => [String(i + 1), p.fullname, p.passport || "", p.seat || ""]),
     ];
     const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
-    downloadFile(new Blob([csv], { type: "text/csv;charset=utf-8" }), `passagers_${f.code}.csv`);
+    // BOM UTF-8 pour Excel
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    downloadFile(blob, `passagers_${f.code}.csv`);
   }
 
-  /* ---------- Impression du vol (sans fenêtre, via iframe caché) ---------- */
+  /* ---------- Impression du vol (via iframe cachée) ---------- */
   async function printFlight(f) {
     const html = renderPrintableFlightHTML(f);
-    await printViaIframe(html); // évite toute page intermédiaire visible
+    await printViaIframe(html);
   }
 
   return (
@@ -192,7 +223,7 @@ export default function Vols() {
           <p className="text-slate-500">Gestion des vols et passagers</p>
         </div>
         <button
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-white font-semibold hover:bg-emerald-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700"
           onClick={openCreateModal}
         >
           <span className="text-lg leading-none">＋</span> Nouveau Vol
@@ -215,8 +246,8 @@ export default function Vols() {
 
           return (
             <section key={flight.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              {/* Bandeau principal */}
-              <div className="relative bg-gradient-to-r from-emerald-600 to-emerald-500 text-white">
+              {/* Bandeau principal (bleu) */}
+              <div className="relative bg-gradient-to-r from-blue-600 to-blue-500 text-white">
                 <div className="p-5 md:p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -347,10 +378,11 @@ export default function Vols() {
 
               <Field label="Départ - Code aéroport">
                 <input
-                  className="input"
+                  className="input uppercase"
                   value={form.fromCode}
-                  onChange={(e) => setForm({ ...form, fromCode: e.target.value })}
+                  onChange={(e) => setForm({ ...form, fromCode: e.target.value.toUpperCase() })}
                   placeholder="DSS"
+                  maxLength={3}
                   required
                 />
               </Field>
@@ -366,10 +398,11 @@ export default function Vols() {
 
               <Field label="Arrivée - Code aéroport">
                 <input
-                  className="input"
+                  className="input uppercase"
                   value={form.toCode}
-                  onChange={(e) => setForm({ ...form, toCode: e.target.value })}
+                  onChange={(e) => setForm({ ...form, toCode: e.target.value.toUpperCase() })}
                   placeholder="JED"
+                  maxLength={3}
                   required
                 />
               </Field>
@@ -398,7 +431,7 @@ export default function Vols() {
               <button type="button" className="btn-gray" onClick={() => setFlightModalOpen(false)}>
                 Annuler
               </button>
-              <button type="submit" className="btn-green">
+              <button type="submit" className="btn-blue">
                 {editingFlightId ? "Enregistrer" : "Créer le vol"}
               </button>
             </div>
@@ -425,7 +458,7 @@ export default function Vols() {
                   className="input"
                   value={assignSeat}
                   onChange={(e) => setAssignSeat(e.target.value)}
-                  placeholder="Siège 12C"
+                  placeholder="12C"
                 />
               </Field>
 
@@ -464,7 +497,7 @@ export default function Vols() {
               <button type="button" className="btn-gray" onClick={() => setAssignModalOpen(false)}>
                 Annuler
               </button>
-              <button type="submit" className="btn-green">Affecter</button>
+              <button type="submit" className="btn-blue">Affecter</button>
             </div>
           </form>
         </Modal>
@@ -475,12 +508,11 @@ export default function Vols() {
 
 /* =============== UI bits =============== */
 
-function StatCard({ icon, label, value, tone = "emerald" }) {
+function StatCard({ icon, label, value, tone = "sky" }) {
   const toneMap = {
-    emerald: { chip: "bg-emerald-50 text-emerald-600", ring: "ring-emerald-100" },
-    amber: { chip: "bg-amber-50 text-amber-600", ring: "ring-amber-100" },
-    sky: { chip: "bg-sky-50 text-sky-600", ring: "ring-sky-100" },
-  }[tone] || { chip: "bg-slate-50 text-slate-600", ring: "ring-slate-100" };
+    sky:    { chip: "bg-sky-50 text-sky-700",       ring: "ring-sky-200" },
+    indigo: { chip: "bg-indigo-50 text-indigo-700", ring: "ring-indigo-200" },
+  }[tone] || { chip: "bg-slate-50 text-slate-700", ring: "ring-slate-200" };
 
   return (
     <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ${toneMap.ring}`}>
@@ -489,8 +521,8 @@ function StatCard({ icon, label, value, tone = "emerald" }) {
           <span className="text-lg">{icon}</span>
         </div>
         <div className="min-w-0">
-          <div className="text-sm text-slate-500">{label}</div>
-          <div className="text-2xl font-extrabold">{value}</div>
+          <div className="text-sm text-slate-600">{label}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{value}</div>
         </div>
       </div>
     </div>
@@ -505,14 +537,14 @@ function PassengerItem({ index, fullname, seat, passport, photoUrl, onDelete }) 
         {photoUrl ? (
           <img src={photoUrl} alt={fullname} className="h-10 w-10 rounded-full object-cover border border-slate-200" />
         ) : (
-          <div className="h-10 w-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+          <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
             {initials}
           </div>
         )}
         <div className="min-w-0">
           <div className="font-semibold text-slate-800 truncate">{index}. {fullname}</div>
           <div className="text-xs text-slate-500 flex flex-wrap gap-3">
-            <span>{seat}</span>
+            <span>Siège: {seat || "—"}</span>
             {passport ? <span>• Passeport: <span className="font-medium">{passport}</span></span> : null}
           </div>
         </div>
@@ -553,18 +585,19 @@ function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+      <div className="relative w/full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
           <button onClick={onClose} className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100">✕</button>
         </div>
         <div className="mt-3">{children}</div>
       </div>
-      {/* styles utilitaires Tailwind inline */}
+      {/* styles utilitaires Tailwind inline (accents bleus) */}
       <style>{`
-        .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-emerald-500; }
-        .btn-green { @apply rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700; }
+        .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300; }
+        .btn-blue { @apply rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700; }
         .btn-gray { @apply rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50; }
+        .uppercase { text-transform: uppercase; letter-spacing: .5px; }
       `}</style>
     </div>
   );
@@ -614,10 +647,10 @@ function formatDateLabel(s) {
 }
 function normalizeFlightForm(f) {
   return {
-    code: f.code.trim(),
+    code: f.code.trim().toUpperCase().replace(/\s+/g, ""),
     company: f.company.trim(),
-    from: { code: f.fromCode.trim(), date: f.fromDate.replace("T", " ") },
-    to:   { code: f.toCode.trim(),   date: f.toDate.replace("T", " ") },
+    from: { code: (f.fromCode || "").trim().toUpperCase(), date: (f.fromDate || "").replace("T", " ") },
+    to:   { code: (f.toCode   || "").trim().toUpperCase(), date: (f.toDate   || "").replace("T", " ") },
     duration: f.duration.trim(),
   };
 }
@@ -656,6 +689,11 @@ function readFileAsDataURL(file) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 }
+function formatSeat(s) {
+  if (!s) return "";
+  const t = s.replace(/^si[eè]ge\s*/i, "").trim();
+  return t.toUpperCase();
+}
 
 /* ---------- Impression : HTML imprimable ---------- */
 function renderPrintableFlightHTML(f) {
@@ -679,7 +717,7 @@ function renderPrintableFlightHTML(f) {
             </div>
           </div>
         </td>
-        <td>${escapeHtml(p.seat)}</td>
+        <td>${escapeHtml(p.seat || "—")}</td>
       </tr>`
     )
     .join("");
@@ -689,14 +727,14 @@ function renderPrintableFlightHTML(f) {
 <meta charset="utf-8"/>
 <title>Vol ${escapeHtml(f.code)} — Impression</title>
 <style>
-  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --emerald:#059669; }
+  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; }
   * { box-sizing: border-box; }
   body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--ink); margin: 24px; }
   h1 { margin: 0 0 4px; font-size: 24px; }
   .muted { color: var(--muted); font-size: 12px; }
   .card { border:1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
   .row { display:flex; align-items:center; gap:12px; }
-  .kpi { display:inline-block; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius: 999px; font-weight:600; font-size:12px; }
+  .kpi { display:inline-block; padding:6px 10px; background:#dbeafe; color:#1e40af; border-radius: 999px; font-weight:700; font-size:12px; }
   table { width:100%; border-collapse: collapse; margin-top: 8px; }
   th, td { border-top:1px solid var(--line); padding: 10px; text-align: left; vertical-align: middle; }
   th { background:#f8fafc; }
@@ -704,7 +742,7 @@ function renderPrintableFlightHTML(f) {
   .who .row { align-items: center; }
   .avatar { width:36px; height:36px; border-radius:999px; overflow:hidden; background:#f1f5f9; display:flex; align-items:center; justify-content:center; }
   .avatar img { width:100%; height:100%; object-fit:cover; }
-  .ph { font-weight:700; color:#059669; }
+  .ph { font-weight:700; color: var(--blue); }
   .header { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; }
   .route { display:flex; align-items:center; gap:12px; font-weight:800; font-size:22px; }
   .sep { height:1px; width:60px; background:#cbd5e1; }
@@ -745,7 +783,7 @@ function renderPrintableFlightHTML(f) {
 </html>`;
 }
 
-/* ---------- Impression via iframe caché (aucune fenêtre visible) ---------- */
+/* ---------- Impression via iframe caché ---------- */
 function printViaIframe(html) {
   return new Promise((resolve) => {
     const iframe = document.createElement("iframe");
@@ -765,8 +803,8 @@ function printViaIframe(html) {
         )
       );
       try { await doc.fonts?.ready; } catch {}
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+      iframe.contentWindow.focus?.();
+      iframe.contentWindow.print?.();
       setTimeout(() => {
         document.body.removeChild(iframe);
         resolve();

@@ -148,6 +148,8 @@ export default function MainLayout() {
             <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
             <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />
             <Item to="/stats-pelerins" icon={BarChart3} label="Statistiques" collapsed={collapsed} />
+             
+
           </Section>
 
           <Section title="Médicale" collapsed={collapsed}>

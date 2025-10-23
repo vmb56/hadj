@@ -1,6 +1,6 @@
 // src/pages/Factures.jsx
 import React, { useMemo, useState } from "react";
-import { getPayments } from "../pages/utils/paymentsStore";
+import { getPayments } from "../pages/utils/paymentsStore"; // ✅ chemin corrigé
 
 /* Utils */
 const fmt = (n) =>
@@ -10,7 +10,9 @@ const fmt = (n) =>
 
 const toISO = (d) => new Date(d).toISOString().slice(0, 10);
 const todayISO = toISO(new Date());
-const startOfMonthISO = toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+const startOfMonthISO = toISO(
+  new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+);
 const addDaysISO = (baseISO, n) =>
   toISO(new Date(new Date(baseISO).getTime() + n * 86400000));
 
@@ -159,9 +161,7 @@ export default function Factures() {
         .map((arr) =>
           arr
             .map((v) =>
-              typeof v === "string"
-                ? `"${v.replaceAll('"', '""')}"`
-                : String(v)
+              typeof v === "string" ? `"${v.replaceAll('"', '""')}"` : String(v)
             )
             .join(";")
         )
@@ -184,7 +184,7 @@ export default function Factures() {
       h1{font-size:20px;margin:0 0 4px 0;font-weight:900}
       .muted{color:#334155;font-size:12px}
       table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
-      thead th{background:#eef2ff;text-align:left;padding:8px 10px;border-bottom:1px solid #e5e7eb}
+      thead th{background:#f3f4f6;text-align:left;padding:8px 10px;border-bottom:1px solid #e5e7eb}
       td{padding:6px 10px;border-bottom:1px solid #e5e7eb}
       .tot{margin-top:12px;font-size:12px}
       @page{size:A4;margin:10mm}
@@ -239,43 +239,9 @@ export default function Factures() {
   };
 
   return (
-    <div className="text-white">
+    <div className="space-y-6 text-dyn">
+      {/* styles print uniquement */}
       <style>{`
-        :root{
-          --bg:#07181f; --panel:#0b1721; --muted:#9fb3b7; --border:#163142;
-        }
-        .fx-page{min-height:100dvh;
-          background:
-            radial-gradient(1100px 600px at -10% -20%, #0f3f44 0%, transparent 60%),
-            radial-gradient(1000px 500px at 120% 0%, #0b3f2f 0%, transparent 60%),
-            var(--bg);
-          padding:22px;}
-        .fx-shell{max-width:1280px;margin:0 auto;
-          background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-          border:1px solid var(--border); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.35); overflow:hidden;}
-        .fx-header{padding:18px 16px;background:linear-gradient(135deg,#ffbc54 0%, #ff8f33 100%);color:#13232c;}
-        .fx-title{font-size:20px;font-weight:900;letter-spacing:.3px}
-        .fx-sub{font-size:13px}
-        .fx-controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-          padding:14px 16px; background:var(--panel); border-bottom:1px solid var(--border);}
-        .input{background:#0a1620;border:1px solid var(--border);color:#fff;padding:10px 12px;border-radius:10px;outline:none}
-        .btn{background:#0a1620;border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer}
-        .btn:hover{border-color:#335a6e}
-        .btn.csv{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:transparent}
-        .btn.pdf{background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:transparent}
-        .btn.print{background:linear-gradient(135deg,#60a5fa,#2563eb);border-color:transparent}
-        .quick{display:flex;gap:8px;flex-wrap:wrap}
-        .quick button{background:#123041;border:1px solid #1b4d64;color:#e6f4f1;padding:8px 10px;border-radius:10px;font-weight:700;cursor:pointer}
-        .quick button:hover{filter:brightness(1.08)}
-        /* ===== Tableau contrasté (toujours lisible clair) ===== */
-        .contrast-wrap{background:#ffffff;padding:14px 16px}
-        .tbl{width:100%;border-collapse:separate;border-spacing:0 8px;color:#0f172a}
-        thead th{padding:10px 12px;text-align:left;font-size:12px;letter-spacing:.4px;color:#0f172a;background:#e5e7eb;border-radius:10px}
-        .row{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
-        .row td{padding:12px}
-        .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
-        .sum{display:flex;gap:12px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--panel)}
-        .pill{background:#0b1f25;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-weight:800}
         @media print{
           body{background:white}
           body *{visibility:hidden}
@@ -285,162 +251,244 @@ export default function Factures() {
         }
       `}</style>
 
-      <div className="fx-page">
-        <div className="fx-shell">
-          <div className="fx-header">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="fx-title">Factures & Paiements</div>
-                <div className="fx-sub">
-                  Recherche <b>automatique</b> par passeport • Raccourcis de période • Export CSV/PDF • Impression
-                </div>
-              </div>
-              <div className="chip">📄 <strong>{filtered.length}</strong> enregistrements</div>
-            </div>
-          </div>
+      {/* En-tête (aligné Medicale) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-dyn-title font-extrabold text-slate-900">
+          Factures & Paiements
+        </h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Recherche par passeport & période · Export CSV/PDF · Impression.
+        </p>
+      </div>
 
-          {/* Filtres auto + raccourcis */}
-          <div className="fx-controls">
-            <label className="text-sm text-slate-300">Passeport</label>
+      {/* Contrôles / filtres */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-[13.5px] text-slate-600">Passeport</span>
             <input
-              className="input mono"
+              className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 font-mono"
               placeholder="ex: 23AP09976"
               value={passeport}
               onChange={(e) => setPasseport(e.target.value)}
             />
+          </div>
 
-            <label className="text-sm text-slate-300" style={{ marginLeft: 8 }}>
-              Du
-            </label>
-            <input type="date" className="input" value={du} onChange={(e) => setDu(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <span className="text-[13.5px] text-slate-600">Du</span>
+            <input
+              type="date"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200"
+              value={du}
+              onChange={(e) => setDu(e.target.value)}
+            />
+            <span className="text-[13.5px] text-slate-600">Au</span>
+            <input
+              type="date"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200"
+              value={au}
+              onChange={(e) => setAu(e.target.value)}
+            />
+          </div>
 
-            <label className="text-sm text-slate-300">Au</label>
-            <input type="date" className="input" value={au} onChange={(e) => setAu(e.target.value)} />
-
-            <div className="quick" style={{ marginLeft: 8 }}>
-              <button type="button" onClick={() => setRange("today")}>Aujourd’hui</button>
-              <button type="button" onClick={() => setRange("last7")}>7 derniers jours</button>
-              <button type="button" onClick={() => setRange("thisMonth")}>Mois en cours</button>
-            </div>
-
-            <button type="button" onClick={onClear} className="btn" style={{ marginLeft: "auto" }}>
-              Effacer
+          {/* Raccourcis */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setRange("today")}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-[13.5px] hover:bg-slate-100"
+            >
+              Aujourd’hui
             </button>
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={exportCSV} className="btn csv">Exporter CSV</button>
-              <button type="button" onClick={exportPDF} className="btn pdf">Exporter PDF</button>
-              <button type="button" onClick={onPrint} className="btn print">Imprimer 🖨️</button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setRange("last7")}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-[13.5px] hover:bg-slate-100"
+            >
+              7 derniers jours
+            </button>
+            <button
+              type="button"
+              onClick={() => setRange("thisMonth")}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-[13.5px] hover:bg-slate-100"
+            >
+              Mois en cours
+            </button>
           </div>
 
-          {/* Tableau à contraste élevé (toujours fond clair) */}
-          <div className="contrast-wrap overflow-x-auto">
-            <table className="tbl min-w-[1200px]">
-              <thead>
-                <tr>
-                  <Th>Identifiant de Paiement</Th>
-                  <Th>ID Pèlerins</Th>
-                  <Th>ID Facture</Th>
-                  <Th>Date paiement</Th>
-                  <Th>Montant TTC</Th>
-                  <Th>Réduction</Th>
-                  <Th>Montant paiement</Th>
-                  <Th>Montant payé</Th>
-                  <Th>Reste</Th>
-                  <Th>Nombre paiement</Th>
-                  <Th>Passeport</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="row">
-                    <Td className="mono">{r.ref || r.id}</Td>
-                    <Td>{r.idPelerin}</Td>
-                    <Td className="mono">{r.idFacture}</Td>
-                    <Td>{r.date}</Td>
-                    <Td className="mono">{fmt(r.totalDu)} FCFA</Td>
-                    <Td className="mono">{fmt(r.reduction)} FCFA</Td>
-                    <Td className="mono">{fmt(r.montant)} FCFA</Td>
-                    <Td className="mono">{fmt(r.montant)} FCFA</Td>
-                    <Td className="mono">{fmt(r.resteApres ?? 0)} FCFA</Td>
-                    <Td>{r.nombrePaiements ?? 1}</Td>
-                    <Td className="mono">{r.passeport}</Td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr className="row">
-                    <Td colSpan={11} className="text-center" style={{ color: "#475569" }}>
-                      Aucun résultat
-                    </Td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            className="sm:ml-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50"
+          >
+            Effacer
+          </button>
 
-          {/* Totaux (bar sombre) */}
-          <div className="sum">
-            <div className="pill text-white">TTC : {fmt(totals.ttc)} FCFA</div>
-            <div className="pill text-white">Réductions : {fmt(totals.red)} FCFA</div>
-            <div className="pill text-white">Payé : {fmt(totals.pay)} FCFA</div>
-            <div className="pill text-white">Reste : {fmt(totals.reste)} FCFA</div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={exportCSV}
+              className="rounded-xl bg-amber-600 text-white px-3 py-2 text-[13.5px] hover:brightness-110"
+            >
+              Exporter CSV
+            </button>
+            <button
+              type="button"
+              onClick={exportPDF}
+              className="rounded-xl bg-indigo-600 text-white px-3 py-2 text-[13.5px] hover:brightness-110"
+            >
+              Exporter PDF
+            </button>
+            <button
+              type="button"
+              onClick={onPrint}
+              className="rounded-xl bg-sky-600 text-white px-3 py-2 text-[13.5px] hover:brightness-110"
+            >
+              Imprimer 🖨️
+            </button>
           </div>
         </div>
 
-        {/* Zone imprimable (clarte forcée) */}
-        <div className="print-area">
-          <div style={{ padding: 24, color: "#111", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial" }}>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Rapport des paiements — Factures</h1>
-            <div style={{ fontSize: 12, color: "#374151" }}>
-              Passeport: {passeport || "—"} • Période: {du || "—"} → {au || "—"}
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 12, fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: "#f3f4f6" }}>
-                  {[
-                    "Identifiant",
-                    "ID Pèlerin",
-                    "ID Facture",
-                    "Date",
-                    "TTC",
-                    "Réduction",
-                    "Montant",
-                    "Payé",
-                    "Reste",
-                    "Nb paiements",
-                    "Passeport",
-                  ].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #e5e7eb" }}>
-                      {h}
-                    </th>
-                  ))}
+        {/* Compteur / totaux mini */}
+        <div className="mt-3 text-[12.5px] text-slate-600">
+          {filtered.length} enregistrement(s) —{" "}
+          <span className="font-semibold text-slate-900">
+            TTC {fmt(totals.ttc)} FCFA
+          </span>{" "}
+          • Réductions {fmt(totals.red)} FCFA • Payé{" "}
+          {fmt(totals.pay)} FCFA • Reste {fmt(totals.reste)} FCFA
+        </div>
+      </div>
+
+      {/* Tableau (clair, lisible) */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-[1200px] text-[14.5px]">
+            <thead>
+              <tr className="bg-slate-50 text-slate-700 uppercase tracking-wide text-[12.5px]">
+                <Th>Identifiant de Paiement</Th>
+                <Th>ID Pèlerins</Th>
+                <Th>ID Facture</Th>
+                <Th>Date paiement</Th>
+                <Th>Montant TTC</Th>
+                <Th>Réduction</Th>
+                <Th>Montant paiement</Th>
+                <Th>Montant payé</Th>
+                <Th>Reste</Th>
+                <Th>Nombre paiement</Th>
+                <Th>Passeport</Th>
+              </tr>
+            </thead>
+            <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
+              {filtered.map((r) => (
+                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                  <Td className="font-mono text-slate-900">{r.ref || r.id}</Td>
+                  <Td className="text-slate-800">{r.idPelerin}</Td>
+                  <Td className="font-mono text-slate-800">{r.idFacture}</Td>
+                  <Td className="text-slate-700">{r.date}</Td>
+                  <Td className="font-mono text-slate-900">{fmt(r.totalDu)} FCFA</Td>
+                  <Td className="font-mono text-slate-800">{fmt(r.reduction)} FCFA</Td>
+                  <Td className="font-mono text-slate-800">{fmt(r.montant)} FCFA</Td>
+                  <Td className="font-mono text-slate-800">{fmt(r.montant)} FCFA</Td>
+                  <Td className="font-mono text-slate-800">
+                    {fmt(r.resteApres ?? 0)} FCFA
+                  </Td>
+                  <Td className="text-slate-800">{r.nombrePaiements ?? 1}</Td>
+                  <Td className="font-mono text-slate-900">{r.passeport}</Td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={`print-${r.id}`}>
-                    <td style={tdp}>{r.ref || r.id}</td>
-                    <td style={tdp}>{r.idPelerin}</td>
-                    <td style={tdp}>{r.idFacture}</td>
-                    <td style={tdp}>{r.date}</td>
-                    <td style={tdp}>{fmt(r.totalDu)} FCFA</td>
-                    <td style={tdp}>{fmt(r.reduction)} FCFA</td>
-                    <td style={tdp}>{fmt(r.montant)} FCFA</td>
-                    <td style={tdp}>{fmt(r.montant)} FCFA</td>
-                    <td style={tdp}>{fmt(r.resteApres ?? 0)} FCFA</td>
-                    <td style={tdp}>{r.nombrePaiements ?? 1}</td>
-                    <td style={tdp}>{r.passeport}</td>
-                  </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <Td colSpan={11} className="text-center text-slate-500 py-6">
+                    Aucun résultat
+                  </Td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Zone imprimable (clair forcé) */}
+      <div className="print-area">
+        <div
+          style={{
+            padding: 24,
+            color: "#111",
+            fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial",
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>
+            Rapport des paiements — Factures
+          </h1>
+          <div style={{ fontSize: 12, color: "#374151" }}>
+            Passeport: {passeport || "—"} • Période: {du || "—"} → {au || "—"}
+          </div>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              marginTop: 12,
+              fontSize: 12,
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#f3f4f6" }}>
+                {[
+                  "Identifiant",
+                  "ID Pèlerin",
+                  "ID Facture",
+                  "Date",
+                  "TTC",
+                  "Réduction",
+                  "Montant",
+                  "Payé",
+                  "Reste",
+                  "Nb paiements",
+                  "Passeport",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {h}
+                  </th>
                 ))}
-                {filtered.length === 0 && (
-                  <tr><td style={tdp} colSpan={11}>Aucun résultat</td></tr>
-                )}
-              </tbody>
-            </table>
-            <div style={{ marginTop: 12, fontSize: 12 }}>
-              <strong>Totaux :</strong> TTC {fmt(totals.ttc)} FCFA • Réductions {fmt(totals.red)} FCFA • Payé {fmt(totals.pay)} FCFA • Reste {fmt(totals.reste)} FCFA
-            </div>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={`print-${r.id}`}>
+                  <td style={tdp}>{r.ref || r.id}</td>
+                  <td style={tdp}>{r.idPelerin}</td>
+                  <td style={tdp}>{r.idFacture}</td>
+                  <td style={tdp}>{r.date}</td>
+                  <td style={tdp}>{fmt(r.totalDu)} FCFA</td>
+                  <td style={tdp}>{fmt(r.reduction)} FCFA</td>
+                  <td style={tdp}>{fmt(r.montant)} FCFA</td>
+                  <td style={tdp}>{fmt(r.montant)} FCFA</td>
+                  <td style={tdp}>{fmt(r.resteApres ?? 0)} FCFA</td>
+                  <td style={tdp}>{r.nombrePaiements ?? 1}</td>
+                  <td style={tdp}>{r.passeport}</td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td style={tdp} colSpan={11}>
+                    Aucun résultat
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div style={{ marginTop: 12, fontSize: 12 }}>
+            <strong>Totaux :</strong> TTC {fmt(totals.ttc)} FCFA • Réductions{" "}
+            {fmt(totals.red)} FCFA • Payé {fmt(totals.pay)} FCFA • Reste{" "}
+            {fmt(totals.reste)} FCFA
           </div>
         </div>
       </div>
@@ -450,11 +498,11 @@ export default function Factures() {
 
 /* Mini composants */
 function Th({ children }) {
-  return <th className="text-left">{children}</th>;
+  return <th className="text-left px-4 py-3 whitespace-nowrap">{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
   return (
-    <td colSpan={colSpan} className={`align-middle ${className}`}>
+    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>
       {children}
     </td>
   );

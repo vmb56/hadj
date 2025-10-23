@@ -7,23 +7,20 @@ import React, { useMemo } from "react";
    ========================= */
 const SAMPLE = {
   totalPelerins: 3,
-  confirmes: 2, // pour le petit sous-texte
+  confirmes: 2,
   paiementsRecus: 5_500_000,
   depenses: 14_200_000,
   paiementsComplets: 1,
   paiementsPartiels: 2,
   occupation: { used: 3, total: 5 },
-  // Graphe colonnes (CFA)
   revenusVsDepenses: [
     { mois: "Nov", revenus: 4_500_000, depenses: 3_000_000 },
     { mois: "Déc", revenus: 5_000_000, depenses: 4_200_000 },
     { mois: "Jan", revenus: 0,         depenses: 0 },
   ],
-  // Camembert statuts paiements
   statutPaiements: [
-    { label: "Complets", value: 1, color: "#16a34a" }, // vert
-    { label: "Partiels", value: 2, color: "#f59e0b" }, // orange
-    // { label: "Aucun", value: 0, color: "#94a3b8" }, // exemple si besoin
+    { label: "Complets", value: 1, color: "#16a34a" },
+    { label: "Partiels", value: 2, color: "#f59e0b" },
   ],
 };
 
@@ -49,12 +46,12 @@ export default function Dashboard({ data = SAMPLE }) {
   const pieTotal = useMemo(() => statutPaiements.reduce((s, x) => s + x.value, 0), [statutPaiements]);
 
   return (
-    <div className="space-y-6 text-slate-900">
-      {/* HEADER */}
-      <header className="mb-1">
-        <h1 className="text-3xl font-extrabold">Tableau de bord</h1>
-        <p className="text-slate-500">Vue d'ensemble de la gestion du Hajj 2025</p>
-      </header>
+    <div className="space-y-6 text-dyn">
+      {/* HEADER (clair) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble de la gestion du Hajj 2025</p>
+      </div>
 
       {/* LIGNE KPI PRINCIPALE */}
       <section className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
@@ -63,26 +60,26 @@ export default function Dashboard({ data = SAMPLE }) {
           value={totalPelerins}
           sub={`${confirmes} confirmé${confirmes > 1 ? "s" : ""}`}
           icon="👥"
-          tone="mint"
+          tone="blue"
         />
         <BigMoneyTile
           title="Paiements Reçus"
           amount={paiementsRecus}
           icon="💲"
-          tone="cream"
+          tone="indigo"
         />
         <BigMoneyTile
           title="Dépenses"
           amount={depenses}
           icon="📈"
-          tone="cream"
+          tone="rose"
         />
         <KpiTile
           title="Solde"
           value={formatCFA(solde)}
           strong
           icon="🧾"
-          tone="mint"
+          tone={solde >= 0 ? "emerald" : "rose"}
         />
       </section>
 
@@ -92,20 +89,20 @@ export default function Dashboard({ data = SAMPLE }) {
           title="Paiements Complets"
           value={paiementsComplets}
           icon="✅"
-          tone="mint"
+          tone="emerald"
         />
         <SoftTile
           title="Paiements Partiels"
           value={paiementsPartiels}
           icon="⏲️"
-          tone="cream"
+          tone="amber"
         />
         <SoftTile
           title="Occupation Chambres"
           value={tauxOcc.label}
-          right={<Progress value={tauxOcc.pct} />}
+          right={<Progress value={tauxOcc.pct} tone="blue" />}
           icon="🏨"
-          tone="mint"
+          tone="sky"
         />
       </section>
 
@@ -116,8 +113,8 @@ export default function Dashboard({ data = SAMPLE }) {
             data={revenusVsDepenses}
             maxY={guessNiceMax(revenusVsDepenses)}
             series={[
-              { key: "revenus", label: "Revenus", color: "#10b981" },
-              { key: "depenses", label: "Dépenses", color: "#f59e0b" },
+              { key: "revenus", label: "Revenus", color: "#2563eb" }, // blue-600
+              { key: "depenses", label: "Dépenses", color: "#7c3aed" }, // violet-600
             ]}
           />
         </Card>
@@ -127,13 +124,13 @@ export default function Dashboard({ data = SAMPLE }) {
             <PieChart data={statutPaiements} total={pieTotal} />
             <ul className="space-y-2">
               {statutPaiements.map((s) => (
-                <li key={s.label} className="flex items-center gap-2 text-sm">
+                <li key={s.label} className="flex items-center gap-2 text-dyn-sm">
                   <span
                     className="inline-block h-3 w-3 rounded-full"
                     style={{ background: s.color }}
                   />
                   <span className="text-slate-700">{s.label}</span>
-                  <span className="ml-auto font-semibold">
+                  <span className="ml-auto font-semibold text-slate-900">
                     {pct(s.value, pieTotal)}%
                   </span>
                 </li>
@@ -149,12 +146,12 @@ export default function Dashboard({ data = SAMPLE }) {
   );
 }
 
-/* ================= UI BLOCKS ================= */
+/* ================= UI BLOCKS (thème Medicale) ================= */
 
 function Card({ title, children }) {
   return (
-    <div className="rounded-2xl border border-emerald-100 bg-white p-4 md:p-5 shadow-sm">
-      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-800 ring-1 ring-emerald-200 text-sm font-extrabold">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-blue-800 ring-1 ring-blue-200 text-dyn-sm font-extrabold">
         {title}
       </div>
       {children}
@@ -162,21 +159,24 @@ function Card({ title, children }) {
   );
 }
 
-function KpiTile({ title, value, sub, icon, tone = "mint", strong = false }) {
+function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
   const toneMap = {
-    mint:  { chip: "bg-emerald-50 ring-emerald-100", num: "text-emerald-700" },
-    cream: { chip: "bg-amber-50 ring-amber-100",     num: "text-amber-700" },
-  }[tone] || { chip: "bg-slate-50 ring-slate-100", num: "text-slate-700" };
+    blue:    { chip: "bg-blue-50 ring-blue-200",     num: "text-blue-700" },
+    indigo:  { chip: "bg-indigo-50 ring-indigo-200", num: "text-indigo-700" },
+    sky:     { chip: "bg-sky-50 ring-sky-200",       num: "text-sky-700" },
+    emerald: { chip: "bg-emerald-50 ring-emerald-200", num: "text-emerald-700" },
+    rose:    { chip: "bg-rose-50 ring-rose-200",     num: "text-rose-700" },
+  }[tone] || { chip: "bg-slate-50 ring-slate-200", num: "text-slate-700" };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-slate-500">{title}</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">{title}</div>
           <div className={`mt-1 ${strong ? "text-3xl" : "text-2xl"} font-extrabold ${toneMap.num}`}>
-            {typeof value === "number" ? value : value}
+            {value}
           </div>
-          {sub ? <div className="text-sm text-slate-500 mt-1">{sub}</div> : null}
+          {sub ? <div className="text-dyn-sm text-slate-500 mt-1">{sub}</div> : null}
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}>
           <span className="text-lg">{icon}</span>
@@ -186,17 +186,18 @@ function KpiTile({ title, value, sub, icon, tone = "mint", strong = false }) {
   );
 }
 
-function BigMoneyTile({ title, amount, icon, tone = "cream" }) {
+function BigMoneyTile({ title, amount, icon, tone = "indigo" }) {
   const toneMap = {
-    cream: { chip: "bg-amber-50 ring-amber-100", num: "text-slate-900" },
-  }[tone] || { chip: "bg-slate-50 ring-slate-100", num: "text-slate-900" };
+    indigo: { chip: "bg-indigo-50 ring-indigo-200" },
+    rose:   { chip: "bg-rose-50 ring-rose-200" },
+  }[tone] || { chip: "bg-slate-50 ring-slate-200" };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-amber-50/40 p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-slate-600">{title}</div>
-          <div className={`mt-2 text-3xl font-extrabold ${toneMap.num}`}>{formatCFA(amount)}</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-600">{title}</div>
+          <div className="mt-2 text-3xl font-extrabold text-slate-900">{formatCFA(amount)}</div>
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}>
           <span className="text-lg">{icon}</span>
@@ -206,18 +207,21 @@ function BigMoneyTile({ title, amount, icon, tone = "cream" }) {
   );
 }
 
-function SoftTile({ title, value, icon, tone = "mint", right = null }) {
+function SoftTile({ title, value, icon, tone = "blue", right = null }) {
   const toneMap = {
-    mint:  { box: "bg-emerald-50 ring-emerald-100",  txt: "text-emerald-700" },
-    cream: { box: "bg-amber-50 ring-amber-100",      txt: "text-amber-700" },
-  }[tone] || { box: "bg-slate-50 ring-slate-100", txt: "text-slate-700" };
+    blue:    { box: "bg-blue-50 ring-blue-200",       txt: "text-blue-700" },
+    indigo:  { box: "bg-indigo-50 ring-indigo-200",   txt: "text-indigo-700" },
+    sky:     { box: "bg-sky-50 ring-sky-200",         txt: "text-sky-700" },
+    emerald: { box: "bg-emerald-50 ring-emerald-200", txt: "text-emerald-700" },
+    amber:   { box: "bg-amber-50 ring-amber-200",     txt: "text-amber-700" },
+  }[tone] || { box: "bg-slate-50 ring-slate-200", txt: "text-slate-700" };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm text-slate-600">{title}</div>
-          <div className="mt-1 text-2xl font-extrabold">{value}</div>
+          <div className="text-dyn-sm text-slate-600">{title}</div>
+          <div className="mt-1 text-2xl font-extrabold text-slate-900">{value}</div>
         </div>
         <div className="flex items-center gap-3">
           {right}
@@ -230,13 +234,19 @@ function SoftTile({ title, value, icon, tone = "mint", right = null }) {
   );
 }
 
-/* ---------- Progress (barre fine) ---------- */
-function Progress({ value = 0 }) {
+/* ---------- Progress (barre fine, thème bleu) ---------- */
+function Progress({ value = 0, tone = "blue" }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
+  const bar = {
+    blue: "bg-blue-600",
+    indigo: "bg-indigo-600",
+    sky: "bg-sky-600",
+    emerald: "bg-emerald-600",
+  }[tone] || "bg-blue-600";
   return (
     <div className="w-28">
-      <div className="h-2 w-full rounded-full bg-emerald-100 overflow-hidden">
-        <div className="h-2 bg-emerald-600" style={{ width: `${v}%` }} />
+      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+        <div className={`h-2 ${bar}`} style={{ width: `${v}%` }} />
       </div>
       <div className="text-[11px] text-right text-slate-500 mt-1">{v}%</div>
     </div>
@@ -260,14 +270,13 @@ function BarChart({ data = [], maxY, series }) {
   const groupWidth = innerW / Math.max(1, data.length);
   const barWidth = (groupWidth * 0.6) / series.length;
 
-  // graduations Y (5 lignes)
   const ticks = Array.from({ length: 6 }, (_, i) => Math.round((maxVal / 5) * i));
 
   return (
     <div className="overflow-x-auto">
       <svg viewBox={`0 0 ${W} ${H}`} className="min-w-[620px]">
-        {/* fond */}
-        <rect x="0" y="0" width={W} height={H} fill="#fff" rx="12" />
+        {/* fond blanc / radios */}
+        <rect x="0" y="0" width={W} height={H} fill="#ffffff" rx="12" />
         {/* grid horizontale */}
         {ticks.map((t, i) => {
           const y = padding.t + yScale(t);
@@ -318,7 +327,7 @@ function BarChart({ data = [], maxY, series }) {
           );
         })}
       </svg>
-      <div className="mt-2 flex gap-4 text-sm">
+      <div className="mt-2 flex gap-4 text-dyn-sm">
         {series.map((s) => (
           <div key={s.key} className="inline-flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-sm" style={{ background: s.color }} />
@@ -340,12 +349,8 @@ function PieChart({ data = [], total = 0, size = 220 }) {
     const ratio = total ? d.value / total : 0;
     const a2 = angle + ratio * Math.PI * 2;
     const path = arcPath(cx, cy, r - 10, angle, a2);
-    const mid = (angle + a2) / 2;
-    const labelX = cx + Math.cos(mid) * (r - 40);
-    const labelY = cy + Math.sin(mid) * (r - 40);
-    const item = { ...d, path, labelX, labelY, ratio };
     angle = a2;
-    return item;
+    return { ...d, path };
   });
 
   return (
@@ -381,7 +386,6 @@ function guessNiceMax(rows) {
     1,
     ...rows.map((r) => Math.max(r.revenus || 0, r.depenses || 0))
   );
-  // “arrondir” vers le haut sur un pas propre
   const step = 500_000;
   return Math.ceil(m / step) * step;
 }

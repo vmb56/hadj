@@ -152,19 +152,22 @@ export default function StatsPelerins({ data = SAMPLE }) {
     return ["all", ...Array.from(s).sort()];
   }, [data]);
 
-  /* Impression */
   function handlePrint() {
     window.print();
   }
 
   return (
     <div className="space-y-6 text-dyn" ref={printRef}>
+      {/* EN-TÊTE clair (cohérent Medicale.jsx) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-dyn-title font-extrabold text-slate-900">Statistiques — Pèlerins</h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble des inscriptions et de la complétude des dossiers.</p>
+      </div>
+
       {/* BARRE D’ACTIONS (non imprimée) */}
       <div className="print:hidden flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 text-slate-900 shadow-sm flex-1">
-          <h1 className="text-dyn-title font-bold text-slate-900">Statistiques — Pèlerins</h1>
-          <p className="text-dyn-sm text-slate-600">Vue d’ensemble des inscriptions</p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-1 flex flex-col gap-2 sm:flex-row">
             <input
               type="search"
               value={query}
@@ -187,7 +190,7 @@ export default function StatsPelerins({ data = SAMPLE }) {
         <div className="print:hidden flex gap-2">
           <button
             onClick={handlePrint}
-            className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white shadow-sm hover:bg-blue-700"
+            className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white shadow-sm hover:brightness-110"
           >
             Imprimer / PDF
           </button>
@@ -281,12 +284,7 @@ export default function StatsPelerins({ data = SAMPLE }) {
             print-color-adjust: exact;
           }
           .print\\:hidden { display: none !important; }
-          .print-card {
-            background: #fff !important;
-            border: 1px solid #e5e7eb !important;
-            box-shadow: none !important;
-            color: #111827 !important;
-          }
+          .print-card { background: #fff !important; border: 1px solid #e5e7eb !important; box-shadow: none !important; color: #111827 !important; }
           .print-title { color: #111827 !important; }
         }
       `}</style>

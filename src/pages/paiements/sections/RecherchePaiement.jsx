@@ -138,127 +138,125 @@ export default function RecherchePaiement() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 shadow-lg text-white">
-      <h2 className="text-xl font-bold text-orange-400">
-        Recherche Informations Paiement
-      </h2>
-      <p className="text-slate-300 text-sm">
-        Sélectionne un pèlerin pour ouvrir la fenêtre de paiement.
-      </p>
+    <div className="space-y-4 text-dyn">
+      {/* En-tête / filtres (carte claire) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
+        <h2 className="text-dyn-title font-extrabold text-slate-900">
+          Recherche Informations Paiement
+        </h2>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Sélectionne un pèlerin pour ouvrir la fenêtre de paiement.
+        </p>
 
-      {/* Filtres */}
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-300">Rechercher un pèlerin</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="N° passeport / Nom"
-            className="w-64 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm outline-none"
-          />
-          <button
-            className="rounded-xl bg-gradient-to-tr from-amber-400/30 to-amber-500/30 px-3 py-2 text-sm"
-            onClick={() => {}}
-            type="button"
-          >
-            Rechercher
-          </button>
-        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-[13.5px] text-slate-600">Rechercher un pèlerin</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="N° passeport / Nom"
+              className="w-64 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
+            />
+            <button
+              className="rounded-xl bg-sky-600/90 text-white px-3 py-2 text-[13.5px] hover:brightness-110"
+              onClick={() => {}}
+              type="button"
+            >
+              Rechercher
+            </button>
+          </div>
 
-        <div className="sm:ml-auto flex items-center gap-2">
-          <span className="text-sm text-slate-300">Offres</span>
-          <select
-            value={offre}
-            onChange={(e) => setOffre(e.target.value)}
-            className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm outline-none"
-          >
-            {OFFRES.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
+          <div className="sm:ml-auto flex items-center gap-2">
+            <span className="text-[13.5px] text-slate-600">Offres</span>
+            <select
+              value={offre}
+              onChange={(e) => setOffre(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200"
+            >
+              {OFFRES.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Tableau */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-[1100px] border-separate border-spacing-y-3 text-[15px]">
-          <thead>
-            <tr className="bg-orange-500/10 text-amber-300 uppercase tracking-wide">
-              <Th>Photo du pèlerin</Th>
-              <Th>Nom du pèlerin</Th>
-              <Th>Numéro de passeport</Th>
-              <Th>Passeport du pèlerin</Th>
-              <Th>Offre / État</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => {
-              const { statut, reste } = computePaymentState(r);
-              return (
-                <tr
-                  key={r.id}
-                  className="bg-white/6 hover:bg-gradient-to-r hover:from-orange-400/30 hover:to-amber-400/30 cursor-pointer transition"
-                  onClick={() => tryOpenPayment(r)}
-                  title="Cliquer pour ouvrir la fenêtre Paiement"
-                >
-                  <Td>
-                    <img
-                      src={r.photoPelerin}
-                      alt="Pèlerin"
-                      className="h-16 w-16 rounded-xl object-cover border border-white/15"
-                    />
-                  </Td>
-                  <Td>
-                    <div className="font-extrabold tracking-wide">{r.nom}</div>
-                    <div className="text-slate-300 text-sm">{r.prenoms}</div>
-                  </Td>
-                  <Td className="font-mono">{r.passeport}</Td>
-                  <Td>
-                    <img
-                      src={r.photoPasseport}
-                      alt="Passeport"
-                      className="h-20 w-36 rounded-lg object-cover border border-white/15"
-                    />
-                  </Td>
-                  <Td className="align-middle">
-                    <div className="font-bold">{r.offre}</div>
-                    <div className="mt-1 inline-flex items-center gap-2 text-xs">
-                      {statut === "Soldé" && (
-                        <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 text-emerald-200 font-semibold">
-                          Soldé
-                        </span>
-                      )}
-                      {statut === "En cours" && (
-                        <>
-                          <span className="rounded-lg bg-amber-500/20 px-2 py-0.5 text-amber-200 font-semibold">
-                            En cours
-                          </span>
-                          <span className="text-slate-300">
-                            Reste&nbsp;: <span className="font-mono">{fmt(reste)}</span> FCFA
-                          </span>
-                        </>
-                      )}
-                      {statut === "Nouveau" && (
-                        <span className="rounded-lg bg-white/10 px-2 py-0.5 text-slate-200 font-semibold">
-                          Nouveau
-                        </span>
-                      )}
-                    </div>
+      {/* Tableau (carte claire) */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-[1100px] text-[15px]">
+            <thead>
+              <tr className="bg-slate-50 text-slate-700 uppercase tracking-wide text-[12.5px]">
+                <Th>Photo du pèlerin</Th>
+                <Th>Nom du pèlerin</Th>
+                <Th>Numéro de passeport</Th>
+                <Th>Passeport du pèlerin</Th>
+                <Th>Offre / État</Th>
+              </tr>
+            </thead>
+            <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
+              {filtered.map((r) => {
+                const { statut, reste } = computePaymentState(r);
+                return (
+                  <tr
+                    key={r.id}
+                    className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                    onClick={() => tryOpenPayment(r)}
+                    title="Cliquer pour ouvrir la fenêtre Paiement"
+                  >
+                    <Td>
+                      <img
+                        src={r.photoPelerin}
+                        alt="Pèlerin"
+                        className="h-16 w-16 rounded-xl object-cover border border-slate-200"
+                      />
+                    </Td>
+                    <Td>
+                      <div className="font-extrabold tracking-wide text-slate-900">{r.nom}</div>
+                      <div className="text-slate-600 text-sm">{r.prenoms}</div>
+                    </Td>
+                    <Td className="font-mono text-slate-800">{r.passeport}</Td>
+                    <Td>
+                      <img
+                        src={r.photoPasseport}
+                        alt="Passeport"
+                        className="h-20 w-36 rounded-lg object-cover border border-slate-200"
+                      />
+                    </Td>
+                    <Td className="align-middle">
+                      <div className="font-bold text-slate-900">{r.offre}</div>
+                      <div className="mt-1 inline-flex items-center gap-2 text-xs">
+                        {statut === "Soldé" && <Chip tone="emerald">Soldé</Chip>}
+                        {statut === "En cours" && (
+                          <>
+                            <Chip tone="amber">En cours</Chip>
+                            <span className="text-slate-700">
+                              Reste&nbsp;:{" "}
+                              <span className="font-mono font-semibold text-slate-900">
+                                {fmt(reste)}
+                              </span>{" "}
+                              FCFA
+                            </span>
+                          </>
+                        )}
+                        {statut === "Nouveau" && <Chip tone="slate">Nouveau</Chip>}
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <Td colSpan={5} className="text-center text-slate-500 py-6">
+                    Aucun résultat
                   </Td>
                 </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr>
-                <Td colSpan={5} className="text-center text-slate-400 py-6">
-                  Aucun résultat
-                </Td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modales */}
@@ -272,7 +270,7 @@ export default function RecherchePaiement() {
   );
 }
 
-/* ============ Modale Paiement avec contraintes ============ */
+/* ============ Modale Paiement (thème clair) ============ */
 function PaiementModal({ row, onClose }) {
   // champs éditables
   const [datePaiement, setDatePaiement] = useState(
@@ -327,7 +325,6 @@ function PaiementModal({ row, onClose }) {
     if (!datePaiement) e.datePaiement = "Date obligatoire";
     if (!mode) e.mode = "Mode obligatoire";
 
-    // montant obligatoire (> 0)
     if (Number(montantPayer) <= 0) {
       e.montantPayer = "Le montant à payer est obligatoire et doit être > 0.";
     } else if (paySafe !== Number(montantPayer || 0)) {
@@ -336,7 +333,6 @@ function PaiementModal({ row, onClose }) {
       )} FCFA (ne peut pas dépasser le total dû ni le reste à payer).`;
     }
 
-    // réduction : message uniquement si elle est éditable (pas verrouillée)
     if (lockedReduction == null && redSafe !== Number(reduction || 0)) {
       e.reduction =
         "Réduction ajustée (0 … prix de l’offre) et ne peut pas faire descendre le total sous le déjà payé.";
@@ -358,7 +354,6 @@ function PaiementModal({ row, onClose }) {
   ]);
 
   const valider = () => {
-    // re-check obligatoire montant > 0
     if (Number(montantPayer) <= 0) {
       setErrors((prev) => ({
         ...prev,
@@ -371,7 +366,6 @@ function PaiementModal({ row, onClose }) {
     const ref = generatePaymentRef();
     const statut = resteApres === 0 ? "Complet" : "Partiel";
 
-    // ✅ On enregistre la réduction à 0 si déjà appliquée auparavant
     const reductionToPersist = lockedReduction != null ? 0 : redSafe;
 
     addPayment({
@@ -383,7 +377,7 @@ function PaiementModal({ row, onClose }) {
       mode,
       montant: paySafe,
       totalDu: totalSouhaite,
-      reduction: reductionToPersist, // 0 si déjà appliquée
+      reduction: reductionToPersist,
       date: datePaiement,
       statut,
     });
@@ -424,17 +418,17 @@ function PaiementModal({ row, onClose }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-[min(1180px,98vw)] rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl text-white">
+      <div className="relative z-10 w-[min(1180px,98vw)] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between">
-          <h3 className="text-2xl font-extrabold tracking-widest text-red-400">
-            PAIEMENTS
+          <h3 className="text-xl md:text-2xl font-extrabold text-slate-900">
+            Paiement
           </h3>
           <button
             onClick={onClose}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
             type="button"
           >
             Fermer
@@ -447,9 +441,9 @@ function PaiementModal({ row, onClose }) {
             <img
               src={row.photoPelerin}
               alt="Pèlerin"
-              className="h-28 w-28 rounded-xl object-cover border border-white/15"
+              className="h-28 w-28 rounded-xl object-cover border border-slate-200"
             />
-            <div className="mt-2 text-xs text-slate-300">PHOTO PÈLERIN</div>
+            <div className="mt-2 text-xs text-slate-600">PHOTO PÈLERIN</div>
           </div>
 
           {/* Form bloc */}
@@ -475,12 +469,12 @@ function PaiementModal({ row, onClose }) {
               {/* Réduction : verrouillée = lecture seule */}
               {lockedReduction != null ? (
                 <div className="grid">
-                  <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
+                  <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
                     Réduction (verrouillée)
                   </div>
-                  <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
+                  <div className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900">
                     {fmt(lockedReduction)} FCFA{" "}
-                    <span className="ml-2 rounded-md bg-white/10 px-2 py-0.5 text-[11px] text-amber-300">
+                    <span className="ml-2 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-300">
                       verrouillée
                     </span>
                   </div>
@@ -516,7 +510,7 @@ function PaiementModal({ row, onClose }) {
               <button
                 onClick={valider}
                 disabled={Object.keys(errors).length > 0}
-                className="w-full sm:w-auto rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-700 px-6 py-2 font-semibold hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto rounded-lg bg-sky-600 text-white px-6 py-2 font-semibold hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
                 type="button"
               >
                 VALIDER
@@ -530,7 +524,7 @@ function PaiementModal({ row, onClose }) {
           <img
             src={row.photoPasseport}
             alt="Passeport"
-            className="h-48 w-32 object-cover rounded-md border border-white/10"
+            className="h-48 w-32 object-cover rounded-md border border-slate-200"
           />
         </div>
       </div>
@@ -538,18 +532,18 @@ function PaiementModal({ row, onClose }) {
   );
 }
 
-/* --------- Modale “Paiement soldé” --------- */
+/* --------- Modale “Paiement soldé” (claire) --------- */
 function SoldModal({ info, onClose }) {
   const { row, totalDu, dejaPaye, reduction } = info || {};
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-[min(640px,95vw)] rounded-2xl border border-emerald-500/30 bg-slate-900/95 p-6 shadow-2xl text-white">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-[min(640px,95vw)] rounded-2xl border border-emerald-200 bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between">
-          <h3 className="text-xl font-extrabold text-emerald-300">Paiement soldé</h3>
+          <h3 className="text-xl font-extrabold text-emerald-700">Paiement soldé</h3>
           <button
             onClick={onClose}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
             type="button"
           >
             Fermer
@@ -557,8 +551,8 @@ function SoldModal({ info, onClose }) {
         </div>
 
         <div className="mt-3">
-          <p className="text-slate-200">
-            Le dossier de <span className="font-semibold">{row?.nom} {row?.prenoms}</span> (passeport <span className="font-mono">{row?.passeport}</span>) est <span className="text-emerald-300 font-bold">déjà soldé</span>.
+          <p className="text-slate-800">
+            Le dossier de <span className="font-semibold">{row?.nom} {row?.prenoms}</span> (passeport <span className="font-mono">{row?.passeport}</span>) est <span className="text-emerald-700 font-bold">déjà soldé</span>.
           </p>
           <div className="mt-3 grid sm:grid-cols-2 gap-3">
             <Detail label="Prix offre" value={`${fmt(row?.prixOffre)} FCFA`} />
@@ -566,7 +560,7 @@ function SoldModal({ info, onClose }) {
             <Detail label="Total dû final" value={`${fmt(totalDu)} FCFA`} />
             <Detail label="Déjà payé" value={`${fmt(dejaPaye)} FCFA`} />
           </div>
-          <div className="mt-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-200 text-sm">
+          <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-emerald-700 text-sm">
             Aucun paiement supplémentaire n’est autorisé pour ce dossier.
           </div>
         </div>
@@ -577,13 +571,26 @@ function SoldModal({ info, onClose }) {
 function Detail({ label, value }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">{label}</div>
-      <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">{value || "—"}</div>
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
+      <div className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900">{value || "—"}</div>
     </div>
   );
 }
 
 /* ---------- sous-composants ---------- */
+function Chip({ children, tone = "slate" }) {
+  const styles = {
+    emerald: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+    slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
+  };
+  return (
+    <span className={`rounded-lg px-2 py-0.5 text-[12px] font-semibold ${styles[tone] || styles.slate}`}>
+      {children}
+    </span>
+  );
+}
+
 function Th({ children }) {
   return <th className="text-left px-4 py-3 whitespace-nowrap">{children}</th>;
 }
@@ -600,11 +607,11 @@ function Td({ children, className = "", colSpan }) {
 function Read({ label, value, mono = false }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
         {label}
       </div>
       <div
-        className={`mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm ${
+        className={`mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 ${
           mono ? "font-mono" : ""
         }`}
       >
@@ -616,23 +623,23 @@ function Read({ label, value, mono = false }) {
 function FieldDate({ label, value, onChange, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
         {label}
       </div>
       <input
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
+        className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-2 ring-transparent focus:ring-sky-200"
       />
-      {error && <span className="text-xs text-rose-300 mt-1">{error}</span>}
+      {error && <span className="text-xs text-rose-600 mt-1">{error}</span>}
     </div>
   );
 }
 function FieldMoney({ label, value, onChange, help, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
         {label}
       </div>
       <div className="flex items-center gap-2 mt-1">
@@ -640,25 +647,25 @@ function FieldMoney({ label, value, onChange, help, error }) {
           inputMode="numeric"
           value={value}
           onChange={onChange}
-          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none font-mono"
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none font-mono ring-2 ring-transparent focus:ring-sky-200"
         />
-        <span className="text-xs text-slate-300">FCFA</span>
+        <span className="text-xs text-slate-600">FCFA</span>
       </div>
-      {help && <div className="text-[11px] text-slate-400 mt-1">{help}</div>}
-      {error && <span className="text-xs text-rose-300">{error}</span>}
+      {help && <div className="text-[11px] text-slate-500 mt-1">{help}</div>}
+      {error && <span className="text-xs text-rose-600">{error}</span>}
     </div>
   );
 }
 function Select({ label, value, onChange, options, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
         {label}
       </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
+        className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-2 ring-transparent focus:ring-sky-200"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -666,7 +673,7 @@ function Select({ label, value, onChange, options, error }) {
           </option>
         ))}
       </select>
-      {error && <span className="text-xs text-rose-300 mt-1">{error}</span>}
+      {error && <span className="text-xs text-rose-600 mt-1">{error}</span>}
     </div>
   );
 }

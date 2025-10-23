@@ -154,7 +154,6 @@ export default function Chambres() {
 
   /* ---------- Export Excel (.xlsx) ---------- */
   function exportRoomExcel(room) {
-    // Feuille 1 : Infos chambre + entête occupants
     const meta = [
       ["Hôtel", room.hotel],
       ["Ville", room.city],
@@ -170,15 +169,10 @@ export default function Chambres() {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-
-    // Largeur de colonnes sympa
     ws["!cols"] = [{ wch: 4 }, { wch: 28 }, { wch: 18 }];
 
-    // Classeur
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Chambre");
-
-    // Génération & téléchargement
     const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([wbout], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
@@ -195,47 +189,49 @@ export default function Chambres() {
     URL.revokeObjectURL(url);
   }
 
-  /* ---------- Impression de la chambre (via iframe cachée, fiable) ---------- */
+  /* ---------- Impression de la chambre ---------- */
   function printRoom(room) {
     const html = renderPrintableRoomHTML(room);
     printHTMLWithIframe(html);
   }
 
   return (
-    <div className="space-y-6 text-slate-900">
-      {/* Header + bouton */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900">Chambres</h1>
-          <p className="text-slate-500">Gestion de l'hébergement des pèlerins</p>
-        </div>
-        <button
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-white font-semibold hover:bg-emerald-700"
-          onClick={openCreateModal}
-        >
-          <span className="text-lg leading-none">＋</span> Nouvelle Chambre
-        </button>
+    <div className="space-y-6 text-dyn">
+      {/* En-tête clair */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-dyn-title font-extrabold text-slate-900">Chambres</h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">Gestion de l’hébergement des pèlerins</p>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon="🏨" tone="emerald" label="Total Chambres" value={totalRooms} />
-        <StatCard icon="👥" tone="amber" label="Capacité Totale" value={totalCapacity} />
-        <StatCard icon="🧑‍🤝‍🧑" tone="emerald" label="Occupés" value={totalOccupied} />
+        <StatCard icon="🏨" tone="sky"   label="Total chambres"   value={totalRooms} />
+        <StatCard icon="👥" tone="indigo" label="Capacité totale" value={totalCapacity} />
+        <StatCard icon="🧑‍🤝‍🧑" tone="sky" label="Occupés"       value={totalOccupied} />
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-200">
               📊
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-sm text-slate-500">Taux d'Occupation</div>
-              <div className="text-2xl font-extrabold">{rate}%</div>
+              <div className="text-dyn-sm text-slate-600">Taux d’occupation</div>
+              <div className="text-xl md:text-2xl font-extrabold text-slate-900">{rate}%</div>
               <div className="mt-2">
                 <Progress value={rate} />
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Actions globales */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <button
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700"
+          onClick={openCreateModal}
+        >
+          <span className="text-lg leading-none">＋</span> Nouvelle chambre
+        </button>
       </div>
 
       {/* Cartes chambres */}
@@ -256,12 +252,12 @@ export default function Chambres() {
                 <div className="flex items-center gap-2">
                   <span
                     className={
-                      "rounded-full px-3 py-1 text-xs font-semibold " +
+                      "rounded-full px-3 py-1 text-xs font-semibold ring-1 " +
                       (room.type === "double"
-                        ? "bg-emerald-50 text-emerald-700"
+                        ? "bg-blue-50 text-blue-700 ring-blue-200"
                         : room.type === "triple"
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-sky-50 text-sky-700")
+                        ? "bg-indigo-50 text-indigo-700 ring-indigo-200"
+                        : "bg-sky-50 text-sky-700 ring-sky-200")
                     }
                   >
                     {room.type}
@@ -272,7 +268,6 @@ export default function Chambres() {
                   >
                     Modifier
                   </button>
-                  {/* Supprimer la chambre */}
                   <button
                     onClick={() => deleteRoom(room.id)}
                     className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
@@ -287,9 +282,7 @@ export default function Chambres() {
               <div className="mt-4">
                 <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
                   <span>Occupation</span>
-                  <span>
-                    {occ}/{room.capacity}
-                  </span>
+                  <span>{occ}/{room.capacity}</span>
                 </div>
                 <div className="mt-2">
                   <Progress value={roomRate} />
@@ -312,7 +305,7 @@ export default function Chambres() {
                           className="h-7 w-7 rounded-full object-cover border border-slate-200"
                         />
                       ) : (
-                        <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+                        <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
                           {getInitials(o.name)}
                         </div>
                       )}
@@ -324,7 +317,6 @@ export default function Chambres() {
                       ) : (
                         <span className="text-slate-400 text-xs ml-auto">—</span>
                       )}
-                      {/* Supprimer occupant */}
                       <button
                         onClick={() => deleteOccupant(room.id, i)}
                         className="ml-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50"
@@ -430,7 +422,7 @@ export default function Chambres() {
               <button type="button" className="btn-gray" onClick={() => setRoomModalOpen(false)}>
                 Annuler
               </button>
-              <button type="submit" className="btn-green">
+              <button type="submit" className="btn-blue">
                 {editingRoomId ? "Enregistrer" : "Créer la chambre"}
               </button>
             </div>
@@ -487,7 +479,7 @@ export default function Chambres() {
               <button type="button" className="btn-gray" onClick={() => setAssignModalOpen(false)}>
                 Annuler
               </button>
-              <button type="submit" className="btn-green">Affecter</button>
+              <button type="submit" className="btn-blue">Affecter</button>
             </div>
           </form>
         </Modal>
@@ -498,11 +490,11 @@ export default function Chambres() {
 
 /* -------------------------------- UI bits -------------------------------- */
 
-function StatCard({ icon, label, value, tone = "emerald" }) {
+function StatCard({ icon, label, value, tone = "sky" }) {
   const toneMap = {
-    emerald: { chip: "bg-emerald-50 text-emerald-600", ring: "ring-emerald-100" },
-    amber: { chip: "bg-amber-50 text-amber-600", ring: "ring-amber-100" },
-  }[tone] || { chip: "bg-slate-50 text-slate-600", ring: "ring-slate-100" };
+    sky:    { chip: "bg-sky-50 text-sky-700",       ring: "ring-sky-200" },
+    indigo: { chip: "bg-indigo-50 text-indigo-700", ring: "ring-indigo-200" },
+  }[tone] || { chip: "bg-slate-50 text-slate-700", ring: "ring-slate-200" };
 
   return (
     <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ${toneMap.ring}`}>
@@ -511,8 +503,8 @@ function StatCard({ icon, label, value, tone = "emerald" }) {
           <span className="text-lg">{icon}</span>
         </div>
         <div className="min-w-0">
-          <div className="text-sm text-slate-500">{label}</div>
-          <div className="text-2xl font-extrabold">{value}</div>
+          <div className="text-dyn-sm text-slate-600">{label}</div>
+          <div className="text-xl md:text-2xl font-extrabold text-slate-900">{value}</div>
         </div>
       </div>
     </div>
@@ -522,8 +514,8 @@ function StatCard({ icon, label, value, tone = "emerald" }) {
 function Progress({ value }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
   return (
-    <div className="h-2 w-full rounded-full bg-emerald-100 overflow-hidden">
-      <div className="h-2 bg-emerald-600 transition-[width] duration-500" style={{ width: `${v}%` }} />
+    <div className="h-2 w-full rounded-full bg-blue-100 overflow-hidden">
+      <div className="h-2 bg-blue-600 transition-[width] duration-500" style={{ width: `${v}%` }} />
     </div>
   );
 }
@@ -531,7 +523,7 @@ function Progress({ value }) {
 function Field({ label, children }) {
   return (
     <label className="grid gap-1">
-      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <span className="text-dyn-sm font-semibold text-slate-700">{label}</span>
       {children}
     </label>
   );
@@ -548,10 +540,10 @@ function Modal({ title, onClose, children }) {
         </div>
         <div className="mt-3">{children}</div>
       </div>
-      {/* utils Tailwind inline */}
+      {/* utils Tailwind inline (accents bleus) */}
       <style>{`
-        .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-emerald-500; }
-        .btn-green { @apply rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700; }
+        .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300; }
+        .btn-blue { @apply rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700; }
         .btn-gray { @apply rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50; }
       `}</style>
     </div>
@@ -632,14 +624,14 @@ function renderPrintableRoomHTML(room) {
 <meta charset="utf-8"/>
 <title>Chambre — ${escapeHtml(room.hotel)}</title>
 <style>
-  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --emerald:#059669; }
+  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; }
   * { box-sizing: border-box; }
   body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--ink); margin: 24px; }
   h1 { margin: 0 0 4px; font-size: 24px; }
   .muted { color: var(--muted); font-size: 12px; }
   .card { border:1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
   .row { display:flex; align-items:center; gap:12px; }
-  .tag { display:inline-block; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius: 999px; font-weight:600; font-size:12px; }
+  .tag { display:inline-block; padding:6px 10px; background:#dbeafe; color:#1e40af; border-radius: 999px; font-weight:700; font-size:12px; }
   table { width:100%; border-collapse: collapse; margin-top: 8px; }
   th, td { border-top:1px solid var(--line); padding: 10px; text-align: left; vertical-align: middle; }
   th { background:#f8fafc; }
@@ -647,7 +639,7 @@ function renderPrintableRoomHTML(room) {
   .who .row { align-items: center; }
   .avatar { width:36px; height:36px; border-radius:999px; overflow:hidden; background:#f1f5f9; display:flex; align-items:center; justify-content:center; }
   .avatar img { width:100%; height:100%; object-fit:cover; }
-  .ph { font-weight:700; color:#059669; }
+  .ph { font-weight:700; color: var(--blue); }
   .header { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; }
   @media print { body { margin: 0; } .card { margin: 0 0 8mm; page-break-inside: avoid; } }
 </style>
@@ -682,7 +674,6 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 }
 
-/* ---------- Helper impression via iframe cachée (attend images + polices) ---------- */
 function printHTMLWithIframe(html) {
   try {
     const iframe = document.createElement("iframe");
@@ -696,8 +687,6 @@ function printHTMLWithIframe(html) {
       visibility: "hidden",
     });
     iframe.setAttribute("aria-hidden", "true");
-
-    // Méthode fiable: srcdoc
     iframe.srcdoc = html;
 
     iframe.onload = async () => {
@@ -706,24 +695,17 @@ function printHTMLWithIframe(html) {
         const doc = win?.document;
         if (!win || !doc) return cleanup();
 
-        // Attendre que toutes les images soient prêtes
         const imgs = Array.from(doc.images || []);
         await Promise.all(
           imgs.map((img) =>
             img.complete
               ? Promise.resolve()
-              : new Promise((res) => {
-                  img.onload = img.onerror = res;
-                })
+              : new Promise((res) => { img.onload = img.onerror = res; })
           )
         );
 
-        // Attendre les polices si supporté
-        try {
-          await doc.fonts?.ready;
-        } catch {}
+        try { await doc.fonts?.ready; } catch {}
 
-        // Imprimer
         win.focus?.();
         setTimeout(() => {
           try { win.print?.(); } catch {}
@@ -737,9 +719,7 @@ function printHTMLWithIframe(html) {
     document.body.appendChild(iframe);
 
     function cleanup() {
-      try {
-        document.body.removeChild(iframe);
-      } catch {}
+      try { document.body.removeChild(iframe); } catch {}
     }
   } catch (e) {
     console.error("Erreur impression:", e);
