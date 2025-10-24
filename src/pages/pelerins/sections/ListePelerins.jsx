@@ -1,14 +1,16 @@
-// src/pages/pelerins/ListePelerins.jsx
-import React, { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/pelerins/EnregistrementsPelerins.jsx
+import React, { useMemo, useState } from "react";
 
-
-/* Démo */
+/* =========================
+   Données démo (remplace par ton API)
+   ========================= */
 const SAMPLE = [
   {
     id: 1,
-    photoPelerin: "https://images.unsplash.com/photo-1529665253569-6d01c0eaf7b6?w=256&q=80",
-    photoPasseport: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?w=256&q=80",
+    photoPelerin:
+      "https://images.unsplash.com/photo-1529665253569-6d01c0eaf7b6?w=256&q=80",
+    photoPasseport:
+      "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?w=256&q=80",
     nom: "TRAORE",
     prenoms: "Ismaël O.",
     dateNaissance: "1995-08-16",
@@ -51,349 +53,400 @@ const SAMPLE = [
   },
 ];
 
-/* Helpers */
-function formatDate(d) {
-  if (!d) return "—";
-  try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; }
-}
-function norm(s) {
-  return String(s ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-function Badge({ children }) {
+/* =========================
+   COMPOSANT PRINCIPAL
+   ========================= */
+export default function EnregistrementsPelerins({ records = SAMPLE }) {
+  const [q, setQ] = useState("");
+  const [sexe, setSexe] = useState("all"); // "all" | "Masculin" | "Féminin"
+
+  // Filtrage (plein-texte + sexe exact)
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return records.filter((p) => {
+      const bySex =
+        sexe === "all"
+          ? true
+          : String(p.sexe || "").toLowerCase() === sexe.toLowerCase();
+      if (!bySex) return false;
+      if (!s) return true;
+      const hay = [
+        p.nom,
+        p.prenoms,
+        p.contacts,
+        p.numPasseport,
+        p.offre,
+        p.voyage,
+        p.anneeVoyage,
+        p.sexe,
+        p.adresse,
+        p.lieuNaissance,
+        p.urgenceResidence,
+        p.enregistrePar,
+      ]
+        .map((x) => String(x || "").toLowerCase())
+        .join(" ");
+      return hay.includes(s);
+    });
+  }, [q, sexe, records]);
+
+  const filtreLabel = sexe === "all" ? "TOUS" : sexe.toUpperCase();
+
+  const handlePrint = () => window.print();
+
   return (
-    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 ring-1 ring-blue-200 text-dyn-xs font-semibold">
-      {children}
-    </span>
+    <section className="mt-6">
+      {/* Barre d’action (non imprimée) */}
+      <div className="no-print mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+            Enregistrements des pèlerins
+          </h2>
+          <p className="text-slate-600 text-sm">
+            Toutes les informations saisies + agent enregistreur.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Rechercher (nom, passeport, agent, ville, offre...)"
+            className="w-full sm:w-72 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+          />
+          <select
+            value={sexe}
+            onChange={(e) => setSexe(e.target.value)}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+            title="Filtrer par sexe"
+          >
+            <option value="all">Tous</option>
+            <option value="Masculin">Masculin</option>
+            <option value="Féminin">Féminin</option>
+          </select>
+          <button
+            onClick={handlePrint}
+            className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+          >
+            Imprimer la liste
+          </button>
+        </div>
+      </div>
+
+      {/* ===================== ZONE IMPRIMABLE ===================== */}
+      <div className="print-area report">
+        {/* ENTÊTE */}
+        <div className="print-header text-center mb-3">
+          <h1 className="title">LISTE DES PÈLERINS</h1>
+          <p className="subtitle">({filtreLabel})</p>
+        </div>
+
+        {/* ===== VUE CARTES (mobile & tablette) ===== */}
+        <div className="cards grid gap-3 lg:hidden">
+          {filtered.length === 0 ? (
+            <p className="text-slate-600 text-center py-6">
+              Aucun enregistrement trouvé.
+            </p>
+          ) : (
+            filtered.map((p, i) => {
+              const agentName =
+                String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() ||
+                "—";
+              return (
+                <article
+                  key={p.id ?? i}
+                  className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[13px] text-slate-500">#{i + 1}</div>
+                      <div className="text-base font-extrabold text-slate-900">
+                        {p.nom} {p.prenoms}
+                      </div>
+                      <div className="text-[13px] text-slate-600">
+                        {p.sexe || "—"} • Passeport :{" "}
+                        <span className="font-mono">{p.numPasseport || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="text-right text-[13px] text-slate-600">
+                      <div>{formatDate(p.createdAt)}</div>
+                      <div className="text-slate-900 font-semibold">
+                        Agent: {agentName}
+                      </div>
+                    </div>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
+                    <div>
+                      <dt className="text-slate-500">Naissance</dt>
+                      <dd className="text-slate-800">
+                        {formatDate(p.dateNaissance)} — {p.lieuNaissance || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Contact</dt>
+                      <dd className="text-slate-800">{p.contacts || "—"}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-slate-500">Adresse</dt>
+                      <dd className="text-slate-800">{p.adresse || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Offre</dt>
+                      <dd className="text-slate-800">{p.offre || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Année</dt>
+                      <dd className="text-slate-800">{p.anneeVoyage || "—"}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-slate-500">Voyage</dt>
+                      <dd className="text-slate-800">{p.voyage || "—"}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-slate-500">Urgence</dt>
+                      <dd className="text-slate-800">
+                        <span className="font-semibold">
+                          {p.urgenceNom} {p.urgencePrenoms}
+                        </span>{" "}
+                        • {p.urgenceContact} • {p.urgenceResidence}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+
+        {/* ===== VUE TABLEAU (desktop & impression) ===== */}
+        <div className="paper hidden lg:block">
+          {filtered.length === 0 ? (
+            <p className="text-slate-600 text-center py-6">
+              Aucun enregistrement trouvé.
+            </p>
+          ) : (
+            <div className="table-wrap">
+              <table className="w-full data-table">
+                <colgroup>
+                  <col style={{ width: "4%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "9%" }} />
+                </colgroup>
+
+                <thead>
+                  <tr>
+                    <Th>#</Th>
+                    <Th>Nom & Prénoms</Th>
+                    <Th>Date | Lieu Naiss.</Th>
+                    <Th>Sexe</Th>
+                    <Th>Adresse</Th>
+                    <Th>Contact</Th>
+                    <Th>Passeport</Th>
+                    <Th>Offre</Th>
+                    <Th>Voyage</Th>
+                    <Th>Année</Th>
+                    <Th>Urgence (Nom, Tél, Résidence)</Th>
+                    <Th>Agent</Th>
+                    <Th>Créé le</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p, i) => {
+                    const agentName =
+                      String(p.enregistrePar || "")
+                        .replace(/^agent\s*:\s*/i, "")
+                        .trim() || "—";
+                    return (
+                      <tr key={p.id ?? i} className="row">
+                        <Td className="muted">{i + 1}</Td>
+                        <Td className="strong">
+                          {p.nom} {p.prenoms}
+                        </Td>
+                        <Td>
+                          <div>{formatDate(p.dateNaissance)}</div>
+                          <div className="muted">{p.lieuNaissance || "—"}</div>
+                        </Td>
+                        <Td>{p.sexe || "—"}</Td>
+                        <Td className="wrap">{p.adresse || "—"}</Td>
+                        <Td>{p.contacts || "—"}</Td>
+                        <Td className="mono">{p.numPasseport || "—"}</Td>
+                        <Td>{p.offre || "—"}</Td>
+                        <Td className="wrap">{p.voyage || "—"}</Td>
+                        <Td>{p.anneeVoyage || "—"}</Td>
+                        <Td className="wrap">
+                          <span className="strong">
+                            {p.urgenceNom} {p.urgencePrenoms}
+                          </span>{" "}
+                          • {p.urgenceContact} • {p.urgenceResidence}
+                        </Td>
+                        <Td className="agent">
+                          <span className="muted">Agent:</span>
+                          <br />
+                          <span className="strong">{agentName}</span>
+                        </Td>
+                        <Td>{formatDate(p.createdAt)}</Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Pied de page : type de tri */}
+        {filtered.length > 0 && (
+          <div className="foot-note">— FIN DE LA LISTE ({filtreLabel}) —</div>
+        )}
+      </div>
+
+      {/* Pagination (numéro de page) */}
+      <div className="only-print print-pagination" aria-hidden />
+
+      {/* ===================== STYLES ===================== */}
+      <style>{`
+        /* ---------- Écran ---------- */
+        .report { max-width: 1120px; margin: 0 auto; padding: 0 10px; }
+
+        .table-wrap {
+          overflow-x: auto;
+          /* pas d'ascenseur vertical inutile, header sticky visible */
+          max-height: none;
+        }
+
+        .data-table {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 14px;
+          line-height: 1.45;
+          background: #fff;
+          min-width: 1000px; /* évite le serrage si écran moyen */
+        }
+        .data-table thead { background: #eef6ff; }
+        .data-table thead th {
+          position: sticky; top: 0; z-index: 1; /* en-tête collante */
+        }
+        .data-table th, .data-table td {
+          padding: 9px 10px;
+          border-bottom: 1px solid #e5e7eb;
+          vertical-align: top;
+          color: #0f172a;
+        }
+        .data-table th {
+          font-size: 13px;
+          color: #334155;
+          font-weight: 700;
+          text-align: left;
+          white-space: nowrap;
+          background: #eef6ff; /* pour le sticky */
+        }
+        .row:hover td { background: #f8fafc; }
+        .wrap { white-space: normal; word-break: break-word; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .strong { font-weight: 700; }
+        .muted { color: #64748b; }
+        .agent .muted { font-weight: 700; color: #1f2937; }
+        .foot-note {
+          margin-top: 12px;
+          text-align: center;
+          color: #334155;
+          font-weight: 600;
+        }
+        .print-header .title {
+          font-size: 22px; font-weight: 800; color: #0f172a;
+          text-decoration: underline; margin: 0;
+        }
+        .print-header .subtitle {
+          margin-top: 4px; color: #334155; font-style: italic; font-size: 13px;
+        }
+
+        /* ---------- Mobile : cartes plus lisibles ---------- */
+        .cards article dl dt { font-size: 12px; }
+        .cards article dl dd { font-size: 13px; }
+
+        /* Empêcher les lignes d'être coupées entre 2 pages */
+        .row { break-inside: avoid; page-break-inside: avoid; }
+
+        /* ---------- Impression ---------- */
+        .only-print { display: none; }
+        @media print {
+          .only-print { display: block !important; }
+
+          /* Mode paysage + marges */
+          @page { size: A4 landscape; margin: 10mm 12mm 16mm 12mm; }
+          @page { size: landscape; } /* fallback */
+
+          /* Couleurs fidèles */
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+          /* Masquer seulement ce qu'il faut */
+          .no-print, .cards { display: none !important; } /* on imprime le tableau, pas les cartes */
+
+          /* Exploiter la largeur */
+          .report { max-width: none !important; padding: 0 !important; }
+          .table-wrap { overflow: visible !important; }
+          .data-table { min-width: 0 !important; width: 100% !important; }
+
+          /* Typo plus claire pour le papier */
+          .data-table { font-size: 15px !important; line-height: 1.5 !important; }
+          .data-table th { font-size: 14px !important; }
+          .data-table th, .data-table td { padding: 8px 10px !important; }
+          thead { background: #eaf2ff !important; }
+
+          /* Numérotation des pages */
+          .print-pagination {
+            position: fixed; right: 12mm; bottom: 8mm;
+            font-size: 12px; color: #334155;
+          }
+          .print-pagination::after { content: "Page " counter(page) " / " counter(pages); }
+        }
+
+        /* ---------- Ajustements tablettes ---------- */
+        @media (max-width: 1024px) {
+          .data-table { font-size: 13.5px; }
+          .data-table th { font-size: 12.5px; }
+        }
+        @media (max-width: 640px) {
+          .report { padding: 0 6px; }
+        }
+      `}</style>
+    </section>
   );
 }
-function ActionButton({ children, onClick, tone = "default" }) {
-  const styles = {
-    default: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-    primary: "border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
-    warn: "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
-  };
-  return (
-    <button
-      onClick={onClick}
-      type="button"
-      className={`rounded-xl px-3 py-2 text-dyn-sm font-semibold transition ${styles[tone] || styles.default}`}
-    >
-      {children}
-    </button>
-  );
-}
+
+/* ===== Cellules ===== */
 function Th({ children, className = "" }) {
   return (
-    <th className={`text-left px-3 py-2 border-b border-slate-200 text-slate-500 text-dyn-xs font-semibold ${className}`}>
+    <th
+      className={`px-3 py-2 border-b border-slate-200 text-slate-600 text-[12px] font-semibold ${className}`}
+    >
       {children}
     </th>
   );
 }
 function Td({ children, className = "" }) {
   return (
-    <td className={`px-3 py-3 border-b border-slate-100 text-slate-800 whitespace-nowrap ${className}`}>
+    <td className={`px-3 py-2 border-b border-slate-200 text-slate-900 ${className}`}>
       {children}
     </td>
   );
 }
-function Thumb({ src, alt, size = "md" }) {
-  const cls = size === "md" ? "h-16 w-16" : size === "sm" ? "h-[72px] w-[72px]" : "h-16 w-16";
-  return src ? (
-    <img src={src} alt={alt} className={`${cls} rounded-xl object-cover border border-slate-200 bg-white`} />
-  ) : (
-    <div className={`${cls} rounded-xl grid place-content-center text-dyn-xs text-slate-400 border border-slate-200 bg-slate-50`}>
-      N/A
-    </div>
-  );
-}
 
-/* Composant principal */
-export default function ListePelerins() {
-  const navigate = useNavigate();
-  const [data, setData] = useState(SAMPLE);
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState(null);
-
-  // ✅ Filtre Sexe (Tous / Masculin / Féminin)
-  const [sexFilter, setSexFilter] = useState("all");
-
-  // Zone imprimable
-  const printRef = useRef(null);
-
-  // Filtrage robuste + filtre sexe
-  const filtered = useMemo(() => {
-    const needle = norm(q);
-    let arr = data;
-
-    if (needle) {
-      arr = arr.filter((p) => {
-        const hay = norm(
-          [
-            p.nom, p.prenoms, p.sexe, p.contacts, p.numPasseport, p.offre, p.voyage,
-            p.anneeVoyage, p.enregistrePar, p.adresse, p.urgenceNom, p.urgencePrenoms,
-            p.urgenceContact, p.urgenceResidence, p.lieuNaissance,
-          ].filter(Boolean).join(" ")
-        );
-        return hay.includes(needle);
-      });
-    }
-
-    if (sexFilter !== "all") {
-      const wanted = norm(sexFilter); // "masculin" | "feminin"
-      arr = arr.filter((p) => norm(p.sexe) === wanted);
-    }
-
-    return arr;
-  }, [q, data, sexFilter]);
-
-  function onDelete(row) {
-    if (window.confirm(`Supprimer ${row.nom} ${row.prenoms} ?`)) {
-      setData((prev) => prev.filter((x) => x.id !== row.id));
-      if (selected?.id === row.id) setSelected(null);
-    }
-  }
-  function onEdit(row) {
-    navigate(`/pelerins/${row.id}/edit`, { state: { row } });
-  }
-
-  // Impression : n’imprime QUE la liste (la div .print-area)
-  function handlePrint() {
-    window.print();
-  }
-
-  return (
-    <div className="space-y-6 text-dyn">
-      {/* Barre d’action (non imprimée) */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:hidden">
-        <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400" />
-        <div className="p-4 md:p-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-dyn-title text-slate-900">Liste des Pèlerins</h2>
-            <p className="text-slate-600 text-dyn-sm">Photos, informations personnelles, Hajj, urgence, agent…</p>
-          </div>
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher (nom, passeport, agent...)"
-              className="w-full md:w-72 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
-            />
-            <select
-              value={sexFilter}
-              onChange={(e) => setSexFilter(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-dyn-sm outline-none ring-2 ring-transparent focus:ring-blue-300"
-              title="Filtrer par sexe"
-            >
-              <option value="all">Sexe : Tous</option>
-              <option value="Masculin">Masculin</option>
-              <option value="Féminin">Féminin</option>
-            </select>
-            <ActionButton tone="primary" onClick={handlePrint}>Imprimer la liste</ActionButton>
-          </div>
-        </div>
-      </div>
-
-      {/* ======= ZONE IMPRIMABLE UNIQUEMENT ======= */}
-      <div ref={printRef} className="print-area">
-        {/* Mobile : Cartes */}
-        <div className="grid gap-3 sm:hidden">
-          {filtered.length === 0 ? (
-            <p className="text-slate-500">Aucun résultat.</p>
-          ) : (
-            filtered.map((p) => (
-              <article key={p.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <Thumb src={p.photoPelerin} alt="Pèlerin" size="sm" />
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-900 truncate">{p.nom} {p.prenoms}</div>
-                    <div className="text-dyn-xs text-slate-500">
-                      Passeport: <span className="font-mono text-slate-800">{p.numPasseport || "—"}</span>
-                    </div>
-                    <div className="mt-1 text-dyn-xs text-slate-600">
-                      {p.voyage || "—"} • <Badge>{p.anneeVoyage || "—"}</Badge>
-                    </div>
-                  </div>
-                  <div className="ml-auto">
-                    <Thumb src={p.photoPasseport} alt="Passeport" size="sm" />
-                  </div>
-                </div>
-
-                {/* Détails complémentaires */}
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-dyn-sm">
-                  <div><dt className="text-slate-500">Contact</dt><dd className="text-slate-800">{p.contacts || "—"}</dd></div>
-                  <div><dt className="text-slate-500">Sexe</dt><dd className="text-slate-800">{p.sexe || "—"}</dd></div>
-                  <div className="col-span-2"><dt className="text-slate-500">Adresse</dt><dd className="text-slate-800">{p.adresse || "—"}</dd></div>
-                  <div className="col-span-2"><dt className="text-slate-500">Urgence</dt><dd className="text-slate-800">{p.urgenceNom} {p.urgencePrenoms} • {p.urgenceContact} • {p.urgenceResidence}</dd></div>
-                  <div className="col-span-2 text-slate-600">Enregistré par : <span className="text-slate-900 font-semibold">{p.enregistrePar || "—"}</span></div>
-                </dl>
-
-                {/* Boutons – masqués à l’impression */}
-                <div className="mt-3 flex items-center justify-end gap-2 print:hidden">
-                  <ActionButton tone="primary" onClick={() => setSelected(p)}>Détails</ActionButton>
-                  <ActionButton onClick={() => onEdit(p)}>Modifier</ActionButton>
-                  <ActionButton tone="warn" onClick={() => onDelete(p)}>Supprimer</ActionButton>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-
-        {/* Desktop : Tableau */}
-        <div className="overflow-x-auto hidden sm:block">
-          {filtered.length === 0 ? (
-            <p className="text-slate-500">Aucun résultat.</p>
-          ) : (
-            <table className="min-w-[1280px] text-dyn">
-              <thead className="bg-blue-50">
-                <tr>
-                  <Th>#</Th>
-                  <Th>Photo</Th>
-                  <Th>Nom & Prénoms</Th>
-                  <Th>Date | Lieu Naiss.</Th>
-                  <Th>Sexe</Th>
-                  <Th>Adresse</Th>
-                  <Th>Contact</Th>
-                  <Th>Passeport</Th>
-                  <Th>Offre</Th>
-                  <Th>Voyage</Th>
-                  <Th>Année</Th>
-                  <Th>Urgence (Nom, Tél, Résidence)</Th>
-                  <Th>Passeport (photo)</Th>
-                  <Th>Agent</Th>
-                  <Th className="text-right print:hidden">Actions</Th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {filtered.map((p, i) => (
-                  <tr key={p.id ?? i} className="hover:bg-slate-50 transition-colors">
-                    <Td className="text-slate-500">{i + 1}</Td>
-                    <Td><Thumb src={p.photoPelerin} alt="Pèlerin" /></Td>
-                    <Td><div className="font-semibold text-slate-900">{p.nom} {p.prenoms}</div></Td>
-                    <Td>
-                      <div className="text-slate-800">{formatDate(p.dateNaissance)}</div>
-                      <div className="text-dyn-xs text-slate-500">{p.lieuNaissance || "—"}</div>
-                    </Td>
-                    <Td>{p.sexe || "—"}</Td>
-                    <Td className="max-w-[240px] truncate">{p.adresse || "—"}</Td>
-                    <Td>{p.contacts || "—"}</Td>
-                    <Td className="font-mono">{p.numPasseport || "—"}</Td>
-                    <Td>{p.offre || "—"}</Td>
-                    <Td className="max-w-[260px] truncate">{p.voyage || "—"}</Td>
-                    <Td><Badge>{p.anneeVoyage || "—"}</Badge></Td>
-                    <Td className="max-w-[320px]">
-                      <div className="truncate">
-                        <span className="font-semibold text-slate-900">{p.urgenceNom} {p.urgencePrenoms}</span>{" "}
-                        • {p.urgenceContact} • {p.urgenceResidence}
-                      </div>
-                    </Td>
-                    <Td><Thumb src={p.photoPasseport} alt="Passeport" /></Td>
-                    <Td className="text-slate-900 font-semibold">{p.enregistrePar || "—"}</Td>
-                    <Td className="text-right print:hidden">
-                      <div className="inline-flex items-center gap-2">
-                        <ActionButton tone="primary" onClick={() => setSelected(p)}>Détails</ActionButton>
-                        <ActionButton onClick={() => onEdit(p)}>Modifier</ActionButton>
-                        <ActionButton tone="warn" onClick={() => onDelete(p)}>Supprimer</ActionButton>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-
-      {/* Modale Détails (non imprimée) */}
-      {selected && <DetailsModal data={selected} onClose={() => setSelected(null)} />}
-
-      {/* Impression : on cache tout sauf .print-area */}
-      <style>{`
-        @page { size: A4 portrait; margin: 14mm; }
-        @media print {
-          body * { visibility: hidden !important; }
-          .print-area, .print-area * { visibility: visible !important; }
-          .print-area { position: relative !important; }
-          html, body { background:#fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print:hidden { display: none !important; }
-          thead tr { background: #eaf2ff !important; -webkit-print-color-adjust: exact; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-/* Modale détails (identique à avant, masquée à l’impression) */
-function DetailsModal({ data, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 print:hidden">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 w-[min(980px,95vw)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="text-dyn-title text-slate-900">Détails — {data.nom} {data.prenoms}</h3>
-          <button className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">
-            Fermer
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-6 md:grid-cols-[auto,1fr,auto]">
-          <BigThumbW src={data.photoPelerin} label="Photo pèlerin" />
-          <div className="grid gap-3">
-            <DetailSection title="Informations personnelles">
-              <Info label="Nom & Prénoms" value={`${data.nom} ${data.prenoms}`} />
-              <Info label="Naissance" value={`${formatDate(data.dateNaissance)} — ${data.lieuNaissance || "—"}`} />
-              <Info label="Sexe" value={data.sexe || "—"} />
-              <Info label="Adresse" value={data.adresse || "—"} />
-              <Info label="Contacts" value={data.contacts || "—"} />
-            </DetailSection>
-            <DetailSection title="Hajj">
-              <Info label="Passeport" value={data.numPasseport || "—"} />
-              <Info label="Offre" value={data.offre || "—"} />
-              <Info label="Voyage" value={data.voyage || "—"} />
-              <Info label="Année" value={data.anneeVoyage || "—"} />
-            </DetailSection>
-            <DetailSection title="Urgence">
-              <Info label="Nom & Prénoms" value={`${data.urgenceNom || ""} ${data.urgencePrenoms || ""}`.trim() || "—"} />
-              <Info label="Contact" value={data.urgenceContact || "—"} />
-              <Info label="Résidence" value={data.urgenceResidence || "—"} />
-            </DetailSection>
-            <DetailSection title="Enregistrement">
-              <Info label="Agent" value={data.enregistrePar || "—"} />
-              <Info label="Date" value={formatDate(data.createdAt)} />
-            </DetailSection>
-          </div>
-          <BigThumbW src={data.photoPasseport} label="Photo passeport" />
-        </div>
-      </div>
-    </div>
-  );
-}
-function BigThumbW({ src, label }) {
-  return (
-    <div className="grid gap-2">
-      <div className="h-56 w-44 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 grid place-content-center">
-        {src ? <img src={src} alt={label} className="h-full w-full object-cover" /> : <span className="text-dyn-sm text-slate-500">Aperçu</span>}
-      </div>
-      <span className="text-dyn-xs text-slate-500">{label}</span>
-    </div>
-  );
-}
-function DetailSection({ title, children }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <div className="mb-2 text-dyn-xs font-extrabold uppercase tracking-wider text-blue-700">{title}</div>
-      <div className="grid gap-1.5">{children}</div>
-    </div>
-  );
-}
-function Info({ label, value }) {
-  return (
-    <div className="text-dyn-sm">
-      <span className="text-slate-500">{label} : </span>
-      <span className="text-slate-900">{value || "—"}</span>
-    </div>
-  );
+/* ===== Helpers ===== */
+function formatDate(d) {
+  if (!d) return "—";
+  const t = Date.parse(d);
+  return Number.isNaN(t) ? "—" : new Date(t).toLocaleDateString("fr-FR");
 }

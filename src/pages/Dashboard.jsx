@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /* =========================
    Données de démonstration
@@ -16,7 +16,7 @@ const SAMPLE = {
   revenusVsDepenses: [
     { mois: "Nov", revenus: 4_500_000, depenses: 3_000_000 },
     { mois: "Déc", revenus: 5_000_000, depenses: 4_200_000 },
-    { mois: "Jan", revenus: 0,         depenses: 0 },
+    { mois: "Jan", revenus: 0, depenses: 0 },
   ],
   statutPaiements: [
     { label: "Complets", value: 1, color: "#16a34a" },
@@ -37,24 +37,37 @@ export default function Dashboard({ data = SAMPLE }) {
     statutPaiements,
   } = data;
 
-  const solde = useMemo(() => (paiementsRecus || 0) - (depenses || 0), [paiementsRecus, depenses]);
+  const solde = useMemo(
+    () => (paiementsRecus || 0) - (depenses || 0),
+    [paiementsRecus, depenses]
+  );
+
   const tauxOcc = useMemo(() => {
-    const pct = Math.round(((occupation?.used || 0) / Math.max(1, occupation?.total || 0)) * 100);
+    const pct = Math.round(
+      ((occupation?.used || 0) / Math.max(1, occupation?.total || 0)) * 100
+    );
     return { pct, label: `${occupation?.used || 0}/${occupation?.total || 0}` };
   }, [occupation]);
 
-  const pieTotal = useMemo(() => statutPaiements.reduce((s, x) => s + x.value, 0), [statutPaiements]);
+  const pieTotal = useMemo(
+    () => statutPaiements.reduce((s, x) => s + x.value, 0),
+    [statutPaiements]
+  );
 
   return (
-    <div className="space-y-6 text-dyn">
-      {/* HEADER (clair) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
-        <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble de la gestion du Hajj 2025</p>
+    <div className="space-y-4 md:space-y-6 text-dyn">
+      {/* HEADER */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+        <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">
+          Tableau de bord
+        </h1>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Vue d’ensemble de la gestion du Hajj 2025
+        </p>
       </div>
 
       {/* LIGNE KPI PRINCIPALE */}
-      <section className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiTile
           title="Total Pèlerins"
           value={totalPelerins}
@@ -62,18 +75,8 @@ export default function Dashboard({ data = SAMPLE }) {
           icon="👥"
           tone="blue"
         />
-        <BigMoneyTile
-          title="Paiements Reçus"
-          amount={paiementsRecus}
-          icon="💲"
-          tone="indigo"
-        />
-        <BigMoneyTile
-          title="Dépenses"
-          amount={depenses}
-          icon="📈"
-          tone="rose"
-        />
+        <BigMoneyTile title="Paiements Reçus" amount={paiementsRecus} icon="💲" tone="indigo" />
+        <BigMoneyTile title="Dépenses" amount={depenses} icon="📈" tone="rose" />
         <KpiTile
           title="Solde"
           value={formatCFA(solde)}
@@ -84,19 +87,9 @@ export default function Dashboard({ data = SAMPLE }) {
       </section>
 
       {/* BANDE KPI SECONDAIRE */}
-      <section className="grid gap-4 lg:grid-cols-3">
-        <SoftTile
-          title="Paiements Complets"
-          value={paiementsComplets}
-          icon="✅"
-          tone="emerald"
-        />
-        <SoftTile
-          title="Paiements Partiels"
-          value={paiementsPartiels}
-          icon="⏲️"
-          tone="amber"
-        />
+      <section className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+        <SoftTile title="Paiements Complets" value={paiementsComplets} icon="✅" tone="emerald" />
+        <SoftTile title="Paiements Partiels" value={paiementsPartiels} icon="⏲️" tone="amber" />
         <SoftTile
           title="Occupation Chambres"
           value={tauxOcc.label}
@@ -107,7 +100,7 @@ export default function Dashboard({ data = SAMPLE }) {
       </section>
 
       {/* ZONE GRAPHIQUES */}
-      <section className="grid gap-4 xl:grid-cols-2">
+      <section className="grid gap-3 sm:gap-4 xl:grid-cols-2">
         <Card title="Revenus vs Dépenses">
           <BarChart
             data={revenusVsDepenses}
@@ -120,8 +113,10 @@ export default function Dashboard({ data = SAMPLE }) {
         </Card>
 
         <Card title="Statut des Paiements">
-          <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 items-center">
-            <PieChart data={statutPaiements} total={pieTotal} />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(160px,240px)_1fr] items-center">
+            <div className="w-full">
+              <PieChart data={statutPaiements} total={pieTotal} />
+            </div>
             <ul className="space-y-2">
               {statutPaiements.map((s) => (
                 <li key={s.label} className="flex items-center gap-2 text-dyn-sm">
@@ -146,7 +141,7 @@ export default function Dashboard({ data = SAMPLE }) {
   );
 }
 
-/* ================= UI BLOCKS (thème Medicale) ================= */
+/* ================= UI BLOCKS ================= */
 
 function Card({ title, children }) {
   return (
@@ -160,19 +155,22 @@ function Card({ title, children }) {
 }
 
 function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
-  const toneMap = {
-    blue:    { chip: "bg-blue-50 ring-blue-200",     num: "text-blue-700" },
-    indigo:  { chip: "bg-indigo-50 ring-indigo-200", num: "text-indigo-700" },
-    sky:     { chip: "bg-sky-50 ring-sky-200",       num: "text-sky-700" },
-    emerald: { chip: "bg-emerald-50 ring-emerald-200", num: "text-emerald-700" },
-    rose:    { chip: "bg-rose-50 ring-rose-200",     num: "text-rose-700" },
-  }[tone] || { chip: "bg-slate-50 ring-slate-200", num: "text-slate-700" };
+  const toneMap =
+    {
+      blue: { chip: "bg-blue-50 ring-blue-200", num: "text-blue-700" },
+      indigo: { chip: "bg-indigo-50 ring-indigo-200", num: "text-indigo-700" },
+      sky: { chip: "bg-sky-50 ring-sky-200", num: "text-sky-700" },
+      emerald: { chip: "bg-emerald-50 ring-emerald-200", num: "text-emerald-700" },
+      rose: { chip: "bg-rose-50 ring-rose-200", num: "text-rose-700" },
+    }[tone] || { chip: "bg-slate-50 ring-slate-200", num: "text-slate-700" };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">{title}</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">
+            {title}
+          </div>
           <div className={`mt-1 ${strong ? "text-3xl" : "text-2xl"} font-extrabold ${toneMap.num}`}>
             {value}
           </div>
@@ -187,17 +185,20 @@ function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
 }
 
 function BigMoneyTile({ title, amount, icon, tone = "indigo" }) {
-  const toneMap = {
-    indigo: { chip: "bg-indigo-50 ring-indigo-200" },
-    rose:   { chip: "bg-rose-50 ring-rose-200" },
-  }[tone] || { chip: "bg-slate-50 ring-slate-200" };
+  const toneMap =
+    {
+      indigo: { chip: "bg-indigo-50 ring-indigo-200" },
+      rose: { chip: "bg-rose-50 ring-rose-200" },
+    }[tone] || { chip: "bg-slate-50 ring-slate-200" };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wide text-slate-600">{title}</div>
-          <div className="mt-2 text-3xl font-extrabold text-slate-900">{formatCFA(amount)}</div>
+          <div className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
+            {formatCFA(amount)}
+          </div>
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}>
           <span className="text-lg">{icon}</span>
@@ -208,13 +209,14 @@ function BigMoneyTile({ title, amount, icon, tone = "indigo" }) {
 }
 
 function SoftTile({ title, value, icon, tone = "blue", right = null }) {
-  const toneMap = {
-    blue:    { box: "bg-blue-50 ring-blue-200",       txt: "text-blue-700" },
-    indigo:  { box: "bg-indigo-50 ring-indigo-200",   txt: "text-indigo-700" },
-    sky:     { box: "bg-sky-50 ring-sky-200",         txt: "text-sky-700" },
-    emerald: { box: "bg-emerald-50 ring-emerald-200", txt: "text-emerald-700" },
-    amber:   { box: "bg-amber-50 ring-amber-200",     txt: "text-amber-700" },
-  }[tone] || { box: "bg-slate-50 ring-slate-200", txt: "text-slate-700" };
+  const toneMap =
+    {
+      blue: { box: "bg-blue-50 ring-blue-200", txt: "text-blue-700" },
+      indigo: { box: "bg-indigo-50 ring-indigo-200", txt: "text-indigo-700" },
+      sky: { box: "bg-sky-50 ring-sky-200", txt: "text-sky-700" },
+      emerald: { box: "bg-emerald-50 ring-emerald-200", txt: "text-emerald-700" },
+      amber: { box: "bg-amber-50 ring-amber-200", txt: "text-amber-700" },
+    }[tone] || { box: "bg-slate-50 ring-slate-200", txt: "text-slate-700" };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -234,17 +236,18 @@ function SoftTile({ title, value, icon, tone = "blue", right = null }) {
   );
 }
 
-/* ---------- Progress (barre fine, thème bleu) ---------- */
+/* ---------- Progress ---------- */
 function Progress({ value = 0, tone = "blue" }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
-  const bar = {
-    blue: "bg-blue-600",
-    indigo: "bg-indigo-600",
-    sky: "bg-sky-600",
-    emerald: "bg-emerald-600",
-  }[tone] || "bg-blue-600";
+  const bar =
+    {
+      blue: "bg-blue-600",
+      indigo: "bg-indigo-600",
+      sky: "bg-sky-600",
+      emerald: "bg-emerald-600",
+    }[tone] || "bg-blue-600";
   return (
-    <div className="w-28">
+    <div className="w-24 sm:w-28">
       <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
         <div className={`h-2 ${bar}`} style={{ width: `${v}%` }} />
       </div>
@@ -253,10 +256,33 @@ function Progress({ value = 0, tone = "blue" }) {
   );
 }
 
-/* ---------- BarChart (SVG, sans lib) ---------- */
+/* ---------- Hook utilitaire pour taille conteneur ---------- */
+function useContainerSize() {
+  const ref = useRef(null);
+  const [w, setW] = useState(640);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        setW(Math.max(320, Math.floor(e.contentRect.width)));
+      }
+    });
+    ro.observe(el);
+    setW(Math.max(320, Math.floor(el.clientWidth)));
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
+/* ---------- BarChart (responsive, sans lib) ---------- */
 function BarChart({ data = [], maxY, series }) {
-  const padding = { t: 20, r: 16, b: 28, l: 60 };
-  const W = 680, H = 280;
+  const [wrapRef, width] = useContainerSize();
+  // ratio agréable pour mobiles et desktops
+  const W = width;
+  const H = Math.max(220, Math.round(W * 0.42));
+
+  const padding = { t: 20, r: 16, b: 28, l: 56 };
   const innerW = W - padding.l - padding.r;
   const innerH = H - padding.t - padding.b;
 
@@ -270,27 +296,46 @@ function BarChart({ data = [], maxY, series }) {
   const groupWidth = innerW / Math.max(1, data.length);
   const barWidth = (groupWidth * 0.6) / series.length;
 
-  const ticks = Array.from({ length: 6 }, (_, i) => Math.round((maxVal / 5) * i));
+  const ticks = Array.from({ length: 6 }, (_, i) =>
+    Math.round((maxVal / 5) * i)
+  );
 
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="min-w-[620px]">
-        {/* fond blanc / radios */}
+    <div ref={wrapRef} className="w-full">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        style={{ display: "block" }}
+      >
         <rect x="0" y="0" width={W} height={H} fill="#ffffff" rx="12" />
-        {/* grid horizontale */}
+        {/* Grille */}
         {ticks.map((t, i) => {
           const y = padding.t + yScale(t);
           return (
             <g key={i}>
-              <line x1={padding.l} x2={W - padding.r} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="4 4" />
-              <text x={padding.l - 8} y={y + 4} fontSize="10" textAnchor="end" fill="#64748b">
+              <line
+                x1={padding.l}
+                x2={W - padding.r}
+                y1={y}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={padding.l - 8}
+                y={y + 4}
+                fontSize="10"
+                textAnchor="end"
+                fill="#64748b"
+              >
                 {formatCompact(t)}
               </text>
             </g>
           );
         })}
 
-        {/* barres */}
+        {/* Barres */}
         {data.map((d, i) => {
           const x0 = padding.l + groupWidth * i + groupWidth * 0.2;
           return (
@@ -305,7 +350,7 @@ function BarChart({ data = [], maxY, series }) {
                     key={s.key}
                     x={x}
                     y={y}
-                    width={barWidth - 2}
+                    width={Math.max(1, barWidth - 2)}
                     height={h}
                     rx="6"
                     fill={s.color}
@@ -313,7 +358,7 @@ function BarChart({ data = [], maxY, series }) {
                   />
                 );
               })}
-              {/* label X */}
+              {/* Label X */}
               <text
                 x={padding.l + groupWidth * i + groupWidth / 2}
                 y={H - 8}
@@ -327,10 +372,15 @@ function BarChart({ data = [], maxY, series }) {
           );
         })}
       </svg>
-      <div className="mt-2 flex gap-4 text-dyn-sm">
+
+      {/* Légende */}
+      <div className="mt-2 flex flex-wrap gap-3 text-dyn-sm">
         {series.map((s) => (
           <div key={s.key} className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ background: s.color }} />
+            <span
+              className="inline-block h-3 w-3 rounded-sm"
+              style={{ background: s.color }}
+            />
             <span className="text-slate-700">{s.label}</span>
           </div>
         ))}
@@ -339,12 +389,31 @@ function BarChart({ data = [], maxY, series }) {
   );
 }
 
-/* ---------- PieChart (SVG, sans lib) ---------- */
-function PieChart({ data = [], total = 0, size = 220 }) {
-  const r = size / 2;
-  const cx = r, cy = r;
+/* ---------- PieChart (responsive, sans lib) ---------- */
+function PieChart({ data = [], total = 0 }) {
+  // conteneur carré responsive
+  const ref = useRef(null);
+  const [size, setSize] = useState(220);
 
-  let angle = -Math.PI / 2; // démarrer en haut
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const w = e.contentRect.width;
+        setSize(Math.max(160, Math.min(280, Math.round(w))));
+      }
+    });
+    ro.observe(el);
+    setSize(Math.max(160, Math.min(280, Math.round(el.clientWidth))));
+    return () => ro.disconnect();
+  }, []);
+
+  const r = size / 2;
+  const cx = r,
+    cy = r;
+
+  let angle = -Math.PI / 2;
   const arcs = data.map((d) => {
     const ratio = total ? d.value / total : 0;
     const a2 = angle + ratio * Math.PI * 2;
@@ -354,14 +423,14 @@ function PieChart({ data = [], total = 0, size = 220 }) {
   });
 
   return (
-    <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r - 10} fill="#f8fafc" />
-      {arcs.map((a) => (
-        <g key={a.label}>
-          <path d={a.path} fill={a.color} />
-        </g>
-      ))}
-    </svg>
+    <div ref={ref} className="w-full" style={{ aspectRatio: "1/1" }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="100%">
+        <circle cx={cx} cy={cy} r={r - 10} fill="#f8fafc" />
+        {arcs.map((a) => (
+          <path key={a.label} d={a.path} fill={a.color} />
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -382,16 +451,15 @@ function formatCompact(n) {
   return String(n);
 }
 function guessNiceMax(rows) {
-  const m = Math.max(
-    1,
-    ...rows.map((r) => Math.max(r.revenus || 0, r.depenses || 0))
-  );
+  const m = Math.max(1, ...rows.map((r) => Math.max(r.revenus || 0, r.depenses || 0)));
   const step = 500_000;
   return Math.ceil(m / step) * step;
 }
 function arcPath(cx, cy, r, a1, a2) {
-  const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-  const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+  const x1 = cx + r * Math.cos(a1),
+    y1 = cy + r * Math.sin(a1);
+  const x2 = cx + r * Math.cos(a2),
+    y2 = cy + r * Math.sin(a2);
   const large = a2 - a1 > Math.PI ? 1 : 0;
   return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
 }

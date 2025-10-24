@@ -1,6 +1,27 @@
 // src/pages/pelerins/AjouterPelerin.jsx
 import React, { useMemo, useState } from "react";
 
+/* ========= Config API ========= */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
+
+/* ========= Récup user (sans imposer le token) ========= */
+const USER_KEYS = ["bmvt_user", "bmvt_me", "user"]; // on couvre plusieurs clés possibles
+function getUserFromStorage() {
+  for (const k of USER_KEYS) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const u = JSON.parse(raw);
+      if (u && (u.name || u.email || u.id)) return u;
+    } catch {}
+  }
+  return null;
+}
+
 /* --------- État initial --------- */
 const initial = {
   photoPelerin: null,
@@ -26,6 +47,7 @@ export default function AjouterPelerin() {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState(null); // {text,type}
 
   const years = useMemo(() => {
     const y0 = new Date().getFullYear();
@@ -44,6 +66,13 @@ export default function AjouterPelerin() {
     return file ? URL.createObjectURL(file) : "";
   }
 
+  // petite aide si ton back préfère l’ISO pour la date
+  function normalizeDateStr(s) {
+    if (!s) return "";
+    // input type="date" renvoie YYYY-MM-DD -> c’est déjà parfait.
+    return s;
+  }
+
   function validate(v) {
     const e = {};
     if (!v.nom.trim()) e.nom = "Obligatoire";
@@ -59,6 +88,12 @@ export default function AjouterPelerin() {
     setForm(initial);
     setErrors({});
   }
+  function toast(text, type = "success") {
+    setNotice({ text, type });
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => setNotice(null), 2500);
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     const eee = validate(form);
@@ -67,24 +102,74 @@ export default function AjouterPelerin() {
 
     try {
       setSaving(true);
+
+      // ---- Construction du FormData (ne pas fixer Content-Type) ----
       const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v ?? ""));
-      // await axios.post("/api/pelerins", fd);
-      alert("Pèlerin enregistré (démo)");
+
+      // Champs attendus par le backend /api/pelerins (multipart)
+      // → les noms de champs correspondent exactement à ceux de ton formulaire
+      fd.append("nom", form.nom ?? "");
+      fd.append("prenoms", form.prenoms ?? "");
+      fd.append("dateNaissance", normalizeDateStr(form.dateNaissance));
+      fd.append("lieuNaissance", form.lieuNaissance ?? "");
+      fd.append("sexe", form.sexe ?? "");
+      fd.append("adresse", form.adresse ?? "");
+      fd.append("contact", form.contact ?? "");
+      fd.append("numPasseport", form.numPasseport ?? "");
+      fd.append("offre", form.offre ?? "");
+      fd.append("voyage", form.voyage ?? "");
+      fd.append("anneeVoyage", form.anneeVoyage ?? "");
+      fd.append("urNom", form.urNom ?? "");
+      fd.append("urPrenoms", form.urPrenoms ?? "");
+      fd.append("urContact", form.urContact ?? "");
+      fd.append("urResidence", form.urResidence ?? "");
+
+      // Fichiers — les clés doivent matcher celles que ton back attend dans multer.fields([...])
+      if (form.photoPelerin)  fd.append("photoPelerin", form.photoPelerin);
+      if (form.photoPasseport) fd.append("photoPasseport", form.photoPasseport);
+
+      // Infos utilisateur connecté (sans middleware, juste incluses dans le payload)
+      const me = getUserFromStorage();
+      if (me) {
+        // couvre plusieurs convention côté back
+        fd.append("createdByName", me.name || me.email || "");
+        fd.append("createdBy", me.name || me.email || "");      // alt
+        if (me.id != null) fd.append("createdById", String(me.id));
+      } else {
+        fd.append("createdByName", "Anonyme");
+      }
+
+      // ---- Appel API (AUCUN header 'Content-Type' et PAS d'Authorization) ----
+      const res = await fetch(`${API_BASE}/api/pelerins`, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const err = await res.json();
+          msg = err?.message || err?.error || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      // Si le backend renvoie l’objet créé, tu peux le récupérer :
+      // const { ok, item } = await res.json();
+
+      toast("Pèlerin enregistré avec succès ✅", "success");
       reset();
     } catch (err) {
-      console.error(err);
-      alert("Erreur d’enregistrement");
+      console.error("[AjouterPelerin] save error:", err);
+      toast(`Erreur d’enregistrement: ${err.message || "Échec."}`, "error");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="mx-auto max-w-6xl space-y-6 text-dyn"
-    >
+    <form onSubmit={onSubmit} className="mx-auto max-w-6xl space-y-6 text-dyn">
       {/* ===== En-tête / ruban ===== */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400" />
@@ -316,6 +401,18 @@ export default function AjouterPelerin() {
           {saving ? "Enregistrement..." : "Enregistrer"}
         </button>
       </div>
+
+      {/* TOAST simple */}
+      {notice && (
+        <div
+          className={
+            "fixed bottom-4 right-4 z-50 max-w-[90vw] sm:max-w-xs rounded-xl px-4 py-3 text-dyn-sm shadow-lg text-white " +
+            (notice.type === "error" ? "bg-rose-600" : "bg-emerald-600")
+          }
+        >
+          {notice.text}
+        </div>
+      )}
     </form>
   );
 }
@@ -363,8 +460,7 @@ function Field({ label, error, children, className = "" }) {
   return (
     <label className={`grid gap-1 ${className}`}>
       <span className="text-dyn-xs font-extrabold tracking-wide text-slate-700">
-        {label}{" "}
-        {error && <span className="font-normal text-rose-600">• {error}</span>}
+        {label} {error && <span className="font-normal text-rose-600">• {error}</span>}
       </span>
       {children}
     </label>

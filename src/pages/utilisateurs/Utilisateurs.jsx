@@ -26,14 +26,14 @@ export default function Utilisateurs() {
           desc="Voir, rechercher et gérer les comptes existants."
           cta="Ouvrir la liste"
         />
-        <TileLink
+        {/* <TileLink
           to="historique"
           icon={Clock}
           accent="indigo"
           title="Historique de connexion"
           desc="Suivre les connexions, dates, IP et statuts."
           cta="Consulter l’historique"
-        />
+        /> */}
         <TileLink
           to="inscription"
           icon={UserPlus}

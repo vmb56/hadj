@@ -1,10 +1,11 @@
-// src/pages/utilisateurs/InscriptionUtilisateur.jsx
+// src/pages/auth/Register.jsx
 import React, { useState } from "react";
 import { Eye, EyeOff, UserPlus, CheckCircle2, Mail, Lock, User } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { registerUser, saveSession } from "../services/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerUser } from "../../../services/auth";
 
-/* mini-toasts (identique au Register.jsx) */
+/* mini-toasts */
 function useToasts() {
   const [toasts, set] = useState([]);
   const push = (t) => {
@@ -30,14 +31,15 @@ function useToasts() {
   return { push, Toasts: Node };
 }
 
-export default function InscriptionUtilisateur() {
+export default function RegisterPage() {
   const { push, Toasts } = useToasts();
+  const nav = useNavigate();
 
   const [form, setForm] = useState({
-    nom: "",
+    name: "",
     email: "",
     role: "Agent",
-    password: "",
+    pwd: "",
     confirm: "",
   });
   const [showPwd, setShowPwd] = useState(false);
@@ -49,10 +51,10 @@ export default function InscriptionUtilisateur() {
   const [userName, setUserName] = useState("");
 
   const canSubmit =
-    form.nom.trim() &&
+    form.name.trim() &&
     /\S+@\S+\.\S+/.test(form.email) &&
-    form.password.length >= 6 &&
-    form.password === form.confirm;
+    form.pwd.length >= 6 &&
+    form.pwd === form.confirm;
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -64,35 +66,38 @@ export default function InscriptionUtilisateur() {
     }
     setLoading(true);
     try {
-      // Création d’un utilisateur (ADMIN crée un compte pour quelqu’un d’autre)
-      await registerUser({
-        name: form.nom.trim(),
+      // Attendu API: { user, token }
+      const data = await registerUser({
+        name: form.name.trim(),
         email: form.email.trim(),
         role: form.role,
-        password: form.password,
+        password: form.pwd,
       });
 
-      setUserName(form.nom.trim() || form.email.trim());
-      push({ title: `Utilisateur créé`, desc: `Compte de ${form.nom || form.email} créé avec succès.` });
+      saveSession({ token: data?.token, user: data?.user });
 
+      const name = data?.user?.name || form.name || data?.user?.email || form.email;
+      setUserName(name);
+
+      // toast + overlay succès
+      push({ title: `Bienvenue, ${name} !`, desc: "Votre compte a été créé avec succès." });
       setOk(true);
+
       setTimeout(() => {
-        setOk(false);
-        // on ré-initialise le formulaire et on reste sur la page
-        setForm({ nom: "", email: "", role: "Agent", password: "", confirm: "" });
+        nav("/tableau-de-bord", { replace: true });
       }, 1100);
     } catch (err) {
-      push({ tone: "error", title: "Échec de création", desc: err.message || "Réessaie plus tard." });
+      push({ tone: "error", title: "Échec d’inscription", desc: err.message || "Réessaie plus tard." });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-70px)] overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden">
       <Toasts />
 
-      {/* === FOND ANIMÉ (comme Register.jsx) === */}
+      {/* === FOND ANIMÉ === */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-[#dbeafe] via-white to-[#c7d2fe]" />
         <div className="absolute -top-24 -left-24 h-[28rem] w-[28rem] rounded-full bg-blue-400/25 blur-[70px] animate-float-slow" />
@@ -101,12 +106,12 @@ export default function InscriptionUtilisateur() {
       </div>
 
       {/* === CONTENU CENTRÉ === */}
-      <div className="grid place-items-center px-4 py-10">
+      <div className="grid min-h-screen place-items-center px-4">
         <motion.div
           initial={{ opacity: 0, y: 22, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
-          className="relative w-full max-w-[820px]"
+          className="relative w-full max-w-[720px]"
         >
           {/* Glow / bordure animée */}
           <div className="pointer-events-none absolute -inset-[2px] rounded-[28px] bg-gradient-to-r from-blue-500 to-indigo-500 opacity-60 blur-md" />
@@ -121,11 +126,9 @@ export default function InscriptionUtilisateur() {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-                  Inscription utilisateur
+                  Créer un compte
                 </h1>
-                <p className="text-slate-600 text-sm">
-                  Créer un compte et définir son rôle.
-                </p>
+                <p className="text-slate-600 text-sm">Rejoins l’espace BMVT en quelques secondes</p>
               </div>
             </div>
 
@@ -142,8 +145,8 @@ export default function InscriptionUtilisateur() {
                     <input
                       className="input pl-10"
                       placeholder="Nom & prénom"
-                      value={form.nom}
-                      onChange={(e) => update("nom", e.target.value)}
+                      value={form.name}
+                      onChange={(e) => update("name", e.target.value)}
                       required
                     />
                     <span className="pointer-events-none absolute inset-0 rounded-xl ring-0 ring-blue-200 opacity-0 group-focus-within:animate-pulse-ring" />
@@ -211,7 +214,7 @@ export default function InscriptionUtilisateur() {
                   </div>
                 </label>
 
-                {/* Mot de passe */}
+                {/* Mot de passe (ligne suivante) */}
                 <label className="grid gap-1 md:col-start-1">
                   <span className="text-sm font-medium text-slate-700">Mot de passe</span>
                   <div className="relative group">
@@ -222,8 +225,8 @@ export default function InscriptionUtilisateur() {
                       type={showPwd ? "text" : "password"}
                       className="input pl-10 pr-12"
                       placeholder="Au moins 6 caractères"
-                      value={form.password}
-                      onChange={(e) => update("password", e.target.value)}
+                      value={form.pwd}
+                      onChange={(e) => update("pwd", e.target.value)}
                       minLength={6}
                       required
                     />
@@ -254,8 +257,15 @@ export default function InscriptionUtilisateur() {
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)] animate-shimmer" />
                 <UserPlus className="h-4 w-4" />
-                {loading ? "Création..." : "Créer l’utilisateur"}
+                {loading ? "Création..." : "Créer mon compte"}
               </motion.button>
+
+              <div className="text-sm text-slate-600 text-center">
+                Déjà inscrit ?{" "}
+                <Link to="/login" className="text-blue-700 font-semibold hover:underline">
+                  Se connecter
+                </Link>
+              </div>
             </form>
           </div>
         </motion.div>
@@ -278,15 +288,15 @@ export default function InscriptionUtilisateur() {
             >
               <CheckCircle2 className="h-20 w-20 text-emerald-600" />
               <div className="text-3xl font-extrabold text-slate-900 text-center">
-                Utilisateur ajouté
+                Bienvenue, {userName?.split(" ")[0] || "!"}
               </div>
-              <div className="text-slate-600">Bienvenue, {userName?.split(" ")[0] || "!"}</div>
+              <div className="text-slate-600">Compte créé avec succès</div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Styles utilitaires (copiés de Register.jsx) */}
+      {/* Styles utilitaires */}
       <style>{`
         @keyframes float-slow   { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-14px) scale(1.02)} }
         @keyframes float-slower { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(16px)  scale(1.03)} }

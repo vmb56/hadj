@@ -1,5 +1,5 @@
-// src/layouts/MainLayout.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import LogoutButton from "../components/LogoutButton.jsx";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
@@ -18,21 +18,26 @@ import {
   ChevronRight,
   Bell,
   LayoutDashboard,
-  Search,
+  Sun,
+  Moon,
 } from "lucide-react";
+import useAuthUser from "../hooks/useAuthUser";
 
-/** ==== Thème : Bleu profond & gris doux ====
- * - Sidebar : gradient bleu foncé + effet verre
- * - Contenu : gris clair (slate-100) — moins clair que blanc
- * - Typo dynamique : base 16px + contrôle A−/A+
- */
-const APP_GRADIENT = "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
+/** Thème clair par défaut (valeurs de base) */
+const APP_GRADIENT_LIGHT = "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
+const CONTENT_BG_LIGHT = "bg-slate-100";
+
+/** Thème sombre */
+const APP_GRADIENT_DARK = "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-700";
+const CONTENT_BG_DARK = "bg-slate-900";
+
+/** Chrome latéral (verre) — identique dans les deux thèmes */
 const SIDEBAR_CHROME =
   "backdrop-blur-md border-r border-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]";
-const CONTENT_BG = "bg-slate-100";
 
+/** Liens de la sidebar */
 const linkBase =
-  "group relative flex items-center gap-3 rounded-xl px-3 py-2 font-semibold outline-none transition-all";
+  "group relative flex items-center gap-3 rounded-xl px-3 py-2 font-semibold outline-none transition-all duration-200 will-change-transform";
 const linkIdle =
   "text-white/90 hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40";
 const linkActive =
@@ -46,22 +51,28 @@ function ActiveAccent() {
 }
 
 export default function MainLayout() {
+  const authUser = useAuthUser(); // utilisateur connecté ou null
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { pathname } = useLocation();
 
-  /** ====== Taille de police dynamique (A− / A+) ======
-   * fontStep ∈ [-2 … 3]  → base = 16 + 2*step  → 12px à 22px
-   * Persistée en localStorage
-   */
-  const [fontStep, setFontStep] = useState(() => {
-    const v = Number(localStorage.getItem("app_font_step") || "0");
-    return Math.max(-2, Math.min(3, v));
+  /** ====== Thème clair/sombre (persisté) ====== */
+  const [theme, setTheme] = useState(() => {
+    const v = localStorage.getItem("app_theme") || "light";
+    return v === "dark" ? "dark" : "light";
   });
   useEffect(() => {
-    localStorage.setItem("app_font_step", String(fontStep));
-  }, [fontStep]);
-  const baseFont = 16 + fontStep * 2; // px
+    localStorage.setItem("app_theme", theme);
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("app-dark");
+    else root.classList.remove("app-dark");
+  }, [theme]);
+  const isDark = theme === "dark";
+  const APP_GRADIENT = isDark ? APP_GRADIENT_DARK : APP_GRADIENT_LIGHT;
+  const CONTENT_BG = isDark ? CONTENT_BG_DARK : CONTENT_BG_LIGHT;
+
+  /** ====== Taille de police (fixe) ====== */
+  const baseFont = 16; // px
 
   useEffect(() => setMobileOpen(false), [pathname]);
   useEffect(() => {
@@ -80,14 +91,59 @@ export default function MainLayout() {
       .join(" ");
   }, [pathname]);
 
+  /** ====== Notifications (mock) ====== */
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: "n1", title: "Nouveau pèlerin ajouté", ts: "Il y a 5 min", read: false },
+    { id: "n2", title: "Paiement partiel enregistré", ts: "Hier", read: false },
+    { id: "n3", title: "Export vols généré", ts: "Lun 10:43", read: true },
+  ]);
+  const unread = notifications.filter((n) => !n.read).length;
+  const notifRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!notifRef.current) return;
+      if (!notifRef.current.contains(e.target)) setNotifOpen(false);
+    }
+    if (notifOpen) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [notifOpen]);
+
+  function markAllRead() {
+    setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
+  }
+
+  /** ====== Permissions par rôle ====== */
+  const role = (authUser?.role || "").toLowerCase(); // "admin" | "agent" | "superviseur" | ...
+  const isAdmin = role === "admin";
+  const isAgent = role === "agent";
+  const isSuperviseur = role === "superviseur";
+
+  // keys: "dashboard", "comptes"
+  function canSee(key) {
+    if (isAdmin) return true;
+    if (isAgent) {
+      if (key === "dashboard") return false;
+      if (key === "comptes") return false;
+      return true;
+    }
+    if (isSuperviseur) {
+      if (key === "comptes") return false;
+      return true;
+    }
+    // rôle inconnu -> par défaut on autorise tout sauf "comptes"
+    if (key === "comptes") return false;
+    return true;
+  }
+
   return (
     <div
       className={`w-full ${CONTENT_BG}`}
       style={{ minHeight: "100vh", ["--app-fs"]: `${baseFont}px` }}
     >
-      {/* Variables & utilitaires pour la taille dynamique */}
+      {/* Variables & utilitaires */}
       <style>{`
-        /* Classes dynamiques basées sur --app-fs */
         .text-dyn        { font-size: var(--app-fs); line-height: 1.6; }
         .text-dyn-sm     { font-size: calc(var(--app-fs) - 2px); line-height: 1.5; }
         .text-dyn-xs     { font-size: calc(var(--app-fs) - 3px); line-height: 1.45; }
@@ -97,10 +153,27 @@ export default function MainLayout() {
         .icon-dyn        { width: calc(var(--app-fs) + 4px); height: calc(var(--app-fs) + 4px); }
         .icon-dyn-sm     { width: calc(var(--app-fs) + 2px); height: calc(var(--app-fs) + 2px); }
 
-        /* Boutons A− / A+ */
-        .btn-chips {
-          @apply rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 hover:bg-slate-50;
+        .btn-chips { 
+          @apply rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 
+                 transition-all duration-200 hover:bg-slate-50 hover:-translate-y-0.5 
+                 active:translate-y-0 active:scale-[.98];
         }
+
+        .app-dark .text-topbar { color: #e5e7eb; }
+        .app-dark .panel-card { @apply bg-slate-800 border-slate-700 text-slate-100; }
+        .app-dark .panel-border { @apply border-slate-700; }
+
+        @keyframes shine {
+          0% { transform: translateX(-120%); }
+          100% { transform: translateX(120%); }
+        }
+        .shine-on-hover { position: relative; overflow: hidden; }
+        .shine-on-hover::after {
+          content:""; position:absolute; inset:-2px; width:40%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+          transform: translateX(-120%);
+        }
+        .shine-on-hover:hover::after { animation: shine .9s ease; }
       `}</style>
 
       {/* ==== Sidebar ==== */}
@@ -115,18 +188,16 @@ export default function MainLayout() {
         {/* Logo + bouton collapse */}
         <div className="relative px-4 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-white/15 flex items-center justify-center ring-1 ring-white/20">
+            <div className="h-9 w-9 rounded-xl bg-white/15 flex items-center justify-center ring-1 ring-white/20 transition-transform duration-200 hover:rotate-3 hover:scale-105">
               <LayoutGrid className="text-white icon-dyn-sm" />
             </div>
             {!collapsed && (
-              <div className="text-white drop-shadow-sm text-dyn-brand">
-                BMVT HADJ & OUMRA
-              </div>
+              <div className="text-white drop-shadow-sm text-dyn-brand">BMVT HADJ & OUMRA</div>
             )}
           </div>
           <button
             onClick={() => setCollapsed((v) => !v)}
-            className="rounded-md border border-white/20 p-1.5 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            className="rounded-md border border-white/20 p-1.5 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
             title={collapsed ? "Étendre" : "Réduire"}
           >
             {collapsed ? (
@@ -139,17 +210,16 @@ export default function MainLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
-          <Section title="Tableau de bord" collapsed={collapsed}>
-            <Item to="/tableau-de-bord" icon  ={LayoutDashboard} label="Tableau de bord" collapsed={collapsed}/>
-          </Section>
+          {canSee("dashboard") && (
+            <Section title="Tableau de bord" collapsed={collapsed}>
+              <Item to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" collapsed={collapsed} />
+            </Section>
+          )}
 
-          
           <Section title="Pèlerins" collapsed={collapsed}>
             <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
             <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />
             <Item to="/stats-pelerins" icon={BarChart3} label="Statistiques" collapsed={collapsed} />
-             
-
           </Section>
 
           <Section title="Médicale" collapsed={collapsed}>
@@ -162,11 +232,14 @@ export default function MainLayout() {
           </Section>
 
           <Section title="Voyage" collapsed={collapsed}>
+            <Item to="/voyages" icon={Plane} label="Voyages" collapsed={collapsed} />
             <Item to="/voyage" icon={Plane} label="Vols & Chambres" collapsed={collapsed} />
           </Section>
 
           <Section title="Utilisateurs" collapsed={collapsed}>
-            <Item to="/utilisateurs" icon={UserCircle2} label="Comptes" collapsed={collapsed} />
+            {canSee("comptes") && (
+              <Item to="/utilisateurs" icon={UserCircle2} label="Comptes" collapsed={collapsed} />
+            )}
             <Item to="/settings" icon={Settings} label="Paramètres" collapsed={collapsed} />
           </Section>
 
@@ -175,106 +248,159 @@ export default function MainLayout() {
           </Section>
         </nav>
 
-        {/* Pied sidebar */}
-        <div className="border-t border-white/10 px-3 py-3">
-          <div className="flex items-center gap-3">
-            <img
-              src={"https://api.dicebear.com/7.x/initials/svg?seed=BMVT&backgroundType=gradientLinear"}
-              alt="Org"
-              className="h-9 w-9 rounded-full ring-2 ring-white/30 object-cover"
-            />
-            {!collapsed && (
-              <div>
-                <div className="text-white/95 text-dyn-sm font-semibold">
-                  Espace BMVT
-                </div>
-                <div className="text-white/70 text-dyn-xs">v1.0 • stable</div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* pied de sidebar supprimé */}
       </aside>
 
       {/* ==== Contenu principal ==== */}
       <div className={`min-w-0 ${sbWidthClass} flex flex-col`}>
         {/* Topbar */}
-        <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <header
+          className={`sticky top-0 z-30 border-b ${
+            isDark ? "border-slate-800 bg-slate-900/80" : "border-slate-200/60 bg-white/70"
+          } backdrop-blur supports-[backdrop-filter]:bg-white/60`}
+        >
           <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 h-[70px] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="rounded-lg p-2 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-300 md:hidden"
+                className="rounded-lg p-2 hover:bg-blue-50/30 focus-visible:ring-2 focus-visible:ring-blue-300 md:hidden transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
               >
-                <Menu className="text-blue-700 icon-dyn" />
+                <Menu className={`${isDark ? "text-slate-100" : "text-blue-700"} icon-dyn`} />
               </button>
-              <div className="text-slate-800 hidden md:block text-dyn-title">
+              <div
+                className={`hidden md:block text-dyn-title ${
+                  isDark ? "text-slate-100" : "text-slate-800"
+                } text-topbar`}
+              >
                 {pageTitle}
               </div>
             </div>
 
-            {/* Recherche */}
-            <div className="hidden md:flex items-center w-[460px]">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 icon-dyn-sm" />
-                <input
-                  type="search"
-                  placeholder="Rechercher…"
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-3 py-2.5 text-dyn outline-none ring-2 ring-transparent focus:ring-blue-300 placeholder:text-slate-400"
-                />
-              </div>
-            </div>
-
-            {/* Actions (incl. A− / A+) */}
+            {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* Bouton thème */}
               <button
-                className="btn-chips"
-                onClick={() => setFontStep((s) => Math.max(-2, s - 1))}
-                title="Réduire la taille du texte"
+                className="btn-chips shine-on-hover"
+                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                title={isDark ? "Passer en thème clair" : "Passer en thème sombre"}
               >
-                <span className="text-dyn-sm">A−</span>
-              </button>
-              <button
-                className="btn-chips"
-                onClick={() => setFontStep((s) => Math.min(3, s + 1))}
-                title="Augmenter la taille du texte"
-              >
-                <span className="text-dyn-sm">A+</span>
+                {isDark ? <Sun className="icon-dyn-sm" /> : <Moon className="icon-dyn-sm" />}
               </button>
 
-              <div className="h-8 w-[1px] bg-slate-200 mx-1" />
+              {/* Déconnexion (desktop) */}
+              <LogoutButton
+                className={`hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-1.5 font-semibold 
+                            transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.98] ring-1
+                            ${
+                              isDark
+                                ? "bg-rose-600/90 text-white ring-rose-500 hover:bg-rose-600"
+                                : "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100"
+                            }`}
+              />
 
-              <button className="btn-chips" title="Notifications">
-                <Bell className="icon-dyn-sm" />
-              </button>
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5">
-                <img
-                  src={"https://api.dicebear.com/7.x/initials/svg?seed=Valy%20Bamba&backgroundType=gradientLinear"}
-                  alt="Valy Bamba"
-                  className="rounded-full ring-1 ring-slate-200 object-cover"
-                  style={{ width: `calc(var(--app-fs) + 10px)`, height: `calc(var(--app-fs) + 10px)` }}
-                />
-                <div className="hidden sm:block">
-                  <div className="text-slate-800 font-semibold text-dyn-sm">Valy Bamba</div>
-                  <div className="text-slate-500 text-dyn-xs">Administrateur</div>
-                </div>
+              <div className={`h-8 w-[1px] ${isDark ? "bg-slate-700" : "bg-slate-200"} mx-1`} />
+
+              {/* Notifications */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  className="btn-chips shine-on-hover relative pr-3"
+                  onClick={() => setNotifOpen((v) => !v)}
+                  title="Notifications"
+                >
+                  <Bell className="icon-dyn-sm transition-transform duration-200" />
+                  {unread > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-white">
+                      {unread}
+                    </span>
+                  )}
+                </button>
+
+                {/* Panneau notifications */}
+                {notifOpen && (
+                  <div
+                    className={`absolute right-0 mt-2 w-80 rounded-2xl border p-3 shadow-xl panel-card ${
+                      isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="font-bold">Notifications</div>
+                      {unread > 0 && (
+                        <button onClick={markAllRead} className="text-dyn-xs text-blue-600 hover:underline">
+                          Tout marquer comme lu
+                        </button>
+                      )}
+                    </div>
+                    <ul className="max-h-80 overflow-auto space-y-2">
+                      {notifications.map((n) => (
+                        <li
+                          key={n.id}
+                          className={`rounded-xl border p-2.5 ${
+                            isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}>
+                                {n.title}
+                              </div>
+                              <div className="text-dyn-xs text-slate-500">{n.ts}</div>
+                            </div>
+                            {!n.read && <span className="mt-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-rose-600" />}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    {notifications.length === 0 && (
+                      <div className="text-center text-slate-500 text-dyn-sm py-4">Aucune notification</div>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Profil rapide — DYNAMIQUE */}
+              {(() => {
+                const fullName =
+                  authUser?.name?.trim() || authUser?.email?.split("@")[0] || "Compte";
+                const roleLabel = authUser?.role || "—";
+                const seed = encodeURIComponent(fullName);
+                const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
+                return (
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border ${
+                      isDark ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"
+                    } px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+                    title={authUser?.email || ""}
+                  >
+                    <img
+                      src={avatar}
+                      alt={fullName}
+                      className="rounded-full ring-1 ring-slate-200 object-cover transition-transform duration-200 hover:scale-105"
+                      style={{ width: `calc(var(--app-fs) + 10px)`, height: `calc(var(--app-fs) + 10px)` }}
+                    />
+                    <div className="hidden sm:block">
+                      <div className={`${isDark ? "text-slate-100" : "text-slate-800"} font-semibold text-dyn-sm`}>
+                        {fullName}
+                      </div>
+                      <div className="text-slate-500 text-dyn-xs">{roleLabel}</div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </header>
 
         {/* Drawer Mobile */}
         <div
-          className={[
-            "fixed inset-0 z-50 md:hidden pointer-events-none",
-            mobileOpen ? "pointer-events-auto" : "",
-          ].join(" ")}
+          className={["fixed inset-0 z-50 md:hidden pointer-events-none", mobileOpen ? "pointer-events-auto" : ""].join(
+            " "
+          )}
           aria-hidden={!mobileOpen}
         >
           <div
-            className={[
-              "absolute inset-0 bg-black/50 transition-opacity duration-300",
-              mobileOpen ? "opacity-100" : "opacity-0",
-            ].join(" ")}
+            className={["absolute inset-0 bg-black/50 transition-opacity duration-300", mobileOpen ? "opacity-100" : "opacity-0"].join(
+              " "
+            )}
             onClick={() => setMobileOpen(false)}
           />
           <aside
@@ -296,7 +422,7 @@ export default function MainLayout() {
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-2 hover:bg-white/10"
+                className="rounded-lg p-2 hover:bg-white/10 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
                 aria-label="Fermer le menu"
               >
                 <X className="text-white icon-dyn-sm" />
@@ -304,9 +430,15 @@ export default function MainLayout() {
             </div>
 
             <nav className="p-3 space-y-5 overflow-y-auto h-[calc(100%-56px)]">
+              {canSee("dashboard") && (
+                <MobileGroup title="Tableau de bord">
+                  <MobileItem to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" />
+                </MobileGroup>
+              )}
+
               <MobileGroup title="Pèlerins">
                 <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
-                <MobileItem to="/impression-pelerins" icon={Printer} label="Impression fiche" />
+                <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
                 <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
               </MobileGroup>
               <MobileGroup title="Médicale">
@@ -318,21 +450,35 @@ export default function MainLayout() {
               </MobileGroup>
               <MobileGroup title="Voyage">
                 <MobileItem to="/voyage" icon={Plane} label="Vols & Chambres" />
+                <MobileItem to="/voyages" icon={Plane} label="Voyages" />
               </MobileGroup>
               <MobileGroup title="Utilisateurs">
-                <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />
+                {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
                 <MobileItem to="/settings" icon={Settings} label="Paramètres" />
               </MobileGroup>
               <MobileGroup title="Impressions">
                 <MobileItem to="/impressions-passeports" icon={Printer} label="Photos / Passeport" />
               </MobileGroup>
+
+              {/* Déconnexion (mobile) */}
+              <div className="pt-2">
+                <LogoutButton
+                  className={`w-full inline-flex items-center gap-2 rounded-xl px-3 py-2.5 font-semibold 
+                              transition-all duration-200 hover:translate-x-1 ring-1
+                              ${
+                                isDark
+                                  ? "bg-rose-600/90 text-white ring-rose-500 hover:bg-rose-600"
+                                  : "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100"
+                              }`}
+                />
+              </div>
             </nav>
           </aside>
         </div>
 
-        {/* Zone pages (tout le contenu hérite de --app-fs) */}
+        {/* Zone pages */}
         <main className="min-w-0 h-[calc(100vh-70px)] overflow-y-auto">
-          <div className="mx-auto max-w-[1400px] p-5 md:p-7 lg:p-9 text-slate-900 text-dyn">
+          <div className={`mx-auto max-w-[1400px] p-5 md:p-7 lg:p-9 text-dyn ${isDark ? "text-slate-100" : "text-slate-900"}`}>
             <Outlet />
           </div>
         </main>
@@ -363,14 +509,15 @@ function Item({ to, icon: Icon, label, collapsed }) {
         [
           linkBase,
           isActive ? "active " + linkActive : linkIdle,
+          "hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-8px_rgba(0,0,0,0.35)] active:translate-y-0",
           "focus-visible:outline-none relative",
-          "text-dyn", // ← taille adaptative
+          "text-dyn",
         ].join(" ")
       }
     >
       <ActiveAccent />
-      <Icon className="text-white group-[.active]:text-blue-700 icon-dyn-sm" />
-      {!collapsed && <span className="truncate">{label}</span>}
+      <Icon className="text-white group-[.active]:text-blue-700 icon-dyn-sm transition-transform duration-200 group-hover:scale-110 group-hover:rotate-[6deg]" />
+      {!collapsed && <span className="truncate transition-colors">{label}</span>}
       {collapsed && (
         <span className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 rounded-md bg-blue-700 px-2 py-1 text-white shadow-lg opacity-0 group-hover:opacity-100 text-dyn-xs">
           {label}
@@ -383,9 +530,7 @@ function Item({ to, icon: Icon, label, collapsed }) {
 function MobileGroup({ title, children }) {
   return (
     <div>
-      <div className="mb-1 text-white/90 text-dyn-xs font-black uppercase tracking-widest">
-        {title}
-      </div>
+      <div className="mb-1 text-white/90 text-dyn-xs font-black uppercase tracking-widest">{title}</div>
       <div className="space-y-1.5">{children}</div>
     </div>
   );
@@ -396,11 +541,11 @@ function MobileItem({ to, icon: Icon, label }) {
       to={to}
       end
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold transition text-dyn
-         ${isActive ? "bg-white/15 text-white ring-2 ring-white/40" : "text-white/90 hover:bg-white/10"}`
+        `flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold transition-all duration-200 text-dyn
+         ${isActive ? "bg-white/15 text-white ring-2 ring-white/40" : "text-white/90 hover:bg-white/10 hover:translate-x-1"}`
       }
     >
-      <Icon className="text-white icon-dyn-sm" />
+      <Icon className="text-white icon-dyn-sm transition-transform duration-200 group-hover:scale-110" />
       <span className="truncate">{label}</span>
     </NavLink>
   );
