@@ -86,7 +86,8 @@ export default function ModifierMedicale() {
   const params = useParams();
 
   const { row } = location.state || {};
-  const passedId = row?.id ?? params?.id;
+  // ✅ Sécurisation de l'ID
+  const passedId = row?.id ?? params?.id ?? null;
 
   const [form, setForm] = useState(normalize());
   const [loading, setLoading] = useState(!!passedId && !row);
@@ -151,7 +152,7 @@ export default function ModifierMedicale() {
     return e;
   }
 
-  // 1) Clic "Enregistrer" => on ouvre la modale de confirmation
+  // 1) Clic "Enregistrer" => modale de confirmation
   function onSubmitOpenConfirm(e) {
     e.preventDefault();
     const ee = validate(form);
@@ -159,11 +160,20 @@ export default function ModifierMedicale() {
       push(Object.values(ee)[0], "err");
       return;
     }
+    if (!passedId) {
+      push("ID manquant : impossible de modifier cet enregistrement.", "err");
+      return;
+    }
     setConfirmOpen(true);
   }
 
   // 2) Si confirmé => on met à jour
   async function doUpdate() {
+    if (!passedId) {
+      push("ID manquant : impossible de modifier cet enregistrement.", "err");
+      setConfirmOpen(false);
+      return;
+    }
     try {
       setSaving(true);
       const token = getToken();
@@ -188,7 +198,7 @@ export default function ModifierMedicale() {
       setSuccessBanner(true);
       setTimeout(() => setSuccessBanner(false), 2500);
 
-      // Redirection légère (après une très courte pause pour voir le toast)
+      // Redirection légère
       setTimeout(() => navigate("/medicale/liste", { replace: true }), 300);
     } catch (e2) {
       push(e2.message || "Échec de la mise à jour", "err");
@@ -201,8 +211,9 @@ export default function ModifierMedicale() {
   const subtitle = useMemo(() => {
     if (loading) return "Chargement…";
     if (err) return err;
+    if (!passedId) return "Identifiant manquant : ouvrez la fiche depuis la liste.";
     return "Mets à jour les informations médicales du pèlerin.";
-  }, [loading, err]);
+  }, [loading, err, passedId]);
 
   return (
     <div className="space-y-6 text-dyn">
@@ -214,6 +225,9 @@ export default function ModifierMedicale() {
         <div className="p-6">
           <h2 className="text-dyn-title font-extrabold text-slate-900">Modifier la fiche médicale</h2>
           <p className={"mt-1 text-dyn-sm " + (err ? "text-rose-600" : "text-slate-600")}>{subtitle}</p>
+          {passedId && (
+            <p className="mt-1 text-dyn-xs text-slate-500">ID : {String(passedId)}</p>
+          )}
 
           {successBanner && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-800 ring-1 ring-emerald-200 text-dyn-sm font-extrabold">
@@ -258,7 +272,8 @@ export default function ModifierMedicale() {
           </button>
           <button
             type="submit"
-            disabled={saving || loading}
+            // ✅ ne pas bloquer sur `loading`, mais empêcher sans ID
+            disabled={saving || !passedId}
             className="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {saving ? "Enregistrement..." : "Enregistrer"}

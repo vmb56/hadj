@@ -1,36 +1,106 @@
 // src/pages/voyage/Chambres.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 
 /* =============================
-   Données de démo (remplace plus tard par ton API)
+   Config API
    ============================= */
-const initialRooms = [
-  {
-    id: rid(),
-    hotel: "Al Safwa Hotel",
-    city: "Mecca",
-    type: "double",
-    capacity: 2,
-    occupants: [
-      { name: "DIALLO Mamadou", passport: "P1234567", photoUrl: "" },
-      { name: "TOURE Fatou",    passport: "P2345678", photoUrl: "" },
-    ],
-  },
-  {
-    id: rid(),
-    hotel: "Al Safwa Hotel",
-    city: "Mecca",
-    type: "triple",
-    capacity: 3,
-    occupants: [
-      { name: "KONE Ibrahim", passport: "P3456789", photoUrl: "" },
-    ],
-  },
-];
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
 
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+async function apiFetch(path, { method = "GET", body, headers } = {}) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      Accept: "application/json",
+      ...(body && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+    credentials: "include",
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    const msg = data?.message || data?.error || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.payload = data;
+    throw err;
+  }
+  return data;
+}
+
+/* =============================
+   Appels API Chambres
+   ============================= */
+async function listRoomsAPI() {
+  const data = await apiFetch(`/api/chambres`);
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items.map(normalizeRoomRow);
+}
+async function createRoomAPI(payload) {
+  const data = await apiFetch(`/api/chambres`, { method: "POST", body: payload });
+  return normalizeRoomRow(data);
+}
+async function updateRoomAPI(id, payload) {
+  const data = await apiFetch(`/api/chambres/${id}`, { method: "PUT", body: payload });
+  return normalizeRoomRow(data);
+}
+async function deleteRoomAPI(id) {
+  await apiFetch(`/api/chambres/${id}`, { method: "DELETE" });
+}
+async function addOccupantAPI(roomId, payload) {
+  const data = await apiFetch(`/api/chambres/${roomId}/occupants`, { method: "POST", body: payload });
+  return data; // { id, name, passport, photoUrl }
+}
+async function removeOccupantAPI(roomId, oid) {
+  await apiFetch(`/api/chambres/${roomId}/occupants/${oid}`, { method: "DELETE" });
+}
+
+/* =============================
+   Normalisation
+   ============================= */
+function normalizeRoomRow(r = {}) {
+  return {
+    id: r.id,
+    hotel: r.hotel || "",
+    city: r.city || "",
+    type: r.type || "double",
+    capacity: Number(r.capacity) || 1,
+    occupants: Array.isArray(r.occupants)
+      ? r.occupants.map((o) => ({
+          id: o.id,
+          name: o.name,
+          passport: o.passport || "",
+          photoUrl: o.photoUrl || "",
+        }))
+      : [],
+    createdAt: r.createdAt || null,
+    updatedAt: r.updatedAt || null,
+  };
+}
+
+/* =============================
+   Page
+   ============================= */
 export default function Chambres() {
-  const [rooms, setRooms] = useState(initialRooms);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
   // Modale chambre (create/edit)
   const [roomModalOpen, setRoomModalOpen] = useState(false);
@@ -44,6 +114,24 @@ export default function Chambres() {
   const [assignPassport, setAssignPassport] = useState("");
   const [assignPhotoFile, setAssignPhotoFile] = useState(null);
   const [assignPhotoPreview, setAssignPhotoPreview] = useState("");
+
+  async function reload() {
+    setLoading(true);
+    setErr("");
+    try {
+      const items = await listRoomsAPI();
+      setRooms(items);
+    } catch (e) {
+      setRooms([]);
+      setErr(e.message || "Échec du chargement");
+      alert("Chargement des chambres impossible.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    reload();
+  }, []);
 
   // KPIs
   const { totalRooms, totalCapacity, totalOccupied, rate } = useMemo(() => {
@@ -70,27 +158,39 @@ export default function Chambres() {
     });
     setRoomModalOpen(true);
   }
-  function saveRoom(e) {
+  async function saveRoom(e) {
     e?.preventDefault?.();
     const payload = normalizeRoomForm(form);
-
-    if (editingRoomId) {
-      setRooms((arr) => arr.map((r) => (r.id === editingRoomId ? { ...r, ...payload } : r)));
-    } else {
-      setRooms((arr) => [{ id: rid(), ...payload, occupants: [] }, ...arr]);
+    if (!payload.hotel || !payload.city) {
+      alert("Hôtel et ville sont requis."); return;
     }
-    setRoomModalOpen(false);
-    setEditingRoomId(null);
-    setForm(emptyRoomForm());
+    try {
+      if (editingRoomId) {
+        await updateRoomAPI(editingRoomId, payload);
+      } else {
+        await createRoomAPI(payload);
+      }
+      setRoomModalOpen(false);
+      setEditingRoomId(null);
+      setForm(emptyRoomForm());
+      await reload();
+    } catch (e2) {
+      alert(e2.message || "Échec de l’enregistrement.");
+    }
   }
 
   /* ---------- Supprimer une chambre ---------- */
-  function deleteRoom(roomId) {
+  async function deleteRoom(roomId) {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return;
     const ok = window.confirm(`Supprimer la chambre de l'hôtel ${room.hotel} (${room.city}) ?`);
     if (!ok) return;
-    setRooms((arr) => arr.filter((r) => r.id !== roomId));
+    try {
+      await deleteRoomAPI(roomId);
+      await reload();
+    } catch (e) {
+      alert(e.message || "Suppression impossible.");
+    }
   }
 
   /* ---------- Affectation occupant ---------- */
@@ -114,42 +214,36 @@ export default function Chambres() {
     }
   }
 
-  function assignOccupant(e) {
+  async function assignOccupant(e) {
     e?.preventDefault?.();
     if (!assignName.trim()) return;
-
-    setRooms((arr) =>
-      arr.map((r) => {
-        if (r.id !== assignRoomId) return r;
-        if (r.occupants.length >= r.capacity) return r; // sécurité
-        return {
-          ...r,
-          occupants: [
-            ...r.occupants,
-            {
-              name: assignName.trim(),
-              passport: assignPassport.trim(),
-              photoUrl: assignPhotoPreview || "",
-            },
-          ],
-        };
-      })
-    );
-    setAssignModalOpen(false);
+    try {
+      await addOccupantAPI(assignRoomId, {
+        name: assignName.trim(),
+        passport: assignPassport.trim(),
+        photoUrl: assignPhotoPreview || "",
+      });
+      setAssignModalOpen(false);
+      await reload();
+    } catch (err) {
+      alert(err.message || "Affectation impossible.");
+    }
   }
 
   /* ---------- Supprimer un occupant ---------- */
-  function deleteOccupant(roomId, index) {
+  async function deleteOccupant(roomId, index) {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return;
-    const who = room.occupants[index]?.name ?? `occupant ${index + 1}`;
-    const ok = window.confirm(`Retirer “${who}” de la chambre ${room.hotel} ?`);
+    const occ = room.occupants[index];
+    if (!occ) return;
+    const ok = window.confirm(`Retirer “${occ.name}” de la chambre ${room.hotel} ?`);
     if (!ok) return;
-    setRooms((arr) =>
-      arr.map((r) =>
-        r.id === roomId ? { ...r, occupants: r.occupants.filter((_, i) => i !== index) } : r
-      )
-    );
+    try {
+      await removeOccupantAPI(roomId, occ.id);
+      await reload();
+    } catch (e) {
+      alert(e.message || "Suppression impossible.");
+    }
   }
 
   /* ---------- Export Excel (.xlsx) ---------- */
@@ -181,8 +275,7 @@ export default function Chambres() {
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
+    a.href = url; a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -200,7 +293,10 @@ export default function Chambres() {
       {/* En-tête clair */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-dyn-title font-extrabold text-slate-900">Chambres</h1>
-        <p className="mt-1 text-dyn-sm text-slate-600">Gestion de l’hébergement des pèlerins</p>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Gestion de l’hébergement des pèlerins {loading ? "· Chargement…" : ""}
+        </p>
+        {err ? <div className="text-rose-600 text-sm mt-1">{err}</div> : null}
       </div>
 
       {/* KPIs */}
@@ -294,10 +390,7 @@ export default function Chambres() {
                 <div className="text-sm font-semibold text-slate-700 mb-2">Occupants</div>
                 <div className="space-y-2">
                   {room.occupants.map((o, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 rounded-xl bg-slate-50 text-slate-800 px-3 py-2"
-                    >
+                    <div key={o.id} className="flex items-center gap-2 rounded-xl bg-slate-50 text-slate-800 px-3 py-2">
                       {o.photoUrl ? (
                         <img
                           src={o.photoUrl}
@@ -337,7 +430,7 @@ export default function Chambres() {
                 {isFull ? (
                   <button
                     disabled
-                    className="w/full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-slate-400 cursor-not-allowed"
+                    className="w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-slate-400 cursor-not-allowed"
                   >
                     Chambre pleine
                   </button>
@@ -366,6 +459,9 @@ export default function Chambres() {
             </section>
           );
         })}
+        {!loading && rooms.length === 0 && !err && (
+          <div className="text-slate-500">Aucune chambre.</div>
+        )}
       </div>
 
       {/* ============ MODALE CHAMBRE ============ */}
@@ -540,7 +636,6 @@ function Modal({ title, onClose, children }) {
         </div>
         <div className="mt-3">{children}</div>
       </div>
-      {/* utils Tailwind inline (accents bleus) */}
       <style>{`
         .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300; }
         .btn-blue { @apply rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700; }
@@ -556,15 +651,12 @@ function normalizeRoomForm(f) {
   return {
     hotel: f.hotel.trim(),
     city: f.city.trim(),
-    type: f.type || "double",
+    type: (f.type || "double").trim().toLowerCase(),
     capacity: Math.max(1, Number(f.capacity) || 1),
   };
 }
 function emptyRoomForm() {
   return { hotel: "", city: "", type: "double", capacity: "2" };
-}
-function rid() {
-  return "r" + Math.floor(Math.random() * 1e9).toString(36);
 }
 function slug(s) {
   return String(s || "")
@@ -575,10 +667,7 @@ function slug(s) {
     .replace(/(^-|-$)/g, "");
 }
 function getInitials(name) {
-  const parts = String(name || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const parts = String(name || "").split(/\s+/).filter(Boolean).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "?";
 }
 function readFileAsDataURL(file) {

@@ -150,6 +150,10 @@ export default function ListeUtilisateurs() {
       email: data.email.trim().toLowerCase(),
       role: data.role,
     };
+    // ➕ n’envoie password que s’il est présent
+    if (data.password && data.password.length > 0) {
+      payload.password = data.password;
+    }
 
     try {
       await updateUserAPI(data.id, payload);
@@ -345,13 +349,16 @@ function Btn({ children, tone = "default", type = "button", className = "", ...p
   );
 }
 
-/* ---------- Modale d'édition ---------- */
+/* ---------- Modale d'édition avec mot de passe optionnel ---------- */
 function EditModal({ initial, onCancel, onSave }) {
   const [form, setForm] = useState({
     id: initial.id,
     nom: initial.nom || "",
     email: initial.email || "",
     role: initial.role || "Agent",
+    password: "",
+    password2: "",
+    showPw: false,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -362,12 +369,34 @@ function EditModal({ initial, onCancel, onSave }) {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   }
 
+  function toggleShowPw() {
+    setForm((f) => ({ ...f, showPw: !f.showPw }));
+  }
+
+  function generatePassword() {
+    const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+    setForm((f) => ({ ...f, password: rand, password2: rand }));
+    setErrors((prev) => ({ ...prev, password: "", password2: "" }));
+  }
+
   function validate() {
     const e = {};
     if (!form.nom.trim()) e.nom = "Le nom est obligatoire.";
     if (!form.email.trim()) e.email = "L'email est obligatoire.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Email invalide.";
     if (!form.role) e.role = "Sélectionne un rôle.";
+
+    // Mot de passe facultatif : si renseigné, on contrôle
+    const hasPw = (form.password || "").length > 0 || (form.password2 || "").length > 0;
+    if (hasPw) {
+      if ((form.password || "").length < 8) {
+        e.password = "Au moins 8 caractères.";
+      }
+      if (form.password !== form.password2) {
+        e.password2 = "Les mots de passe ne correspondent pas.";
+      }
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -382,8 +411,9 @@ function EditModal({ initial, onCancel, onSave }) {
         nom: form.nom.trim(),
         email: form.email.trim().toLowerCase(),
         role: form.role,
+        // n’envoie que si présent
+        password: form.password?.length ? form.password : undefined,
       });
-      // onSave ferme la modale dans le parent via setEditing(null)
     } finally {
       setSaving(false);
     }
@@ -415,6 +445,47 @@ function EditModal({ initial, onCancel, onSave }) {
             options={["Admin", "Superviseur", "Agent"]}
             error={errors.role}
           />
+
+          {/* 🔐 Bloc mot de passe (optionnel) */}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[13px] font-semibold text-slate-700">Mot de passe (optionnel)</label>
+              <button type="button" onClick={toggleShowPw} className="text-xs text-blue-700 hover:underline">
+                {form.showPw ? "Masquer" : "Afficher"}
+              </button>
+            </div>
+            <input
+              type={form.showPw ? "text" : "password"}
+              name="password"
+              value={form.password}
+              onChange={change}
+              placeholder="Laisser vide pour ne pas changer"
+              className={[
+                "rounded-xl border px-3 py-2 text-dyn-sm outline-none bg-white text-slate-900",
+                errors.password ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-300 ring-2 ring-transparent focus:ring-blue-300",
+              ].join(" ")}
+            />
+            {errors.password && <span className="text-xs text-rose-600">{errors.password}</span>}
+
+            <input
+              type={form.showPw ? "text" : "password"}
+              name="password2"
+              value={form.password2}
+              onChange={change}
+              placeholder="Confirme le mot de passe"
+              className={[
+                "rounded-xl border px-3 py-2 text-dyn-sm outline-none bg-white text-slate-900",
+                errors.password2 ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-300 ring-2 ring-transparent focus:ring-blue-300",
+              ].join(" ")}
+            />
+            {errors.password2 && <span className="text-xs text-rose-600">{errors.password2}</span>}
+
+            <div>
+              <button type="button" onClick={generatePassword} className="text-xs text-slate-700 underline hover:text-slate-900">
+                Générer un mot de passe fort
+              </button>
+            </div>
+          </div>
 
           <div className="mt-2 flex flex-col sm:flex-row justify-end gap-2">
             <Btn onClick={onCancel} disabled={saving}>Annuler</Btn>

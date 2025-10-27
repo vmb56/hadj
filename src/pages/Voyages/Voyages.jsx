@@ -20,11 +20,19 @@ function getToken() {
 }
 
 /* =========================================================================
-   FETCH helper
+   FETCH helper (cache bust + no-store)
    ========================================================================= */
 async function apiFetch(path, { method = "GET", body } = {}) {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
+
+  // cache-busting pour les GET
+  let url = `${API_BASE}${path}`;
+  if (method === "GET") {
+    const sep = url.includes("?") ? "&" : "?";
+    url = `${url}${sep}ts=${Date.now()}`;
+  }
+
+  const res = await fetch(url, {
     method,
     headers: {
       Accept: "application/json",
@@ -32,6 +40,7 @@ async function apiFetch(path, { method = "GET", body } = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     credentials: "include",
+    cache: "no-store",
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -193,12 +202,22 @@ export default function Voyages() {
 
     try {
       if (editingId) {
-        await updateVoyageAPI(editingId, payload);
+        const updated = await updateVoyageAPI(editingId, payload);
+
+        // ✅ mise à jour optimiste
+        setRows((prev) => prev.map((r) => (r.id === editingId ? updated : r)));
+
         showToast("Voyage modifié avec succès.", "success");
       } else {
-        await createVoyageAPI(payload);
+        const created = await createVoyageAPI(payload);
+
+        // ✅ ajout optimiste en tête
+        setRows((prev) => [created, ...prev]);
+
         showToast("Voyage ajouté avec succès.", "success");
       }
+
+      // ✅ force le refresh depuis le serveur (anti cache)
       await reload();
       resetForm();
     } catch (error) {
@@ -240,19 +259,18 @@ export default function Voyages() {
 
   async function doRemove(row) {
     try {
+      // ✅ suppression optimiste immédiate
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+
       await deleteVoyageAPI(row.id);
-      await reload();
       showToast("Voyage supprimé.", "success");
+
+      // ✅ refresh serveur
+      await reload();
     } catch (error) {
-      if (error.status === 401) {
-        showToast("Session expirée. Merci de te reconnecter.", "error");
-      } else if (error.status === 403) {
-        showToast("Accès refusé.", "error");
-      } else if (error.status === 404) {
-        showToast("Voyage introuvable.", "error");
-      } else {
-        showToast(error.message || "Suppression impossible.", "error");
-      }
+      showToast(error.message || "Suppression impossible.", "error");
+      // au besoin on pourrait re-fetch pour remettre l'élément
+      await reload();
     } finally {
       setConfirm((c) => ({ ...c, open: false }));
     }
@@ -323,8 +341,6 @@ export default function Voyages() {
               </Button>
             )}
           </div>
-
-          
         </form>
       </section>
 
