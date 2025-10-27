@@ -1,40 +1,30 @@
 // src/pages/StatsPelerins.jsx
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/* ================= Demo data (remplace par tes vraies données) ================= */
-const SAMPLE = [
-  {
-    id: 1,
-    photoPelerin: "https://images.unsplash.com/photo-1529665253569-6d01c0eaf7b6?w=256&q=80",
-    photoPasseport: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?w=256&q=80",
-    nom: "TRAORE", prenoms: "Ismaël O.", dateNaissance: "1995-08-16", lieuNaissance: "Abidjan",
-    sexe: "Masculin", adresse: "Cocody, Abidjan", contacts: "07 00 00 00 00",
-    numPasseport: "AA1234567", offre: "Standard", voyage: "Vol direct - Groupe 1", anneeVoyage: "2025",
-    urgenceNom: "KONE", urgencePrenoms: "Fanta", urgenceContact: "01 11 22 33", urgenceResidence: "Yopougon",
-    enregistrePar: "Agent: Admin", createdAt: "2025-10-20T10:30:00Z",
-  },
-  {
-    id: 2,
-    photoPelerin: "", photoPasseport: "",
-    nom: "KOUADIO", prenoms: "Aïcha", dateNaissance: "1992-02-04", lieuNaissance: "Bouaké",
-    sexe: "Féminin", adresse: "Marcory, Abidjan", contacts: "05 55 66 77",
-    numPasseport: "BB9876543", offre: "Premium", voyage: "Escale - Groupe 2", anneeVoyage: "2025",
-    urgenceNom: "N'DA", urgencePrenoms: "Mariam", urgenceContact: "01 22 33 44", urgenceResidence: "Koumassi",
-    enregistrePar: "Agent: Sarah", createdAt: "2025-10-21T09:02:00Z",
-  },
-  {
-    id: 3,
-    photoPelerin: "", photoPasseport: "",
-    nom: "SYLLA", prenoms: "Moussa", dateNaissance: "1980-05-10", lieuNaissance: "Korhogo",
-    sexe: "Masculin", adresse: "Yopougon", contacts: "01 12 34 56",
-    numPasseport: "", offre: "Standard", voyage: "Vol direct - Groupe 2", anneeVoyage: "2024",
-    urgenceNom: "SYLLA", urgencePrenoms: "Awa", urgenceContact: "01 00 11 22", urgenceResidence: "Abobo",
-    enregistrePar: "Agent: Binta", createdAt: "2024-12-01T12:00:00Z",
-  },
-];
+/* ================= Config API ================= */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
+
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+}
 
 /* ================= Helpers ================= */
 const nowYear = new Date().getFullYear();
+
+function mediaURL(p) {
+  if (!p) return "";
+  if (/^https?:\/\//i.test(p)) return p;
+  const base = API_BASE.replace(/\/+$/, "");
+  const rel  = String(p).startsWith("/") ? p : `/${p}`;
+  return `${base}${rel}`;
+}
+function safeStr(x) { return (x ?? "").toString(); }
+
 function ageFrom(dateStr) {
   if (!dateStr) return null;
   try {
@@ -87,15 +77,120 @@ function dossierState(x) {
   return "À compléter";
 }
 
+/* ====== Normalisation d'un pèlerin depuis l'API ======
+   On couvre les deux conventions possibles (snake_case & camelCase). */
+function normalizePelerin(row = {}) {
+  return {
+    id: row.id ?? row._id ?? row.pelerin_id ?? null,
+
+    // Médias (chemins servis par /uploads)
+    photoPelerin: mediaURL(row.photo_pelerin_path || row.photoPelerin || ""),
+    photoPasseport: mediaURL(row.photo_passeport_path || row.photoPasseport || ""),
+
+    // Identité
+    nom: safeStr(row.nom).toUpperCase(),
+    prenoms: safeStr(row.prenoms),
+    dateNaissance: row.date_naissance || row.dateNaissance || "",
+    lieuNaissance: row.lieu_naissance || row.lieuNaissance || "",
+    sexe: row.sexe || row.gender || "",
+
+    // Contact / adresse
+    adresse: row.adresse || "",
+    contacts: row.contact || row.contacts || "",
+
+    // Passeport & offre/voyage
+    numPasseport: row.numPasseport || row.num_passeport || row.passeport || "",
+    offre: row.offre || "",
+    voyage: row.voyage || "",
+    anneeVoyage: String(row.annee_voyage || row.anneeVoyage || ""),
+
+    // Urgence
+    urgenceNom: row.urNom || row.ur_nom || "",
+    urgencePrenoms: row.urPrenoms || row.ur_prenoms || "",
+    urgenceContact: row.urContact || row.ur_contact || "",
+    urgenceResidence: row.urResidence || row.ur_residence || "",
+
+    // Meta
+    enregistrePar: row.created_by_name || row.createdByName || row.createdBy || "—",
+    createdAt: row.created_at || row.createdAt || "",
+  };
+}
+
+/* ====== Appels API ====== */
+// ⚠️ Par défaut, on récupère toute la liste et on filtre côté client.
+//    Si ton /api/pelerins supporte ?search= et ?year=, tu peux décommenter la section correspondante plus bas.
+async function fetchPelerinsAll() {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/pelerins`, {
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: "include",
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    const msg = data?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+  return items.map(normalizePelerin);
+}
+
 /* ================= Page ================= */
-export default function StatsPelerins({ data = SAMPLE }) {
+export default function StatsPelerins() {
   const [query, setQuery] = useState("");
   const [year, setYear] = useState("all");
+
+  const [rows, setRows] = useState([]);         // données normalisées
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
   const printRef = useRef(null);
 
+  /* ---- Chargement initial ---- */
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setErr("");
+      try {
+        // ===== Client-side filtering =====
+        const list = await fetchPelerinsAll();
+        setRows(list);
+
+        // ===== SERVER-side filtering (optionnel) =====
+        // const token = getToken();
+        // const qs = new URLSearchParams();
+        // if (query.trim()) qs.set("search", query.trim());
+        // if (year !== "all") qs.set("year", year);
+        // const res = await fetch(`${API_BASE}/api/pelerins?${qs}`, {
+        //   headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        //   credentials: "include",
+        // });
+        // const data = await res.json();
+        // if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+        // const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        // setRows(items.map(normalizePelerin));
+      } catch (e) {
+        setErr(e.message || "Échec du chargement");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  /* ---- Liste d'années à partir des données ---- */
+  const years = useMemo(() => {
+    const s = new Set(rows.map((d) => String(d.anneeVoyage || "")));
+    s.delete("");
+    return ["all", ...Array.from(s).sort()];
+  }, [rows]);
+
+  /* ---- Filtrage client (recherche + année) ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const arr = data.filter((p) => (year === "all" ? true : String(p.anneeVoyage) === String(year)));
+    const arr = rows.filter((p) => (year === "all" ? true : String(p.anneeVoyage) === String(year)));
     if (!q) return arr;
     return arr.filter((p) =>
       [
@@ -103,7 +198,7 @@ export default function StatsPelerins({ data = SAMPLE }) {
         p.enregistrePar, p.lieuNaissance, p.adresse, p.urgenceResidence,
       ].join(" ").toLowerCase().includes(q)
     );
-  }, [data, query, year]);
+  }, [rows, query, year]);
 
   const total = filtered.length;
 
@@ -146,25 +241,22 @@ export default function StatsPelerins({ data = SAMPLE }) {
   ).length;
   const completenessPct  = pct(completeCount, total);
 
-  const years = useMemo(() => {
-    const s = new Set(data.map((d) => String(d.anneeVoyage || "")));
-    s.delete("");
-    return ["all", ...Array.from(s).sort()];
-  }, [data]);
-
   function handlePrint() {
     window.print();
   }
 
   return (
     <div className="space-y-6 text-dyn" ref={printRef}>
-      {/* EN-TÊTE clair (cohérent Medicale.jsx) */}
+      {/* EN-TÊTE */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-dyn-title font-extrabold text-slate-900">Statistiques — Pèlerins</h1>
-        <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble des inscriptions et de la complétude des dossiers.</p>
+        <p className="mt-1 text-dyn-sm text-slate-600">
+          Vue d’ensemble des inscriptions et de la complétude des dossiers.
+          {loading ? " · Chargement…" : err ? ` · ${err}` : ""}
+        </p>
       </div>
 
-      {/* BARRE D’ACTIONS (non imprimée) */}
+      {/* BARRE D’ACTIONS */}
       <div className="print:hidden flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 text-slate-900 shadow-sm flex-1">
           <div className="mt-1 flex flex-col gap-2 sm:flex-row">
@@ -190,14 +282,15 @@ export default function StatsPelerins({ data = SAMPLE }) {
         <div className="print:hidden flex gap-2">
           <button
             onClick={handlePrint}
-            className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white shadow-sm hover:brightness-110"
+            className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-60"
+            disabled={loading}
           >
             Imprimer / PDF
           </button>
         </div>
       </div>
 
-      {/* ENTÊTE IMPRESSION (caché à l’écran) */}
+      {/* ENTÊTE IMPRESSION */}
       <div className="hidden print:block">
         <div className="mb-4 rounded-2xl border border-black/10 bg-white p-4 text-black">
           <div className="flex items-center justify-between">

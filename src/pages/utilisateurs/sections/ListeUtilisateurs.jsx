@@ -326,14 +326,20 @@ function TdLeft({ children, className = "" }) {
 function TdRight({ children, className = "" }) {
   return <td className={["px-4 py-3 border-b border-slate-200 bg-white rounded-r-xl text-right", className].join(" ")}>{children}</td>;
 }
-function Btn({ children, tone = "default", ...props }) {
+
+/* ✅ Bouton qui respecte le type passé (submit) */
+function Btn({ children, tone = "default", type = "button", className = "", ...props }) {
   const styles = {
     default: "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50",
     primary: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent",
     warn: "bg-rose-600 text-white hover:bg-rose-700 border border-transparent",
   };
   return (
-    <button {...props} className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${styles[tone]}`} type="button">
+    <button
+      type={type}
+      {...props}
+      className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${styles[tone]} ${className}`}
+    >
       {children}
     </button>
   );
@@ -348,6 +354,7 @@ function EditModal({ initial, onCancel, onSave }) {
     role: initial.role || "Agent",
   });
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   function change(e) {
     const { name, value } = e.target;
@@ -365,15 +372,21 @@ function EditModal({ initial, onCancel, onSave }) {
     return Object.keys(e).length === 0;
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!validate()) return;
-    onSave({
-      id: form.id,
-      nom: form.nom,
-      email: form.email,
-      role: form.role,
-    });
+    try {
+      setSaving(true);
+      await onSave({
+        id: form.id,
+        nom: form.nom.trim(),
+        email: form.email.trim().toLowerCase(),
+        role: form.role,
+      });
+      // onSave ferme la modale dans le parent via setEditing(null)
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -382,7 +395,11 @@ function EditModal({ initial, onCancel, onSave }) {
       <div className="relative z-10 w-[min(560px,95vw)] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl text-slate-900">
         <div className="flex items-start justify-between gap-4">
           <h4 className="text-lg font-extrabold text-slate-900">Modifier l’utilisateur</h4>
-          <button className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50" onClick={onCancel}>
+          <button
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-60"
+            onClick={onCancel}
+            disabled={saving}
+          >
             Fermer
           </button>
         </div>
@@ -400,8 +417,10 @@ function EditModal({ initial, onCancel, onSave }) {
           />
 
           <div className="mt-2 flex flex-col sm:flex-row justify-end gap-2">
-            <Btn onClick={onCancel}>Annuler</Btn>
-            <Btn tone="primary" type="submit">Enregistrer</Btn>
+            <Btn onClick={onCancel} disabled={saving}>Annuler</Btn>
+            <Btn tone="primary" type="submit" disabled={saving}>
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </Btn>
           </div>
         </form>
       </div>

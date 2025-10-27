@@ -243,9 +243,9 @@ export default function MainLayout() {
             <Item to="/settings" icon={Settings} label="Paramètres" collapsed={collapsed} />
           </Section>
 
-          <Section title="Impressions" collapsed={collapsed}>
+          {/* <Section title="Impressions" collapsed={collapsed}>
             <Item to="/impressions-passeports" icon={Printer} label="Photos / Passeport" collapsed={collapsed} />
-          </Section>
+          </Section> */}
         </nav>
 
         {/* pied de sidebar supprimé */}
@@ -456,9 +456,9 @@ export default function MainLayout() {
                 {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
                 <MobileItem to="/settings" icon={Settings} label="Paramètres" />
               </MobileGroup>
-              <MobileGroup title="Impressions">
+              {/* <MobileGroup title="Impressions">
                 <MobileItem to="/impressions-passeports" icon={Printer} label="Photos / Passeport" />
-              </MobileGroup>
+              </MobileGroup> */}
 
               {/* Déconnexion (mobile) */}
               <div className="pt-2">

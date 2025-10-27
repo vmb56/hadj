@@ -1,133 +1,308 @@
 // src/pages/pelerins/EnregistrementsPelerins.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+/* ========= Config API ========= */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
+
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+}
+
+/* ========= Helpers ========= */
+function mediaURL(p) {
+  if (!p) return "";
+  if (/^https?:\/\//i.test(p)) return p;
+  const base = API_BASE.replace(/\/+$/, "");
+  const rel  = String(p).startsWith("/") ? p : `/${p}`;
+  return `${base}${rel}`;
+}
+function isPdfPath(p="") {
+  return typeof p === "string" && /\.pdf(\?|#|$)/i.test(p);
+}
+function normSexe(s) {
+  if (!s) return "—";
+  const v = String(s).toUpperCase();
+  return v === "M" ? "Masculin" : v === "F" ? "Féminin" : s;
+}
+function ucFirst(x) {
+  if (!x) return "";
+  const s = String(x);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function formatDate(d) {
+  if (!d) return "—";
+  const t = Date.parse(d);
+  return Number.isNaN(t) ? "—" : new Date(t).toLocaleDateString("fr-FR");
+}
+function normalizeRow(r) {
+  return {
+    id: r.id,
+    photoPelerin: r.photo_pelerin_path || r.photoPelerin || "",
+    photoPasseport: r.photo_passeport_path || r.photoPasseport || "",
+    nom: r.nom || "",
+    prenoms: r.prenoms || "",
+    dateNaissance: r.date_naissance || "",
+    lieuNaissance: r.lieu_naissance || "",
+    sexe: normSexe(r.sexe),
+    adresse: r.adresse || "",
+    contacts: r.contact || "",
+    numPasseport: r.num_passeport || "",
+    offre: ucFirst(r.offre) || "",
+    voyage: ucFirst(r.voyage) || "",
+    anneeVoyage: String(r.annee_voyage ?? ""),
+    urgenceNom: r.ur_nom || "",
+    urgencePrenoms: r.ur_prenoms || "",
+    urgenceContact: r.ur_contact || "",
+    urgenceResidence: r.ur_residence || "",
+    enregistrePar: r.created_by_name ? `Agent: ${r.created_by_name}` : "—",
+    createdAt: r.created_at || r.createdAt || null,
+  };
+}
+
+/* ========= mini toast ========= */
+function useToast() {
+  const [msg, setMsg] = useState(null); // {text,type}
+  const push = (text, type="ok") => {
+    setMsg({ text, type });
+    clearTimeout(push._t);
+    push._t = setTimeout(() => setMsg(null), 2500);
+  };
+  const Toast = () =>
+    msg ? (
+      <div
+        className={
+          "fixed bottom-4 right-4 z-[60] max-w-[90vw] sm:max-w-xs rounded-xl px-4 py-3 text-sm shadow-lg text-white " +
+          (msg.type === "err" ? "bg-rose-600" : "bg-emerald-600")
+        }
+        role="status"
+        aria-live="polite"
+      >
+        {msg.text}
+      </div>
+    ) : null;
+  return { push, Toast };
+}
 
 /* =========================
-   Données démo (remplace par ton API)
+   Composant principal
    ========================= */
-const SAMPLE = [
-  {
-    id: 1,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1529665253569-6d01c0eaf7b6?w=256&q=80",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?w=256&q=80",
-    nom: "TRAORE",
-    prenoms: "Ismaël O.",
-    dateNaissance: "1995-08-16",
-    lieuNaissance: "Abidjan",
-    sexe: "Masculin",
-    adresse: "Riviera, Cocody",
-    contacts: "07 00 00 00 00",
-    numPasseport: "AA1234567",
-    offre: "Standard",
-    voyage: "Vol direct - Groupe 1",
-    anneeVoyage: "2025",
-    urgenceNom: "KONE",
-    urgencePrenoms: "Fanta",
-    urgenceContact: "01 11 22 33",
-    urgenceResidence: "Yopougon, Toits rouges",
-    enregistrePar: "Agent: BMV Admin",
-    createdAt: "2025-10-20T10:30:00Z",
-  },
-  {
-    id: 2,
-    photoPelerin: "",
-    photoPasseport: "",
-    nom: "KOUADIO",
-    prenoms: "Aïcha",
-    dateNaissance: "1992-02-04",
-    lieuNaissance: "Bouaké",
-    sexe: "Féminin",
-    adresse: "Marcory Zone 4",
-    contacts: "05 55 66 77",
-    numPasseport: "BB9876543",
-    offre: "Premium",
-    voyage: "Vol avec escale - Groupe 2",
-    anneeVoyage: "2025",
-    urgenceNom: "N'DA",
-    urgencePrenoms: "Mariam",
-    urgenceContact: "01 22 33 44",
-    urgenceResidence: "Koumassi, Remblais",
-    enregistrePar: "Agent: Sarah",
-    createdAt: "2025-10-21T09:02:00Z",
-  },
-];
-
-/* =========================
-   COMPOSANT PRINCIPAL
-   ========================= */
-export default function EnregistrementsPelerins({ records = SAMPLE }) {
+export default function EnregistrementsPelerins() {
+  const [records, setRecords] = useState([]);
   const [q, setQ] = useState("");
-  const [sexe, setSexe] = useState("all"); // "all" | "Masculin" | "Féminin"
+  const [sexe, setSexe] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const { push, Toast } = useToast();
 
-  // Filtrage (plein-texte + sexe exact)
+  // états modales
+  const [detail, setDetail] = useState(null);   // objet normalisé
+  const [editing, setEditing] = useState(null); // objet normalisé
+
+  // viewers
+  const [pdfSrc, setPdfSrc] = useState("");
+  const [imgSrc, setImgSrc] = useState("");
+
+  async function fetchList() {
+    setLoading(true);
+    setErr("");
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/pelerins`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setRecords(items.map(normalizeRow));
+    } catch (e) {
+      setErr(e.message || "Échec du chargement");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchList(); }, []);
+
+  /* Filtrage */
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return records.filter((p) => {
-      const bySex =
-        sexe === "all"
-          ? true
-          : String(p.sexe || "").toLowerCase() === sexe.toLowerCase();
+      const bySex = sexe === "all" ? true : String(p.sexe || "").toLowerCase() === sexe.toLowerCase();
       if (!bySex) return false;
       if (!s) return true;
       const hay = [
-        p.nom,
-        p.prenoms,
-        p.contacts,
-        p.numPasseport,
-        p.offre,
-        p.voyage,
-        p.anneeVoyage,
-        p.sexe,
-        p.adresse,
-        p.lieuNaissance,
-        p.urgenceResidence,
+        p.nom, p.prenoms, p.contacts, p.numPasseport, p.offre, p.voyage,
+        p.anneeVoyage, p.sexe, p.adresse, p.lieuNaissance,
+        p.urgenceNom, p.urgencePrenoms, p.urgenceContact, p.urgenceResidence,
         p.enregistrePar,
-      ]
-        .map((x) => String(x || "").toLowerCase())
-        .join(" ");
+      ].map((x) => String(x || "").toLowerCase()).join(" ");
       return hay.includes(s);
     });
   }, [q, sexe, records]);
 
-  const filtreLabel = sexe === "all" ? "TOUS" : sexe.toUpperCase();
-
   const handlePrint = () => window.print();
+
+  /* ===== Actions ===== */
+  async function openDetail(id) {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/pelerins/${id}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const row = await res.json();
+      setDetail(normalizeRow(row));
+      push("Détail ouvert.", "ok");
+    } catch (e) {
+      push("Impossible d’ouvrir le détail.", "err");
+    }
+  }
+
+  async function askDelete(row) {
+    if (!window.confirm(`Supprimer le pèlerin "${row.nom} ${row.prenoms}" ?`)) return;
+    const prev = records;
+    setRecords((a) => a.filter((x) => x.id !== row.id)); // optimiste
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/pelerins/${row.id}`, {
+        method: "DELETE",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg = j?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+      push("Pèlerin supprimé.");
+    } catch (e) {
+      setRecords(prev); // rollback
+      push("Suppression impossible.", "err");
+    }
+  }
+
+  function openEdit(row) {
+    setEditing({
+      ...row,
+      _filePelerin: null,
+      _filePasseport: null,
+      sexe: row.sexe?.startsWith("Mas") ? "M" : row.sexe?.startsWith("Fé") ? "F" : "",
+      dateNaissance: row.dateNaissance?.slice(0, 10) || "",
+      offre: row.offre?.toLowerCase() || "",
+      voyage: row.voyage?.toLowerCase() || "",
+    });
+  }
+
+  async function saveEdit(form) {
+    try {
+      const token = getToken();
+      const hasFiles = !!(form._filePelerin || form._filePasseport);
+      let res;
+
+      if (hasFiles) {
+        const fd = new FormData();
+        fd.append("nom", form.nom || "");
+        fd.append("prenoms", form.prenoms || "");
+        fd.append("date_naissance", form.dateNaissance || "");
+        fd.append("lieu_naissance", form.lieuNaissance || "");
+        if (form.sexe) fd.append("sexe", form.sexe);
+        fd.append("adresse", form.adresse || "");
+        fd.append("contact", form.contacts || "");
+        fd.append("num_passeport", form.numPasseport || "");
+        fd.append("offre", form.offre || "");
+        fd.append("voyage", form.voyage || "");
+        fd.append("annee_voyage", form.anneeVoyage || "");
+        fd.append("ur_nom", form.urgenceNom || "");
+        fd.append("ur_prenoms", form.urgencePrenoms || "");
+        fd.append("ur_contact", form.urgenceContact || "");
+        fd.append("ur_residence", form.urgenceResidence || "");
+        if (form._filePelerin)   fd.append("photoPelerin", form._filePelerin);
+        if (form._filePasseport) fd.append("photoPasseport", form._filePasseport);
+
+        res = await fetch(`${API_BASE}/api/pelerins/${form.id}`, {
+          method: "PUT",
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: fd,
+          credentials: "include",
+        });
+      } else {
+        const payload = {
+          nom: form.nom || "",
+          prenoms: form.prenoms || "",
+          date_naissance: form.dateNaissance || "",
+          lieu_naissance: form.lieuNaissance || "",
+          sexe: form.sexe || null,
+          adresse: form.adresse || "",
+          contact: form.contacts || "",
+          num_passeport: form.numPasseport || "",
+          offre: form.offre || "",
+          voyage: form.voyage || "",
+          annee_voyage: form.anneeVoyage || "",
+          ur_nom: form.urgenceNom || "",
+          ur_prenoms: form.urgencePrenoms || "",
+          ur_contact: form.urgenceContact || "",
+          ur_residence: form.urgenceResidence || "",
+        };
+        res = await fetch(`${API_BASE}/api/pelerins/${form.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
+      }
+
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        throw new Error(msg);
+      }
+
+      push("Mise à jour effectuée.");
+      setEditing(null);
+      await fetchList();
+    } catch (e) {
+      console.error("[saveEdit]", e);
+      push(e.message || "Échec de mise à jour", "err");
+    }
+  }
 
   return (
     <section className="mt-6">
-      {/* Barre d’action (non imprimée) */}
+      <Toast />
+      {/* barre d’action */}
       <div className="no-print mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
-            Enregistrements des pèlerins
-          </h2>
-          <p className="text-slate-600 text-sm">
-            Toutes les informations saisies + agent enregistreur.
-          </p>
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Enregistrements des pèlerins</h2>
+          <p className="text-slate-600 text-sm">Toutes les informations saisies + agent enregistreur.</p>
+          {loading && <p className="text-slate-500 text-sm mt-1">Chargement…</p>}
+          {err && <p className="text-rose-600 text-sm mt-1">{err}</p>}
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            type="search" value={q} onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher (nom, passeport, agent, ville, offre...)"
             className="w-full sm:w-72 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
           />
           <select
-            value={sexe}
-            onChange={(e) => setSexe(e.target.value)}
+            value={sexe} onChange={(e) => setSexe(e.target.value)}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
-            title="Filtrer par sexe"
           >
             <option value="all">Tous</option>
             <option value="Masculin">Masculin</option>
             <option value="Féminin">Féminin</option>
           </select>
-          <button
-            onClick={handlePrint}
-            className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
-          >
+          <button onClick={handlePrint} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
             Imprimer la liste
           </button>
         </div>
@@ -135,168 +310,188 @@ export default function EnregistrementsPelerins({ records = SAMPLE }) {
 
       {/* ===================== ZONE IMPRIMABLE ===================== */}
       <div className="print-area report">
-        {/* ENTÊTE */}
         <div className="print-header text-center mb-3">
           <h1 className="title">LISTE DES PÈLERINS</h1>
-          <p className="subtitle">({filtreLabel})</p>
+          <p className="subtitle">({sexe === "all" ? "TOUS" : sexe.toUpperCase()})</p>
         </div>
 
-        {/* ===== VUE CARTES (mobile & tablette) ===== */}
+        {/* ===== CARTES (mobile) ===== */}
         <div className="cards grid gap-3 lg:hidden">
           {filtered.length === 0 ? (
             <p className="text-slate-600 text-center py-6">
-              Aucun enregistrement trouvé.
+              {loading ? "Chargement…" : "Aucun enregistrement trouvé."}
             </p>
           ) : (
             filtered.map((p, i) => {
-              const agentName =
-                String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() ||
-                "—";
+              const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+              const photoPil = mediaURL(p.photoPelerin);
+              const photoPass = mediaURL(p.photoPasseport);
+              const passIsPdf = isPdfPath(photoPass);
+              const pilIsPdf  = isPdfPath(photoPil);
               return (
-                <article
-                  key={p.id ?? i}
-                  className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-                >
+                <article key={p.id ?? i} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  {/* images / PDF badges */}
+                  <div className="flex justify-center gap-2 mb-2">
+                    {photoPil ? (
+                      pilIsPdf ? (
+                        <button
+                          type="button"
+                          onClick={() => setPdfSrc(photoPil)}
+                          title="Voir PDF"
+                          className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+                        >PDF</button>
+                      ) : (
+                        <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image">
+                          <img src={photoPil} alt="Pèlerin" className="h-20 w-16 object-cover rounded-md border" />
+                        </button>
+                      )
+                    ) : (
+                      <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de photo</div>
+                    )}
+                    {photoPass ? (
+                      passIsPdf ? (
+                        <button
+                          type="button"
+                          onClick={() => setPdfSrc(photoPass)}
+                          title="Voir PDF"
+                          className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+                        >PDF</button>
+                      ) : (
+                        <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image">
+                          <img src={photoPass} alt="Passeport" className="h-20 w-16 object-cover rounded-md border" />
+                        </button>
+                      )
+                    ) : (
+                      <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de passeport</div>
+                    )}
+                  </div>
+
+                  {/* entête */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-[13px] text-slate-500">#{i + 1}</div>
-                      <div className="text-base font-extrabold text-slate-900">
-                        {p.nom} {p.prenoms}
-                      </div>
+                      <div className="text-base font-extrabold text-slate-900">{p.nom} {p.prenoms}</div>
                       <div className="text-[13px] text-slate-600">
-                        {p.sexe || "—"} • Passeport :{" "}
-                        <span className="font-mono">{p.numPasseport || "—"}</span>
+                        {p.sexe || "—"} • Passeport : <span className="font-mono">{p.numPasseport || "—"}</span>
                       </div>
                     </div>
                     <div className="text-right text-[13px] text-slate-600">
                       <div>{formatDate(p.createdAt)}</div>
-                      <div className="text-slate-900 font-semibold">
-                        Agent: {agentName}
-                      </div>
+                      <div className="text-slate-900 font-semibold">Agent: {agentName}</div>
                     </div>
                   </div>
 
-                  <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
-                    <div>
-                      <dt className="text-slate-500">Naissance</dt>
-                      <dd className="text-slate-800">
-                        {formatDate(p.dateNaissance)} — {p.lieuNaissance || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">Contact</dt>
-                      <dd className="text-slate-800">{p.contacts || "—"}</dd>
-                    </div>
-                    <div className="col-span-2">
-                      <dt className="text-slate-500">Adresse</dt>
-                      <dd className="text-slate-800">{p.adresse || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">Offre</dt>
-                      <dd className="text-slate-800">{p.offre || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">Année</dt>
-                      <dd className="text-slate-800">{p.anneeVoyage || "—"}</dd>
-                    </div>
-                    <div className="col-span-2">
-                      <dt className="text-slate-500">Voyage</dt>
-                      <dd className="text-slate-800">{p.voyage || "—"}</dd>
-                    </div>
-                    <div className="col-span-2">
-                      <dt className="text-slate-500">Urgence</dt>
-                      <dd className="text-slate-800">
-                        <span className="font-semibold">
-                          {p.urgenceNom} {p.urgencePrenoms}
-                        </span>{" "}
-                        • {p.urgenceContact} • {p.urgenceResidence}
-                      </dd>
-                    </div>
-                  </dl>
+                  {/* actions */}
+                  <div className="mt-3 flex justify-end gap-2 flex-wrap">
+                    <Btn onClick={() => openDetail(p.id)}>Détail</Btn>
+                    <Btn onClick={() => openEdit(p)} tone="primary">Modifier</Btn>
+                    <Btn onClick={() => askDelete(p)} tone="warn">Supprimer</Btn>
+                  </div>
                 </article>
               );
             })
           )}
         </div>
 
-
-        {/* ===== VUE TABLEAU (desktop & impression) ===== */}
+        {/* ===== TABLEAU (desktop) ===== */}
         <div className="paper hidden lg:block">
           {filtered.length === 0 ? (
             <p className="text-slate-600 text-center py-6">
-              Aucun enregistrement trouvé.
+              {loading ? "Chargement…" : "Aucun enregistrement trouvé."}
             </p>
           ) : (
-            <div className="table-wrap">
+            <div className="table-wrap overflow-x-auto">
               <table className="w-full data-table">
-                <colgroup>
-                  <col style={{ width: "4%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "7%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "6%" }} />
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "9%" }} />
-                </colgroup>
-
                 <thead>
                   <tr>
                     <Th>#</Th>
+                    <Th>Photos/passeports</Th>
                     <Th>Nom & Prénoms</Th>
                     <Th>Date | Lieu Naiss.</Th>
                     <Th>Sexe</Th>
-                    <Th>Adresse</Th>
-                    <Th>Contact</Th>
-                    <Th>Passeport</Th>
-                    <Th>Offre</Th>
-                    <Th>Voyage</Th>
+                    <Th className="hidden xl:table-cell">Adresse</Th>
+                    <Th>Contacts</Th>
+                    <Th>N° Passeport</Th>
+                    <Th className="hidden lg:table-cell">Offre</Th>
+                    <Th className="hidden lg:table-cell">Voyage</Th>
                     <Th>Année</Th>
-                    <Th>Urgence (Nom, Tél, Résidence)</Th>
+                    <Th className="hidden lg:table-cell">Urgence (Nom, Prénoms, Tél, Résidence)</Th>
                     <Th>Agent</Th>
                     <Th>Créé le</Th>
+                    <Th className="text-right">Actions</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((p, i) => {
-                    const agentName =
-                      String(p.enregistrePar || "")
-                        .replace(/^agent\s*:\s*/i, "")
-                        .trim() || "—";
+                    const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+                    const photoPil = mediaURL(p.photoPelerin);
+                    const photoPass = mediaURL(p.photoPasseport);
+                    const pilIsPdf  = isPdfPath(photoPil);
+                    const passIsPdf = isPdfPath(photoPass);
                     return (
                       <tr key={p.id ?? i} className="row">
                         <Td className="muted">{i + 1}</Td>
-                        <Td className="strong">
-                          {p.nom} {p.prenoms}
+                        <Td>
+                          <div className="flex gap-1">
+                            {photoPil ? (
+                              pilIsPdf ? (
+                                <button
+                                  type="button"
+                                  title="Voir PDF"
+                                  onClick={() => setPdfSrc(photoPil)}
+                                  className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
+                                >PDF</button>
+                              ) : (
+                                <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image">
+                                  <img src={photoPil} alt="Pèlerin" className="h-10 w-8 rounded border object-cover" />
+                                </button>
+                              )
+                            ) : (
+                              <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+                            )}
+                            {photoPass ? (
+                              passIsPdf ? (
+                                <button
+                                  type="button"
+                                  title="Voir PDF"
+                                  onClick={() => setPdfSrc(photoPass)}
+                                  className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
+                                >PDF</button>
+                              ) : (
+                                <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image">
+                                  <img src={photoPass} alt="Passeport" className="h-10 w-8 rounded border object-cover" />
+                                </button>
+                              )
+                            ) : (
+                              <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+                            )}
+                          </div>
                         </Td>
+                        <Td className="strong">{p.nom} {p.prenoms}</Td>
                         <Td>
                           <div>{formatDate(p.dateNaissance)}</div>
                           <div className="muted">{p.lieuNaissance || "—"}</div>
                         </Td>
                         <Td>{p.sexe || "—"}</Td>
-                        <Td className="wrap">{p.adresse || "—"}</Td>
+                        <Td className="wrap hidden xl:table-cell">{p.adresse || "—"}</Td>
                         <Td>{p.contacts || "—"}</Td>
                         <Td className="mono">{p.numPasseport || "—"}</Td>
-                        <Td>{p.offre || "—"}</Td>
-                        <Td className="wrap">{p.voyage || "—"}</Td>
+                        <Td className="hidden lg:table-cell">{p.offre || "—"}</Td>
+                        <Td className="wrap hidden lg:table-cell">{p.voyage || "—"}</Td>
                         <Td>{p.anneeVoyage || "—"}</Td>
-                        <Td className="wrap">
-                          <span className="strong">
-                            {p.urgenceNom} {p.urgencePrenoms}
-                          </span>{" "}
-                          • {p.urgenceContact} • {p.urgenceResidence}
+                        <Td className="wrap hidden lg:table-cell">
+                          <span className="strong">{p.urgenceNom} {p.urgencePrenoms}</span>{" "}
+                          • {p.urgenceContact || "—"} • {p.urgenceResidence || "—"}
                         </Td>
-                        <Td className="agent">
-                          <span className="muted">Agent:</span>
-                          <br />
-                          <span className="strong">{agentName}</span>
-                        </Td>
+                        <Td className="strong">{agentName}</Td>
                         <Td>{formatDate(p.createdAt)}</Td>
+                        <Td className="text-right">
+                          <div className="inline-flex gap-2 flex-wrap justify-end">
+                            <Btn onClick={() => openDetail(p.id)}>Détail</Btn>
+                            <Btn onClick={() => openEdit(p)} tone="primary">Modifier</Btn>
+                            <Btn onClick={() => askDelete(p)} tone="warn">Supprimer</Btn>
+                          </div>
+                        </Td>
                       </tr>
                     );
                   })}
@@ -305,148 +500,391 @@ export default function EnregistrementsPelerins({ records = SAMPLE }) {
             </div>
           )}
         </div>
-
-        {/* Pied de page : type de tri */}
-        {filtered.length > 0 && (
-          <div className="foot-note">— FIN DE LA LISTE ({filtreLabel}) —</div>
-        )}
       </div>
 
-      {/* Pagination (numéro de page) */}
-      <div className="only-print print-pagination" aria-hidden />
+      {/* Modales (full responsive) */}
+      {detail && (
+        <DetailModal
+          data={detail}
+          onClose={() => setDetail(null)}
+          onOpenPdf={(src)=>setPdfSrc(src)}
+          onOpenImage={(src)=>setImgSrc(src)}
+        />
+      )}
+      {editing && (
+        <EditModal
+          data={editing}
+          onClose={() => setEditing(null)}
+          onSave={saveEdit}
+          onOpenPdf={(src)=>setPdfSrc(src)}
+          onOpenImage={(src)=>setImgSrc(src)}
+        />
+      )}
 
-      {/* ===================== STYLES ===================== */}
-      <style>{`
-        /* ---------- Écran ---------- */
-        .report { max-width: 1120px; margin: 0 auto; padding: 0 10px; }
-
-        .table-wrap {
-          overflow-x: auto;
-          /* pas d'ascenseur vertical inutile, header sticky visible */
-          max-height: none;
-        }
-
-        .data-table {
-          border-collapse: collapse;
-          width: 100%;
-          font-size: 14px;
-          line-height: 1.45;
-          background: #fff;
-          min-width: 1000px; /* évite le serrage si écran moyen */
-        }
-        .data-table thead { background: #eef6ff; }
-        .data-table thead th {
-          position: sticky; top: 0; z-index: 1; /* en-tête collante */
-        }
-        .data-table th, .data-table td {
-          padding: 9px 10px;
-          border-bottom: 1px solid #e5e7eb;
-          vertical-align: top;
-          color: #0f172a;
-        }
-        .data-table th {
-          font-size: 13px;
-          color: #334155;
-          font-weight: 700;
-          text-align: left;
-          white-space: nowrap;
-          background: #eef6ff; /* pour le sticky */
-        }
-        .row:hover td { background: #f8fafc; }
-        .wrap { white-space: normal; word-break: break-word; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        .strong { font-weight: 700; }
-        .muted { color: #64748b; }
-        .agent .muted { font-weight: 700; color: #1f2937; }
-        .foot-note {
-          margin-top: 12px;
-          text-align: center;
-          color: #334155;
-          font-weight: 600;
-        }
-        .print-header .title {
-          font-size: 22px; font-weight: 800; color: #0f172a;
-          text-decoration: underline; margin: 0;
-        }
-        .print-header .subtitle {
-          margin-top: 4px; color: #334155; font-style: italic; font-size: 13px;
-        }
-
-        /* ---------- Mobile : cartes plus lisibles ---------- */
-        .cards article dl dt { font-size: 12px; }
-        .cards article dl dd { font-size: 13px; }
-
-        /* Empêcher les lignes d'être coupées entre 2 pages */
-        .row { break-inside: avoid; page-break-inside: avoid; }
-
-        /* ---------- Impression ---------- */
-        .only-print { display: none; }
-        @media print {
-          .only-print { display: block !important; }
-
-          /* Mode paysage + marges */
-          @page { size: A4 landscape; margin: 10mm 12mm 16mm 12mm; }
-          @page { size: landscape; } /* fallback */
-
-          /* Couleurs fidèles */
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-          /* Masquer seulement ce qu'il faut */
-          .no-print, .cards { display: none !important; } /* on imprime le tableau, pas les cartes */
-
-          /* Exploiter la largeur */
-          .report { max-width: none !important; padding: 0 !important; }
-          .table-wrap { overflow: visible !important; }
-          .data-table { min-width: 0 !important; width: 100% !important; }
-
-          /* Typo plus claire pour le papier */
-          .data-table { font-size: 15px !important; line-height: 1.5 !important; }
-          .data-table th { font-size: 14px !important; }
-          .data-table th, .data-table td { padding: 8px 10px !important; }
-          thead { background: #eaf2ff !important; }
-
-          /* Numérotation des pages */
-          .print-pagination {
-            position: fixed; right: 12mm; bottom: 8mm;
-            font-size: 12px; color: #334155;
-          }
-          .print-pagination::after { content: "Page " counter(page) " / " counter(pages); }
-        }
-
-        /* ---------- Ajustements tablettes ---------- */
-        @media (max-width: 1024px) {
-          .data-table { font-size: 13.5px; }
-          .data-table th { font-size: 12.5px; }
-        }
-        @media (max-width: 640px) {
-          .report { padding: 0 6px; }
-        }
-      `}</style>
+      {/* Viewers plein écran */}
+      {pdfSrc && <PDFViewer src={pdfSrc} onClose={() => setPdfSrc("")} />}
+      {imgSrc && <ImageViewer src={imgSrc} onClose={() => setImgSrc("")} />}
     </section>
   );
 }
 
-/* ===== Cellules ===== */
+/* ====== UI bits ====== */
 function Th({ children, className = "" }) {
   return (
-    <th
-      className={`px-3 py-2 border-b border-slate-200 text-slate-600 text-[12px] font-semibold ${className}`}
-    >
-      {children}
-    </th>
+    <th className={`px-3 py-2 border-b border-slate-200 text-slate-600 text-[12px] font-semibold ${className}`}>{children}</th>
   );
 }
 function Td({ children, className = "" }) {
   return (
-    <td className={`px-3 py-2 border-b border-slate-200 text-slate-900 ${className}`}>
+    <td className={`px-3 py-2 border-b border-slate-200 text-slate-900 ${className}`}>{children}</td>
+  );
+}
+function Btn({ children, tone = "default", type = "button", className="", ...props }) {
+  const styles = {
+    default: "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent",
+    warn: "bg-rose-600 text-white hover:bg-rose-700 border border-transparent",
+  };
+  return (
+    <button
+      type={type}
+      {...props}
+      className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${styles[tone]} ${className}`}
+    >
       {children}
-    </td>
+    </button>
   );
 }
 
-/* ===== Helpers ===== */
-function formatDate(d) {
-  if (!d) return "—";
-  const t = Date.parse(d);
-  return Number.isNaN(t) ? "—" : new Date(t).toLocaleDateString("fr-FR");
+/* ====== Modale Détail ====== */
+function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
+  const pil = mediaURL(data.photoPelerin);
+  const pass = mediaURL(data.photoPasseport);
+  const pilIsPdf  = isPdfPath(pil);
+  const passIsPdf = isPdfPath(pass);
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 h-full w-full p-2 sm:p-4 grid">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="
+            m-auto sm:m-0 sm:ml-auto
+            h-full sm:h-auto
+            w-full sm:w-[min(820px,95vw)]
+            bg-white border border-slate-200 shadow-2xl
+            rounded-none sm:rounded-2xl
+            flex flex-col
+            max-h-[100svh] sm:max-h-[95vh]
+          "
+        >
+          <div className="flex items-center justify-between gap-4 p-4 border-b bg-white sticky top-0">
+            <h4 className="text-base sm:text-lg font-extrabold">Détail du pèlerin</h4>
+            <button
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
+              onClick={onClose}
+            >
+              Fermer
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 overflow-y-auto">
+            <div className="flex gap-3">
+              {pil ? (
+                pilIsPdf ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPdf?.(pil)}
+                    className="h-28 w-24 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+                    title="Voir le PDF"
+                  >PDF</button>
+                ) : (
+                  <button type="button" onClick={() => onOpenImage?.(pil)} title="Voir l’image">
+                    <img src={pil} alt="" className="h-28 w-24 object-cover rounded-md border" />
+                  </button>
+                )
+              ) : (
+                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">—</div>
+              )}
+              {pass ? (
+                passIsPdf ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPdf?.(pass)}
+                    className="h-28 w-24 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+                    title="Voir le PDF"
+                  >PDF</button>
+                ) : (
+                  <button type="button" onClick={() => onOpenImage?.(pass)} title="Voir l’image">
+                    <img src={pass} alt="" className="h-28 w-24 object-cover rounded-md border" />
+                  </button>
+                )
+              ) : (
+                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">—</div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <Field label="Nom & Prénoms">{data.nom} {data.prenoms}</Field>
+              <Field label="Sexe">{data.sexe}</Field>
+              <Field label="Naissance">{formatDate(data.dateNaissance)} — {data.lieuNaissance || "—"}</Field>
+              <Field label="Adresse">{data.adresse || "—"}</Field>
+              <Field label="Contacts">{data.contacts || "—"}</Field>
+              <Field label="Passeport">{data.numPasseport || "—"}</Field>
+              <Field label="Offre">{data.offre || "—"}</Field>
+              <Field label="Voyage">{data.voyage || "—"}</Field>
+              <Field label="Année">{data.anneeVoyage || "—"}</Field>
+              <Field label="Urgence">{data.urgenceNom} {data.urgencePrenoms} • {data.urgenceContact || "—"} • {data.urgenceResidence || "—"}</Field>
+              <Field label="Agent">{String(data.enregistrePar || "").replace(/^agent\s*:\s*/i, "") || "—"}</Field>
+              <Field label="Créé le">{formatDate(data.createdAt)}</Field>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ====== Modale Edition (fichiers + preview PDF/IMG + view) ====== */
+function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
+  const [form, setForm] = useState(data);
+  const [saving, setSaving] = useState(false);
+  const [urlPil, setUrlPil] = useState("");
+  const [urlPass, setUrlPass] = useState("");
+
+  function ch(e) {
+    const { name, value } = e.target;
+    if (name === "numPasseport") {
+      const v = value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 9);
+      setForm((f) => ({ ...f, numPasseport: v }));
+      return;
+    }
+    setForm((f) => ({ ...f, [name]: value }));
+  }
+  function chFile(e) {
+    const { name, files } = e.target;
+    const file = files?.[0] || null;
+    setForm((f) => ({ ...f, [name]: file }));
+    if (name === "_filePelerin") {
+      if (urlPil) URL.revokeObjectURL(urlPil);
+      setUrlPil(file ? URL.createObjectURL(file) : "");
+    } else if (name === "_filePasseport") {
+      if (urlPass) URL.revokeObjectURL(urlPass);
+      setUrlPass(file ? URL.createObjectURL(file) : "");
+    }
+  }
+  async function submit(e) {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  }
+
+  const pilIsPdf  = form._filePelerin && (form._filePelerin.type === "application/pdf" || form._filePelerin.name?.toLowerCase().endsWith(".pdf"));
+  const passIsPdf = form._filePasseport && (form._filePasseport.type === "application/pdf" || form._filePasseport.name?.toLowerCase().endsWith(".pdf"));
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 h-full w-full p-2 sm:p-4 grid">
+        <form
+          onSubmit={submit}
+          role="dialog"
+          aria-modal="true"
+          className="
+            m-auto sm:m-0 sm:ml-auto
+            h-full sm:h-auto
+            w-full sm:w-[min(860px,95vw)]
+            bg-white border border-slate-200 shadow-2xl
+            rounded-none sm:rounded-2xl
+            flex flex-col
+            max-h-[100svh] sm:max-h-[95vh]
+          "
+        >
+          <div className="flex items-center justify-between gap-4 p-4 border-b bg-white sticky top-0">
+            <h4 className="text-base sm:text-lg font-extrabold">Modifier le pèlerin</h4>
+            <button type="button" className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50" onClick={onClose}>
+              Fermer
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 overflow-y-auto">
+            {/* Fichiers (optionnels) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold mb-1">Photo pèlerin (JPG/PNG/PDF)</label>
+                <input type="file" name="_filePelerin" accept="image/*,.pdf,application/pdf" onChange={chFile} />
+                {form._filePelerin && (
+                  <div className="mt-2 h-28 w-24 rounded border overflow-hidden">
+                    {pilIsPdf ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPdf?.(urlPil)}
+                        title="Voir le PDF"
+                        className="h-full w-full grid place-items-center text-[12px] font-bold text-blue-700 bg-blue-50"
+                      >PDF</button>
+                    ) : (
+                      <button type="button" onClick={() => onOpenImage?.(urlPil)} title="Voir l’image">
+                        <img src={urlPil} alt="Aperçu" className="h-full w-full object-cover" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Photo passeport (JPG/PNG/PDF)</label>
+                <input type="file" name="_filePasseport" accept="image/*,.pdf,application/pdf" onChange={chFile} />
+                {form._filePasseport && (
+                  <div className="mt-2 h-28 w-24 rounded border overflow-hidden">
+                    {passIsPdf ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPdf?.(urlPass)}
+                        title="Voir le PDF"
+                        className="h-full w-full grid place-items-center text-[12px] font-bold text-blue-700 bg-blue-50"
+                      >PDF</button>
+                    ) : (
+                      <button type="button" onClick={() => onOpenImage?.(urlPass)} title="Voir l’image">
+                        <img src={urlPass} alt="Aperçu" className="h-full w-full object-cover" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Champs texte */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Text label="Nom" name="nom" value={form.nom} onChange={ch} />
+              <Text label="Prénoms" name="prenoms" value={form.prenoms} onChange={ch} />
+              <Text label="Date de naissance" type="date" name="dateNaissance" value={form.dateNaissance} onChange={ch} />
+              <Text label="Lieu de naissance" name="lieuNaissance" value={form.lieuNaissance} onChange={ch} />
+              <Select
+                label="Sexe" name="sexe" value={form.sexe}
+                onChange={ch}
+                options={[{v:"",l:"—"}, {v:"M",l:"Masculin"}, {v:"F",l:"Féminin"}]}
+              />
+              <Text label="Adresse" name="adresse" value={form.adresse} onChange={ch} />
+              <Text label="Contacts" name="contacts" value={form.contacts} onChange={ch} />
+              <Text
+                label="N° passeport"
+                name="numPasseport"
+                value={form.numPasseport}
+                onChange={ch}
+                minLength={9}
+                maxLength={9}
+                pattern="^[A-Z0-9]{9}$"
+                title="9 caractères alphanumériques (A–Z, 0–9)"
+              />
+              <Select
+                label="Offre" name="offre" value={form.offre}
+                onChange={ch}
+                options={[{v:"",l:"—"},{v:"standard",l:"Standard"},{v:"confort",l:"Confort"},{v:"premium",l:"Premium"}]}
+              />
+              <Select
+                label="Voyage" name="voyage" value={form.voyage}
+                onChange={ch}
+                options={[{v:"",l:"—"},{v:"vol",l:"Vol"},{v:"bus",l:"Bus"},{v:"mixte",l:"Mixte"}]}
+              />
+              <Text label="Année voyage" name="anneeVoyage" value={form.anneeVoyage} onChange={ch} />
+              <Text label="Urgence — Nom" name="urgenceNom" value={form.urgenceNom} onChange={ch} />
+              <Text label="Urgence — Prénoms" name="urgencePrenoms" value={form.urgencePrenoms} onChange={ch} />
+              <Text label="Urgence — Contact" name="urgenceContact" value={form.urgenceContact} onChange={ch} />
+              <Text label="Urgence — Résidence" name="urgenceResidence" value={form.urgenceResidence} onChange={ch} />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-4 border-t bg-white sticky bottom-0">
+            <Btn type="button" onClick={onClose}>Annuler</Btn>
+            <Btn tone="primary" type="submit" disabled={saving}>
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ====== PDF Viewer ====== */
+function PDFViewer({ src, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative z-10 h-full w-full flex flex-col">
+        <div className="bg-slate-900/90 text-white px-3 py-2 flex items-center justify-between">
+          <div className="font-semibold text-sm truncate">Aperçu PDF</div>
+          <div className="flex items-center gap-2">
+            <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
+            <button onClick={onClose} className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Fermer</button>
+          </div>
+        </div>
+        <div className="flex-1 bg-slate-900">
+          <iframe title="PDF" src={src} className="w-full h-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ====== Image Viewer (lightbox) ====== */
+function ImageViewer({ src, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <div className="absolute inset-0 bg-black/80" onClick={onClose} />
+      <div className="relative z-10 flex h-full w-full flex-col">
+        <div className="bg-slate-900/90 text-white px-3 py-2 flex items-center justify-between">
+          <div className="font-semibold text-sm truncate">Aperçu image</div>
+          <div className="flex items-center gap-2">
+            <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
+            <button onClick={onClose} className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Fermer</button>
+          </div>
+        </div>
+        <div className="flex-1 grid place-items-center bg-black">
+          <img
+            src={src}
+            alt="aperçu"
+            className="max-h-[92vh] max-w-[96vw] object-contain"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== small inputs ===== */
+function Field({ label, children }) {
+  return (
+    <div className="grid gap-1">
+      <span className="text-[12px] font-semibold text-slate-700">{label}</span>
+      {children}
+    </div>
+  );
+}
+function Text({ label, ...props }) {
+  return (
+    <Field label={label}>
+      <input
+        {...props}
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+      />
+    </Field>
+  );
+}
+function Select({ label, options, ...props }) {
+  return (
+    <Field label={label}>
+      <select
+        {...props}
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+      >
+        {options.map((o) => (
+          <option key={o.v} value={o.v}>{o.l}</option>
+        ))}
+      </select>
+    </Field>
+  );
 }

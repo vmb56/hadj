@@ -1,130 +1,242 @@
 // src/pages/medicales/sections/ImpressionMedicale.jsx
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/* ====================== Données de démo (remplace par API plus tard) ====================== */
-const SAMPLE_MED = [
-  {
-    idInfo: 1001,
-    idPelerin: 51,
-    passport: "20AD24295",
-    nom: "BAMBA",
-    prenoms: "Yaya",
-    photo: null,
-    dateNaissance: "1954-10-15",
-    lieuNaissance: "Odienné",
-    adresse: "Abobo",
-    contacts: "07 77 85 51 4",
-    sexe: "M",
+/* ========= Config API ========= */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
 
-    // Médical
-    pouls: "72 bpm",
-    tension: "12/8",
-    poids: "78 kg",
-    carnetVaccins: "À jour",
-    groupeSanguin: "O+",
-    covid: "Attestation OK (2024-05-12)",
-    vulnerabilite: "Âge > 65",
-    diabete: "Non",
-    maladieCardiaque: "Non",
-    analysePsychiatrique: "RAS",
-    accompagnements: "Assistance légère",
-    examenParaclinique: "RAS",
-    antecedents: "Allergie pénicilline",
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+}
 
-    // Voyage
-    anneeVoyage: 2025,
-    nomVoyage: "HAJJ",
-    hotel: "Hôtel du pèlerin",
-    offre: "Option 1",
-
-    // Meta
-    employeEnregistreur: "ISMOSOG",
-    createdAt: "2025-10-20T10:30:00Z",
-  },
-  {
-    idInfo: 1002,
-    idPelerin: 77,
-    passport: "A12345678",
-    nom: "KONE",
-    prenoms: "Aïcha",
-    photo: "",
-    dateNaissance: "1989-02-21",
-    lieuNaissance: "Bouaké",
-    adresse: "Marcory",
-    contacts: "01 22 33 44",
-    sexe: "F",
-
-    pouls: "76 bpm",
-    tension: "11/7",
-    poids: "62 kg",
-    carnetVaccins: "Fièvre jaune OK",
-    groupeSanguin: "A-",
-    covid: "Attestation OK (2023-11-02)",
-    vulnerabilite: "—",
-    diabete: "Non",
-    maladieCardiaque: "Non",
-    analysePsychiatrique: "RAS",
-    accompagnements: "—",
-    examenParaclinique: "Analyse sanguine OK",
-    antecedents: "—",
-
-    anneeVoyage: 2025,
-    nomVoyage: "HAJJ",
-    hotel: "BMVT Hôtel",
-    offre: "Premium",
-    employeEnregistreur: "Sarah",
-    createdAt: "2025-10-21T09:02:00Z",
-  },
-];
-
-/* ====================== Helpers ====================== */
+/* ========= Helpers ========= */
+// Construit une URL absolue pour les fichiers stockés par l’API (ex: /uploads/…)
+function mediaURL(p) {
+  if (!p) return "";
+  if (/^https?:\/\//i.test(p)) return p;
+  const base = API_BASE.replace(/\/+$/, "");
+  const rel  = String(p).startsWith("/") ? p : `/${p}`;
+  return `${base}${rel}`;
+}
 function formatDate(d) {
   if (!d) return "";
   const dt = new Date(d);
   return isNaN(dt) ? d : dt.toLocaleDateString("fr-FR");
 }
 
+// Normalise une ligne "médicale" renvoyée par /api/medicales
+function normalizeMed(row = {}) {
+  return {
+    idInfo: row.id ?? null,
+    idPelerin: row.pelerin_id ?? null,
+    numeroCMAH: row.numero_cmah ?? "",
+    passport: row.passeport ?? "",
+    nom: row.nom ?? "",
+    prenoms: row.prenoms ?? "",
+    // Constantes et champs médicaux
+    pouls: row.pouls ?? "",
+    tension: row.tension ?? "",
+    poids: row.poids ?? "",
+    carnetVaccins: row.carnet_vaccins ?? "",
+    groupeSanguin: row.groupe_sanguin ?? "",
+    covid: row.covid ?? "",
+    vulnerabilite: row.vulnerabilite ?? "",
+    diabete: row.diabete ?? "",
+    maladieCardiaque: row.maladie_cardiaque ?? "",
+    analysePsychiatrique: row.analyse_psychiatrique ?? "",
+    accompagnements: row.accompagnements ?? "",
+    examenParaclinique: row.examen_paraclinique ?? "",
+    antecedents: row.antecedents ?? "",
+    createdAt: row.created_at ?? null,
+  };
+}
+
+// Normalise une fiche pèlerin pour l’aperçu / impression (GET /api/pelerins/:id)
+function normalizePelerin(row = {}) {
+  return {
+    photo: mediaURL(row.photo_pelerin_path || ""),
+    dateNaissance: row.date_naissance || "",
+    lieuNaissance: row.lieu_naissance || "",
+    adresse: row.adresse || "",
+    contacts: row.contact || "",
+    sexe: row.sexe || "",
+    offre: row.offre || "",
+    nomVoyage: row.voyage || "",
+    anneeVoyage: row.annee_voyage || "",
+    hotel: row.hotel || "", // si tu ajoutes ce champ plus tard
+    employeEnregistreur: row.created_by_name || "",
+  };
+}
+
 /* ====================== Composant principal ====================== */
 export default function ImpressionMedicale() {
-  const [qNom, setQNom] = useState("");
-  const [qPrenom, setQPrenom] = useState("");
-  const [data, setData] = useState(SAMPLE_MED);
+  // ✅ Recherche UNIQUEMENT par N° de passeport
+  const [qPassport, setQPassport] = useState("");
+
+  // Liste médicale (API), sélection et enrichissement
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const selected = useMemo(
+
+  // Cache "pèlerin" par ID pour éviter refetch à chaque clic
+  const [pelerinsCache, setPelerinsCache] = useState({});
+  const [loadingPelerin, setLoadingPelerin] = useState(false);
+
+  const selectedMed = useMemo(
     () => data.find((x) => x.idInfo === selectedId) || null,
     [data, selectedId]
   );
+  const selectedPel = selectedMed?.idPelerin ? pelerinsCache[selectedMed.idPelerin] : null;
+
   const printRef = useRef(null);
 
+  /* ====== Chargement initial : on récupère toute la liste (sans filtre) ====== */
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  // Liste complète (GET /api/medicales) — utile quand on “Efface”
+  async function fetchAll() {
+    setLoading(true);
+    setErr("");
+    try {
+      const token = getToken();
+      const url = new URL(`${API_BASE}/api/medicales`);
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        throw new Error(msg);
+      }
+      const payload = await res.json();
+      const list = Array.isArray(payload?.items) ? payload.items : [];
+      const normalized = list.map(normalizeMed);
+      setData(normalized);
+      setSelectedId(null);
+    } catch (e) {
+      setErr(e.message || "Échec du chargement");
+      setData([]);
+      setSelectedId(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ Recherche stricte par passeport (GET /api/medicales/by-passport?passport=)
+  async function fetchByPassport(pass) {
+    const clean = (pass || "").replace(/\s+/g, "").toUpperCase();
+    if (!clean) return fetchAll();
+
+    setLoading(true);
+    setErr("");
+    try {
+      const token = getToken();
+      const url = new URL(`${API_BASE}/api/medicales/by-passport`);
+      url.searchParams.set("passport", clean);
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        throw new Error(msg);
+      }
+      const payload = await res.json();
+      // la route renvoie {items: [...]}
+      const list = Array.isArray(payload?.items) ? payload.items : [];
+      const normalized = list.map(normalizeMed);
+      setData(normalized);
+      setSelectedId(normalized.length === 1 ? normalized[0].idInfo : null);
+    } catch (e) {
+      setErr(e.message || "Échec de la recherche");
+      setData([]);
+      setSelectedId(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Lorsqu’on choisit une ligne, on tente de charger le pelerin lié (si pas en cache)
+  useEffect(() => {
+    (async () => {
+      if (!selectedMed?.idPelerin || pelerinsCache[selectedMed.idPelerin]) return;
+      try {
+        setLoadingPelerin(true);
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/api/pelerins/${selectedMed.idPelerin}`, {
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: "include",
+        });
+        if (!res.ok) return; // on ne bloque pas l’UI
+        const row = await res.json();
+        setPelerinsCache((prev) => ({
+          ...prev,
+          [selectedMed.idPelerin]: normalizePelerin(row),
+        }));
+      } finally {
+        setLoadingPelerin(false);
+      }
+    })();
+  }, [selectedMed, pelerinsCache]);
+
+  // ✅ Soumission => cherche uniquement par passeport
   function handleSearch(e) {
     e.preventDefault();
-    const n = qNom.trim().toLowerCase();
-    const p = qPrenom.trim().toLowerCase();
-
-    const filtered = SAMPLE_MED.filter((r) => {
-      const okNom = n ? r.nom.toLowerCase().includes(n) : true;
-      const okPren = p ? r.prenoms.toLowerCase().includes(p) : true;
-      return okNom && okPren;
-    });
-
-    setData(filtered);
-    setSelectedId(filtered.length === 1 ? filtered[0].idInfo : null);
+    fetchByPassport(qPassport);
   }
 
   function handleClear() {
-    setQNom("");
-    setQPrenom("");
-    setData(SAMPLE_MED);
-    setSelectedId(null);
+    setQPassport("");
+    fetchAll();
   }
 
   function handlePrint() {
-    if (!selected) {
+    if (!selectedMed) {
       alert("Sélectionne une fiche médicale avant d’imprimer.");
       return;
     }
     requestAnimationFrame(() => window.print());
   }
+
+  // Fusion (médicale + pelerin si dispo)
+  const selected = useMemo(() => {
+    if (!selectedMed) return null;
+    const pel = selectedPel || {};
+    return {
+      ...selectedMed,
+      photo: pel.photo || "",
+      dateNaissance: pel.dateNaissance || "",
+      lieuNaissance: pel.lieuNaissance || "",
+      adresse: pel.adresse || "",
+      contacts: pel.contacts || "",
+      sexe: pel.sexe || "",
+      offre: pel.offre || "",
+      nomVoyage: pel.nomVoyage || "",
+      anneeVoyage: pel.anneeVoyage || "",
+      hotel: pel.hotel || "",
+      employeEnregistreur: pel.employeEnregistreur || "",
+    };
+  }, [selectedMed, selectedPel]);
 
   return (
     <div className="ip-page">
@@ -133,14 +245,14 @@ export default function ImpressionMedicale() {
         :root{
           --bg:#f8fafc;
           --card:#ffffff;
-          --muted:#64748b;     /* slate-500/600 */
-          --text:#0f172a;      /* slate-900 */
-          --accent:#2563eb;    /* blue-600 */
-          --accent-2:#60a5fa;  /* sky-400 */
-          --ok:#16a34a;        /* green-600 */
-          --warn:#f59e0b;      /* amber-500 */
-          --chip:#e2e8f0;      /* slate-200 */
-          --border:#e2e8f0;    /* slate-200 */
+          --muted:#64748b;
+          --text:#0f172a;
+          --accent:#2563eb;
+          --accent-2:#60a5fa;
+          --ok:#16a34a;
+          --warn:#f59e0b;
+          --chip:#e2e8f0;
+          --border:#e2e8f0;
           --row:rgba(15,23,42,.02);
           --row-alt:rgba(15,23,42,.05);
           --shadow:0 10px 30px rgba(2,6,23,.08);
@@ -247,7 +359,6 @@ export default function ImpressionMedicale() {
           @page{size:A4;margin:10mm;}
         }
 
-        /* Polices un peu plus grandes (cohérent avec layout) */
         .dyn-title{font-size:clamp(1.35rem,1.2rem + .8vw,1.65rem);}
         .dyn-sm{font-size:clamp(.95rem,.9rem + .2vw,1.05rem);}
       `}</style>
@@ -261,42 +372,41 @@ export default function ImpressionMedicale() {
                 Impressions – Fiche Médicale
               </div>
               <div className="dyn-sm" style={{ color: "var(--muted)" }}>
-                Recherche par nom/prénoms · Sélection · Impression A4
+                Recherche par N° de passeport · Sélection · Impression A4
               </div>
             </div>
           </div>
 
           <div className="chip" title="Total fiches">
             <span>🧾</span>
-            <strong>{SAMPLE_MED.length}</strong> fiches
+            <strong>{data.length}</strong> fiches
           </div>
         </div>
 
-        {/* Barre de recherche & actions */}
+        {/* ✅ Barre de recherche passeport uniquement */}
         <div className="ip-card">
           <form className="ip-controls" onSubmit={handleSearch}>
             <input
               className="ip-input"
-              placeholder="Nom du pèlerin"
-              value={qNom}
-              onChange={(e) => setQNom(e.target.value)}
+              placeholder="Numéro de passeport (ex: AA1234567)"
+              value={qPassport}
+              onChange={(e) => setQPassport(e.target.value.replace(/\s+/g, "").toUpperCase())} // normalise
+              inputMode="text"
             />
-            <input
-              className="ip-input"
-              placeholder="Prénoms du pèlerin"
-              value={qPrenom}
-              onChange={(e) => setQPrenom(e.target.value)}
-            />
-            <button type="submit" className="ip-btn primary">Rechercher</button>
-            <button type="button" className="ip-btn" onClick={handleClear}>
+            <button type="submit" className="ip-btn primary" disabled={loading}>
+              {loading ? "Recherche..." : "Rechercher"}
+            </button>
+            <button type="button" className="ip-btn" onClick={handleClear} disabled={loading}>
               Effacer
             </button>
             <button type="button" className="ip-btn print" onClick={handlePrint}>
               Imprimer la fiche
             </button>
             <div style={{ marginLeft: "auto", color: "var(--muted)", fontSize: 13 }}>
-              {selected
-                ? `Sélectionné : ${selected.nom} ${selected.prenoms}`
+              {selectedMed
+                ? `Sélectionné : ${selectedMed.nom} ${selectedMed.prenoms}${loadingPelerin ? " (infos pèlerin...)" : ""}`
+                : err
+                ? err
                 : `${data.length} résultat(s)`}
             </div>
           </form>
@@ -304,7 +414,7 @@ export default function ImpressionMedicale() {
 
         {/* Layout principal */}
         <div className="ip-layout" style={{ marginTop: 16 }}>
-          {/* Tableau */}
+          {/* Tableau (liste médicale) */}
           <div className="ip-card" style={{ padding: 12 }}>
             <table className="ip-table">
               <thead>
@@ -323,44 +433,55 @@ export default function ImpressionMedicale() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((r) => (
-                  <tr
-                    key={r.idInfo}
-                    className={selectedId === r.idInfo ? "selected" : ""}
-                    onClick={() => setSelectedId(r.idInfo)}
-                    title="Cliquer pour sélectionner"
-                  >
-                    <td style={{ fontFamily: "ui-monospace, monospace" }}>{r.idInfo}</td>
-                    <td style={{ fontFamily: "ui-monospace, monospace" }}>{r.idPelerin}</td>
-                    <td style={{ width: 52 }}>
-                      <img
-                        alt={r.nom ? `Photo de ${r.nom}` : "Photo"}
-                        src={r.photo || "https://via.placeholder.com/36x44?text=ID"}
-                        style={{
-                          width: 36,
-                          height: 44,
-                          objectFit: "cover",
-                          borderRadius: 6,
-                          border: "1px solid #e5e7eb",
-                        }}
-                      />
-                    </td>
-                    <td style={{ fontWeight: 700 }}>{r.nom}</td>
-                    <td>{r.prenoms}</td>
-                    <td>{r.covid}</td>
-                    <td>{r.groupeSanguin}</td>
-                    <td>{r.pouls}</td>
-                    <td>{r.tension}</td>
-                    <td>{r.poids}</td>
-                    <td style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                      {r.passport}
-                    </td>
-                  </tr>
-                ))}
-                {data.length === 0 && (
+                {data.map((r) => {
+                  const pel = r.idPelerin ? pelerinsCache[r.idPelerin] : null;
+                  const photo = pel?.photo || "";
+                  return (
+                    <tr
+                      key={r.idInfo}
+                      className={selectedId === r.idInfo ? "selected" : ""}
+                      onClick={() => setSelectedId(r.idInfo)}
+                      title="Cliquer pour sélectionner"
+                    >
+                      <td style={{ fontFamily: "ui-monospace, monospace" }}>{r.idInfo}</td>
+                      <td style={{ fontFamily: "ui-monospace, monospace" }}>{r.idPelerin ?? "—"}</td>
+                      <td style={{ width: 52 }}>
+                        <img
+                          alt={r.nom ? `Photo de ${r.nom}` : "Photo"}
+                          src={photo || "https://via.placeholder.com/36x44?text=ID"}
+                          style={{
+                            width: 36,
+                            height: 44,
+                            objectFit: "cover",
+                            borderRadius: 6,
+                            border: "1px solid #e5e7eb",
+                          }}
+                        />
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{r.nom}</td>
+                      <td>{r.prenoms}</td>
+                      <td>{r.covid}</td>
+                      <td>{r.groupeSanguin}</td>
+                      <td>{r.pouls}</td>
+                      <td>{r.tension}</td>
+                      <td>{r.poids}</td>
+                      <td style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                        {r.passport}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(!loading && data.length === 0) && (
                   <tr>
                     <td colSpan={11} style={{ textAlign: "center", color: "var(--muted)", padding: 18 }}>
                       Aucun enregistrement
+                    </td>
+                  </tr>
+                )}
+                {loading && (
+                  <tr>
+                    <td colSpan={11} style={{ textAlign: "center", color: "var(--muted)", padding: 18 }}>
+                      Chargement…
                     </td>
                   </tr>
                 )}
@@ -389,14 +510,14 @@ export default function ImpressionMedicale() {
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
                     {selected
-                      ? `${selected.nomVoyage} · ${selected.anneeVoyage}`
+                      ? `${selected.nomVoyage || "Voyage"} · ${selected.anneeVoyage || "—"}`
                       : "Sélectionne une ligne pour prévisualiser"}
                   </div>
                   {selected && (
                     <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
                       <div><strong>📇 Passeport :</strong> {selected.passport}</div>
-                      <div><strong>🩸 Groupe :</strong> {selected.groupeSanguin}</div>
-                      <div><strong>💉 COVID :</strong> {selected.covid}</div>
+                      <div><strong>🩸 Groupe :</strong> {selected.groupeSanguin || "—"}</div>
+                      <div><strong>💉 COVID :</strong> {selected.covid || "—"}</div>
                     </div>
                   )}
                 </div>
@@ -419,7 +540,7 @@ export default function ImpressionMedicale() {
                   <img className="logo" alt="Logo" src="https://via.placeholder.com/120x60?text=LOGO" />
                   <div>
                     <div className="doc-title">FICHE MÉDICALE</div>
-                    <div className="doc-sub">{selected.nomVoyage} — {selected.anneeVoyage}</div>
+                    <div className="doc-sub">{selected.nomVoyage || "—"} — {selected.anneeVoyage || "—"}</div>
                   </div>
                 </div>
                 <div className="meta">
@@ -432,14 +553,14 @@ export default function ImpressionMedicale() {
               <div className="two-col">
                 <div className="col">
                   <div className="row"><div className="label">ID fiche médicale :</div><div className="value">{selected.idInfo}</div></div>
-                  <div className="row"><div className="label">ID Pèlerin :</div><div className="value">{selected.idPelerin}</div></div>
+                  <div className="row"><div className="label">ID Pèlerin :</div><div className="value">{selected.idPelerin ?? "—"}</div></div>
                   <div className="row"><div className="label">Nom :</div><div className="value">{selected.nom}</div></div>
                   <div className="row"><div className="label">Prénoms :</div><div className="value">{selected.prenoms}</div></div>
                   <div className="row"><div className="label">Date de naissance :</div><div className="value">{formatDate(selected.dateNaissance)}</div></div>
-                  <div className="row"><div className="label">Lieu de naissance :</div><div className="value">{selected.lieuNaissance}</div></div>
-                  <div className="row"><div className="label">Adresse :</div><div className="value">{selected.adresse}</div></div>
-                  <div className="row"><div className="label">Contacts :</div><div className="value">{selected.contacts}</div></div>
-                  <div className="row"><div className="label">Sexe :</div><div className="value">{selected.sexe}</div></div>
+                  <div className="row"><div className="label">Lieu de naissance :</div><div className="value">{selected.lieuNaissance || "—"}</div></div>
+                  <div className="row"><div className="label">Adresse :</div><div className="value">{selected.adresse || "—"}</div></div>
+                  <div className="row"><div className="label">Contacts :</div><div className="value">{selected.contacts || "—"}</div></div>
+                  <div className="row"><div className="label">Sexe :</div><div className="value">{selected.sexe || "—"}</div></div>
                   <div className="row"><div className="label">Passeport :</div><div className="value">{selected.passport}</div></div>
                 </div>
                 <div className="right-photo">
@@ -454,46 +575,46 @@ export default function ImpressionMedicale() {
               <div className="section">CONSTANTES & EXAMENS</div>
               <div className="two-col">
                 <div className="col">
-                  <div className="row"><div className="label">Pouls :</div><div className="value">{selected.pouls}</div></div>
-                  <div className="row"><div className="label">Tension :</div><div className="value">{selected.tension}</div></div>
-                  <div className="row"><div className="label">Poids :</div><div className="value">{selected.poids}</div></div>
-                  <div className="row"><div className="label">Groupe sanguin :</div><div className="value">{selected.groupeSanguin}</div></div>
+                  <div className="row"><div className="label">Pouls :</div><div className="value">{selected.pouls || "—"}</div></div>
+                  <div className="row"><div className="label">Tension :</div><div className="value">{selected.tension || "—"}</div></div>
+                  <div className="row"><div className="label">Poids :</div><div className="value">{selected.poids || "—"}</div></div>
+                  <div className="row"><div className="label">Groupe sanguin :</div><div className="value">{selected.groupeSanguin || "—"}</div></div>
                 </div>
                 <div className="col">
-                  <div className="row"><div className="label">Carnet vaccins :</div><div className="value">{selected.carnetVaccins}</div></div>
-                  <div className="row"><div className="label">Attestation COVID-19 :</div><div className="value">{selected.covid}</div></div>
-                  <div className="row"><div className="label">Examen paraclinique :</div><div className="value">{selected.examenParaclinique}</div></div>
+                  <div className="row"><div className="label">Carnet vaccins :</div><div className="value">{selected.carnetVaccins || "—"}</div></div>
+                  <div className="row"><div className="label">Attestation COVID-19 :</div><div className="value">{selected.covid || "—"}</div></div>
+                  <div className="row"><div className="label">Examen paraclinique :</div><div className="value">{selected.examenParaclinique || "—"}</div></div>
                 </div>
               </div>
 
               <div className="section">PATHOLOGIES & VULNÉRABILITÉS</div>
               <div className="two-col">
                 <div className="col">
-                  <div className="row"><div className="label">Diabète :</div><div className="value">{selected.diabete}</div></div>
-                  <div className="row"><div className="label">Maladie cardiaque :</div><div className="value">{selected.maladieCardiaque}</div></div>
+                  <div className="row"><div className="label">Diabète :</div><div className="value">{selected.diabete || "—"}</div></div>
+                  <div className="row"><div className="label">Maladie cardiaque :</div><div className="value">{selected.maladieCardiaque || "—"}</div></div>
                 </div>
                 <div className="col">
-                  <div className="row"><div className="label">Vulnérabilité :</div><div className="value">{selected.vulnerabilite}</div></div>
-                  <div className="row"><div className="label">Analyse psychiatrique :</div><div className="value">{selected.analysePsychiatrique}</div></div>
+                  <div className="row"><div className="label">Vulnérabilité :</div><div className="value">{selected.vulnerabilite || "—"}</div></div>
+                  <div className="row"><div className="label">Analyse psychiatrique :</div><div className="value">{selected.analysePsychiatrique || "—"}</div></div>
                 </div>
               </div>
 
               <div className="section">ACCOMPAGNEMENTS & ANTÉCÉDENTS</div>
               <div className="two-col">
                 <div className="col">
-                  <div className="row"><div className="label">Accompagnements :</div><div className="value">{selected.accompagnements}</div></div>
+                  <div className="row"><div className="label">Accompagnements :</div><div className="value">{selected.accompagnements || "—"}</div></div>
                 </div>
                 <div className="col">
-                  <div className="row"><div className="label">Antécédents :</div><div className="value">{selected.antecedents}</div></div>
+                  <div className="row"><div className="label">Antécédents :</div><div className="value">{selected.antecedents || "—"}</div></div>
                 </div>
               </div>
 
               <div className="section">VOYAGE</div>
               <div>
-                <div className="row"><div className="label">Nom du voyage :</div><div className="value">{selected.nomVoyage}</div></div>
-                <div className="row"><div className="label">Année :</div><div className="value">{selected.anneeVoyage}</div></div>
-                <div className="row"><div className="label">Offre :</div><div className="value">{selected.offre}</div></div>
-                <div className="row"><div className="label">Hôtel :</div><div className="value">{selected.hotel}</div></div>
+                <div className="row"><div className="label">Nom du voyage :</div><div className="value">{selected.nomVoyage || "—"}</div></div>
+                <div className="row"><div className="label">Année :</div><div className="value">{selected.anneeVoyage || "—"}</div></div>
+                <div className="row"><div className="label">Offre :</div><div className="value">{selected.offre || "—"}</div></div>
+                <div className="row"><div className="label">Hôtel :</div><div className="value">{selected.hotel || "—"}</div></div>
               </div>
 
               <div style={{ textAlign: "center", marginTop: 14, fontWeight: 900, color: "#9ca3af" }}>
@@ -501,7 +622,7 @@ export default function ImpressionMedicale() {
               </div>
 
               <div className="footer">
-                <div>Agent enregistreur : <strong>{selected.employeEnregistreur}</strong></div>
+                <div>Agent enregistreur : <strong>{selected.employeEnregistreur || "—"}</strong></div>
                 <div style={{ textAlign: "center" }}>
                   <img className="signature" alt="signature" src="https://via.placeholder.com/160x44?text=Signature" />
                 </div>

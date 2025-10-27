@@ -1,56 +1,54 @@
 // src/pages/medicales/ListeMedicale.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/* ==========================
-   Données de démonstration
-========================== */
-const SAMPLE = [
-  {
-    id: 1,
-    numeroCMAH: "CMAH-2025-001",
-    passeport: "20AD24295",
-    nom: "BAMBA",
-    prenoms: "Yaya",
-    pouls: "72 bpm",
-    carnetVaccins: "À jour",
-    groupeSanguin: "O+",
-    covid: "Négatif",
-    poids: "78 kg",
-    tension: "12/8",
-    vulnerabilite: "Aucune",
-    diabete: "Non",
-    maladieCardiaque: "Non",
-    analysePsychiatrique: "RAS",
-    accompagnements: "Aucun",
-    examenParaclinique: "Normal",
-    antecedents: "Aucun",
-  },
-  {
-    id: 2,
-    numeroCMAH: "CMAH-2025-002",
-    passeport: "A12345678",
-    nom: "KONE",
-    prenoms: "Moussa",
-    pouls: "85 bpm",
-    carnetVaccins: "Partiel",
-    groupeSanguin: "A+",
-    covid: "Vacciné",
-    poids: "70 kg",
-    tension: "13/9",
-    vulnerabilite: "Légère",
-    diabete: "Oui",
-    maladieCardiaque: "Non",
-    analysePsychiatrique: "RAS",
-    accompagnements: "Insuline",
-    examenParaclinique: "À suivre",
-    antecedents: "Diabète",
-  },
-];
+/* ========= Config API ========= */
+// On lit l’URL de l’API depuis Vite/CRA, sinon fallback localhost:4000
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
 
-/* ==========================
-   Helpers UI (thème bleu)
-========================== */
+// Token si tu utilises Authorization: Bearer
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+/* ========= Normalisation des données backend -> UI =========
+   Le backend renvoie des champs snake_case (ex: numero_cmah).
+   On les transforme ici en camelCase pour la vue. */
+function normalizeRow(r = {}) {
+  return {
+    id: r.id,
+    numeroCMAH: r.numero_cmah || r.numeroCMAH || "",
+    passeport: r.passeport || "",
+    nom: r.nom || "",
+    prenoms: r.prenoms || "",
+    pouls: r.pouls || "",
+    carnetVaccins: r.carnet_vaccins || r.carnetVaccins || "",
+    groupeSanguin: r.groupe_sanguin || r.groupeSanguin || "",
+    covid: r.covid || "",
+    poids: r.poids || "",
+    tension: r.tension || "",
+    vulnerabilite: r.vulnerabilite || "",
+    diabete: r.diabete || "",
+    maladieCardiaque: r.maladie_cardiaque || r.maladieCardiaque || "",
+    analysePsychiatrique: r.analyse_psychiatrique || r.analysePsychiatrique || "",
+    accompagnements: r.accompagnements || "",
+    examenParaclinique: r.examen_paraclinique || r.examenParaclinique || "",
+    antecedents: r.antecedents || "",
+    createdAt: r.created_at || r.createdAt || null,
+    updatedAt: r.updated_at || r.updatedAt || null,
+  };
+}
+
+/* ========= Helpers UI (thème bleu) ========= */
 function Badge({ children, tone = "slate" }) {
   const tones = {
     slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
@@ -61,9 +59,7 @@ function Badge({ children, tone = "slate" }) {
     amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   };
   return (
-    <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tones[tone] || tones.slate}`}
-    >
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tones[tone] || tones.slate}`}>
       {children}
     </span>
   );
@@ -71,14 +67,10 @@ function Badge({ children, tone = "slate" }) {
 
 function ActionButton({ children, onClick, tone = "default" }) {
   const styles = {
-    default:
-      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-    primary:
-      "border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
-    edit:
-      "border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
-    warn:
-      "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
+    default: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    primary: "border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
+    edit: "border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+    warn: "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
   };
   return (
     <button
@@ -90,7 +82,6 @@ function ActionButton({ children, onClick, tone = "default" }) {
     </button>
   );
 }
-
 function Th({ children }) {
   return (
     <th className="text-left px-4 py-3 whitespace-nowrap text-[13px] uppercase tracking-wide text-blue-700">
@@ -99,11 +90,7 @@ function Th({ children }) {
   );
 }
 function Td({ children, className = "" }) {
-  return (
-    <td className={`px-4 py-3 whitespace-nowrap text-slate-700 ${className}`}>
-      {children}
-    </td>
-  );
+  return <td className={`px-4 py-3 whitespace-nowrap text-slate-700 ${className}`}>{children}</td>;
 }
 
 /* ==========================
@@ -111,36 +98,114 @@ function Td({ children, className = "" }) {
 ========================== */
 export default function ListeMedicale() {
   const navigate = useNavigate();
-  const [data, setData] = useState(SAMPLE);
+
+  // Données chargées depuis l’API
+  const [data, setData] = useState([]);
+  // Recherche locale (champ input)
   const [q, setQ] = useState("");
+  // Ligne sélectionnée pour la modale "Détails"
   const [selected, setSelected] = useState(null);
+  // États réseau
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const debounceRef = useRef(null);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return data;
-    return data.filter((x) =>
-      [
-        x.nom,
-        x.prenoms,
-        x.passeport,
-        x.numeroCMAH,
-        x.groupeSanguin,
-        x.diabete,
-        x.maladieCardiaque,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(s)
-    );
-  }, [q, data]);
+  /* -------- Fetch liste depuis l’API --------
+     On interroge GET /api/medicales?search=… (voir ta route backend).
+     On applique un "debounce" léger sur la recherche pour éviter le spam. */
+  async function fetchList(search = "") {
+    setLoading(true);
+    setErr("");
+    try {
+      const url = new URL(`${API_BASE}/api/medicales`);
+      if (search) url.searchParams.set("search", search);
 
-  function onDelete(row) {
-    if (window.confirm(`Supprimer les infos médicales de ${row.nom} ${row.prenoms} ?`)) {
-      setData((prev) => prev.filter((x) => x.id !== row.id));
+      const token = getToken();
+      const res = await fetch(url.toString(), {
+        headers: {
+          "Accept": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include", // OK même si tu ne l’utilises pas (CORS est configuré)
+      });
+
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      const payload = await res.json();
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setData(items.map(normalizeRow));
+    } catch (e) {
+      setErr(e.message || "Échec du chargement");
+      setData([]);
+    } finally {
+      setLoading(false);
     }
   }
+
+  // Au montage, on charge la liste
+  useEffect(() => {
+    fetchList("");
+  }, []);
+
+  // Quand l’utilisateur tape dans la recherche, on relance le fetch (debounce)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchList(q.trim()), 400);
+    return () => debounceRef.current && clearTimeout(debounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  /* --------- Filtrage côté client (optionnel) ---------
+     Si tu veux te reposer uniquement sur la recherche serveur,
+     tu peux supprimer ce useMemo et afficher directement "data". */
+  const filtered = useMemo(() => {
+    // Ici on laisse tel quel: les résultats affichés sont ceux du serveur.
+    return data;
+  }, [data]);
+
+  /* --------- Actions --------- */
   function onEdit(row) {
+    // Redirection vers la page d’édition (tu l’as déjà)
     navigate(`/medicale/${row.id}/edit`, { state: { row } });
+  }
+
+  async function onDelete(row) {
+    if (!window.confirm(`Supprimer les infos médicales de ${row.nom} ${row.prenoms} ?`)) return;
+
+    // Optimistic UI : on retire la ligne tout de suite
+    const prev = data;
+    setData((list) => list.filter((x) => x.id !== row.id));
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/medicales/${row.id}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      // Optionnel: re-fetch pour refléter le total exact
+      // await fetchList(q.trim());
+    } catch (e) {
+      // Rollback si échec
+      setData(prev);
+      alert(e.message || "Suppression impossible.");
+    }
   }
 
   return (
@@ -148,12 +213,12 @@ export default function ListeMedicale() {
       {/* En-tête + recherche */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-dyn-title font-extrabold text-slate-900">
-            Liste Médicale des Pèlerins
-          </h2>
+          <h2 className="text-dyn-title font-extrabold text-slate-900">Liste Médicale des Pèlerins</h2>
           <p className="text-dyn-sm text-slate-600">
             Toutes les informations médicales enregistrées (pouls, tension, groupe sanguin, etc.)
           </p>
+          {loading && <p className="text-slate-500 text-sm mt-1">Chargement…</p>}
+          {err && <p className="text-rose-600 text-sm mt-1">{err}</p>}
         </div>
 
         <div className="flex items-center gap-2">
@@ -170,13 +235,10 @@ export default function ListeMedicale() {
       {/* ======= Vue Mobile (cartes) ======= */}
       <div className="mt-6 grid gap-3 sm:hidden">
         {filtered.length === 0 ? (
-          <p className="text-slate-500">Aucune donnée trouvée.</p>
+          <p className="text-slate-500">{loading ? "Chargement…" : "Aucune donnée trouvée."}</p>
         ) : (
           filtered.map((m) => (
-            <article
-              key={m.id}
-              className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-            >
+            <article key={m.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <div className="font-bold text-slate-900 text-base">
                 {m.nom} {m.prenoms}
               </div>
@@ -191,19 +253,19 @@ export default function ListeMedicale() {
               <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
                 <div>
                   <dt className="text-slate-500">Poids</dt>
-                  <dd className="text-slate-800">{m.poids}</dd>
+                  <dd className="text-slate-800">{m.poids || "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Tension</dt>
-                  <dd className="text-slate-800">{m.tension}</dd>
+                  <dd className="text-slate-800">{m.tension || "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Diabète</dt>
-                  <dd className="text-slate-800">{m.diabete}</dd>
+                  <dd className="text-slate-800">{m.diabete || "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Cardiaque</dt>
-                  <dd className="text-slate-800">{m.maladieCardiaque}</dd>
+                  <dd className="text-slate-800">{m.maladieCardiaque || "—"}</dd>
                 </div>
               </dl>
 
@@ -226,7 +288,7 @@ export default function ListeMedicale() {
       {/* ======= Vue Desktop/Tablette (tableau) ======= */}
       <div className="mt-6 overflow-x-auto hidden sm:block">
         {filtered.length === 0 ? (
-          <p className="text-slate-500">Aucune donnée médicale trouvée.</p>
+          <p className="text-slate-500">{loading ? "Chargement…" : "Aucune donnée médicale trouvée."}</p>
         ) : (
           <table className="min-w-[1280px] border-separate border-spacing-y-6 text-[14px]">
             <thead>
@@ -250,26 +312,25 @@ export default function ListeMedicale() {
             </thead>
             <tbody>
               {filtered.map((m, i) => (
-                <tr
-                  key={m.id}
-                  className="bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all"
-                >
+                <tr key={m.id} className="bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all">
                   <Td className="text-slate-500">{i + 1}</Td>
                   <Td className="font-medium">{m.numeroCMAH}</Td>
                   <Td className="font-semibold text-slate-900">
                     {m.nom} {m.prenoms}
                   </Td>
                   <Td className="font-mono text-slate-600">{m.passeport}</Td>
-                  <Td><Badge tone="blue">{m.groupeSanguin}</Badge></Td>
-                  <Td>{m.poids}</Td>
-                  <Td>{m.tension}</Td>
-                  <Td>{m.pouls}</Td>
-                  <Td>{m.diabete}</Td>
-                  <Td>{m.maladieCardiaque}</Td>
-                  <Td>{m.covid}</Td>
-                  <Td>{m.vulnerabilite}</Td>
-                  <Td>{m.examenParaclinique}</Td>
-                  <Td>{m.antecedents}</Td>
+                  <Td>
+                    <Badge tone="blue">{m.groupeSanguin || "—"}</Badge>
+                  </Td>
+                  <Td>{m.poids || "—"}</Td>
+                  <Td>{m.tension || "—"}</Td>
+                  <Td>{m.pouls || "—"}</Td>
+                  <Td>{m.diabete || "—"}</Td>
+                  <Td>{m.maladieCardiaque || "—"}</Td>
+                  <Td>{m.covid || "—"}</Td>
+                  <Td>{m.vulnerabilite || "—"}</Td>
+                  <Td>{m.examenParaclinique || "—"}</Td>
+                  <Td>{m.antecedents || "—"}</Td>
                   <Td className="text-right">
                     <div className="inline-flex gap-2">
                       <ActionButton tone="primary" onClick={() => setSelected(m)}>
@@ -293,10 +354,7 @@ export default function ListeMedicale() {
       {/* ======= Modale de détails ======= */}
       {selected && (
         <div className="fixed inset-0 z-50 grid place-items-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={() => setSelected(null)}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setSelected(null)} />
           <div className="relative z-10 w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-lg text-slate-900">
             <div className="flex items-start justify-between gap-4">
               <h3 className="text-xl font-bold text-slate-900">
