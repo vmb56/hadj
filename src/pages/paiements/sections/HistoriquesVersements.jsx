@@ -1,15 +1,125 @@
 // src/pages/paiement/HistoriquesVersements.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { getVersements } from "../../utils/paymentsStore";
 
+/* --------------------------------------------------------------------------
+   CONFIG API — aligné sur RecherchePaiement.jsx
+-------------------------------------------------------------------------- */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
+
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+/* ----------------------------- helper GET JSON ----------------------------- */
+async function getJson(url, opts = {}) {
+  const token = getToken();
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    },
+    credentials: "include",
+    ...opts,
+  });
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const msg =
+      typeof data === "string" ? data : data?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* --------------------------------- FORMAT --------------------------------- */
+const fmt = (n) =>
+  n === "" || n == null || isNaN(Number(n)) ? "0" : Number(n).toLocaleString("fr-FR");
+
+/* ------------------------------ NORMALISATIONS ----------------------------- */
+// Versement (vient de /api/paiements/versements)
+// Back (USE_SNAKE_CASE=false) => camelCase natif: id, passeport, nom, prenoms, echeance, verse, restant, statut, createdAt, updatedAt
+function normalizeVersement(r = {}) {
+  return {
+    id: r.id,
+    passeport: r.passeport ?? r.num_passeport ?? r.NUM_PASSEPORT ?? "",
+    nom: r.nom ?? "",
+    prenoms: r.prenoms ?? "",
+    echeance: r.echeance ?? r.date ?? r.date_paiement ?? null,
+    verse: Number(r.verse ?? r.montant ?? r.montant_paye ?? 0),
+    restant: Number(r.restant ?? r.reste ?? 0),
+    statut: r.statut ?? "",
+  };
+}
+
+/* ---------------------------------- API ----------------------------------- */
+const api = {
+  /**
+   * Récupère les versements depuis /api/paiements/versements
+   * - Si "passeport" est fourni, on appelle côté serveur avec ?passeport=XXXX
+   * - Sinon on récupère la liste globale (limit 1000 côté serveur)
+   */
+  async getVersements({ passeport = "" } = {}) {
+    const url = new URL(`${API_BASE}/api/paiements/versements`);
+    if (passeport) url.searchParams.set("passeport", passeport);
+    const data = await getJson(url.toString());
+    const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+    return items.map(normalizeVersement);
+  },
+};
+
+/* ==================================================================== */
 export default function HistoriquesVersements() {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const reload = async () => {
+    if (loading) return;
+    setLoading(true);
+    setErr("");
+    try {
+      // On tente d'utiliser le filtre serveur par passeport si l'utilisateur a saisi quelque chose.
+      // (Ton endpoint ne sait filtrer QUE par passeport — le reste est filtré côté client.)
+      const passeport = q.trim();
+      const items = await api.getVersements({ passeport });
+      setRows(items);
+    } catch (e) {
+      setErr(e.message || "Impossible de charger les versements");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setRows(getVersements());
+    // Chargement initial: sans filtre => récupère la liste globale (limit 1000)
+    (async () => {
+      try {
+        setLoading(true);
+        const items = await api.getVersements({ passeport: "" });
+        setRows(items);
+      } catch (e) {
+        setErr(e.message || "Impossible de charger les versements");
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
+  // Filtrage client (nom, prenoms, statut) pour affiner l’affichage
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
@@ -40,23 +150,38 @@ export default function HistoriquesVersements() {
               Suivi des acomptes, échéances et restes à payer.
             </p>
             <div className="mt-2 text-[12.5px] text-slate-600">
-              {filtered.length} élément(s) • Versé :{" "}
-              <span className="font-semibold text-slate-900">
-                {totalVerse.toLocaleString("fr-FR")} FCFA
-              </span>{" "}
-              • Restant :{" "}
-              <span className="font-semibold text-slate-900">
-                {totalRestant.toLocaleString("fr-FR")} FCFA
-              </span>
+              {filtered.length} élément(s) • Versé:{" "}
+              <span className="font-semibold text-slate-900">{fmt(totalVerse)} FCFA</span>{" "}
+              • Restant:{" "}
+              <span className="font-semibold text-slate-900">{fmt(totalRestant)} FCFA</span>
             </div>
+            {loading && <div className="text-slate-500 text-xs mt-1">Chargement…</div>}
+            {err && (
+              <div className="text-rose-600 text-xs mt-1">
+                {err}
+                <div className="text-[11px] text-slate-500 mt-1">
+                  API_BASE: <span className="font-mono">{API_BASE || "(vide)"}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (passeport, nom, statut...)"
-            className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
-          />
+          <div className="flex gap-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Rechercher (passeport, nom, statut...)"
+              className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
+            />
+            <button
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50 disabled:opacity-60"
+              onClick={reload}
+              disabled={loading}
+              type="button"
+            >
+              {loading ? "Chargement…" : "Actualiser"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -77,17 +202,18 @@ export default function HistoriquesVersements() {
             </thead>
             <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
               {filtered.map((x, i) => (
-                <tr key={x.id || i} className="hover:bg-slate-50/70 transition-colors">
+                <tr
+                  key={x.id || `${x.passeport}-${x.echeance}-${i}`}
+                  className="hover:bg-slate-50/70 transition-colors"
+                >
                   <Td className="text-slate-600">{i + 1}</Td>
                   <Td className="font-mono text-slate-800">{x.passeport}</Td>
-                  <Td className="text-slate-900">{x.nom} {x.prenoms}</Td>
-                  <Td className="text-slate-600">{x.echeance}</Td>
-                  <Td className="font-semibold text-slate-900">
-                    {Number(x.verse || 0).toLocaleString("fr-FR")} FCFA
+                  <Td className="text-slate-900">
+                    {x.nom} {x.prenoms}
                   </Td>
-                  <Td className="text-slate-800">
-                    {Number(x.restant || 0).toLocaleString("fr-FR")} FCFA
-                  </Td>
+                  <Td className="text-slate-600">{x.echeance || "—"}</Td>
+                  <Td className="font-semibold text-slate-900">{fmt(x.verse)} FCFA</Td>
+                  <Td className="text-slate-800">{fmt(x.restant)} FCFA</Td>
                   <Td className="text-right">
                     <StatusChip value={x.statut} />
                   </Td>
@@ -122,18 +248,9 @@ function StatusChip({ value }) {
       : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
   return <span className={`${base} ${style}`}>{value || "—"}</span>;
 }
-
 function Th({ children, className = "" }) {
-  return (
-    <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>
-      {children}
-    </th>
-  );
+  return <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
-  return (
-    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>
-      {children}
-    </td>
-  );
+  return <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>{children}</td>;
 }

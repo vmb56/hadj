@@ -46,7 +46,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import StatsPelerins from "./pages/StatsPelerins";
 import ImpressionsPasseports from "./pages/Impressions-passeport.jsx";
-
+import EnregistrementOffres from "./pages/offres/EnregistrementOffres.jsx";
 export default function App() {
   return (
     <Routes>
@@ -73,6 +73,10 @@ export default function App() {
 
           {/* Impression fiche(s) pèlerins */}
           <Route path="Impressions-Pelerins" element={<ImpressionsPelerins />} />
+
+      {/* Enregistrement des offres */}
+     <Route path="Enregistrement_Offres" element={<EnregistrementOffres/>} />
+
 
           {/* Médicale avec sous-routes */}
           <Route path="medicale" element={<Medicale />}>

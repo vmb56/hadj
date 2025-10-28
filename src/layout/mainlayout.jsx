@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  HandCoins,
 } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
 
@@ -225,6 +226,11 @@ export default function MainLayout() {
           <Section title="Médicale" collapsed={collapsed}>
             <Item to="/medicale" icon={Stethoscope} label="Suivi médical" collapsed={collapsed} />
           </Section>
+
+          <Section title="Offres" collapsed={collapsed}>
+            <Item to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" collapsed={collapsed} />
+          </Section>
+
 
           <Section title="Paiement" collapsed={collapsed}>
             <Item to="/paiement" icon={Wallet} label="Règlements & échéances" collapsed={collapsed} />
@@ -443,6 +449,9 @@ export default function MainLayout() {
               </MobileGroup>
               <MobileGroup title="Médicale">
                 <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
+              </MobileGroup>
+              <MobileGroup title="Offres">
+                <MobileItem to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" />
               </MobileGroup>
               <MobileGroup title="Paiement">
                 <MobileItem to="/paiement" icon={Wallet} label="Règlements & échéances" />

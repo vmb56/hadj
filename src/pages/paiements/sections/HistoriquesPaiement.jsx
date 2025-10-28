@@ -1,16 +1,130 @@
 // src/pages/paiement/HistoriquesPaiement.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { getPayments } from "../../utils/paymentsStore";
+
+/* ======================= Connexion API commune ======================= */
+function getApiBase() {
+  let viteUrl;
+  try {
+    viteUrl = typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL;
+  } catch {}
+  const craUrl =
+    typeof process !== "undefined" &&
+    process?.env &&
+    (process.env.REACT_APP_API_URL || process.env.API_URL);
+
+  const winUrl =
+    typeof window !== "undefined" && typeof window.__API_URL__ !== "undefined"
+      ? window.__API_URL__
+      : undefined;
+
+  let u = viteUrl || craUrl || winUrl || "http://localhost:4000";
+  if (typeof u !== "string") u = String(u ?? "");
+  return u.replace(/\/+$/, "");
+}
+const API_BASE = getApiBase();
+
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+/* ----------------------------- HTTP helper ----------------------------- */
+async function http(url, opts = {}) {
+  const token = getToken();
+  const res = await fetch(url, {
+    method: opts.method || "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    },
+    credentials: "include",
+    ...opts,
+  });
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const msg = typeof data === "string" ? data : data?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ----------------------------- Normalisation ---------------------------- */
+function normalizePayment(r = {}) {
+  return {
+    id: r.id,
+    ref: r.ref ?? "",
+    passeport: r.passeport ?? "",
+    nom: r.nom ?? "",
+    prenoms: r.prenoms ?? "",
+    mode: r.mode ?? "",
+    montant: Number(r.montant ?? r.montant_paye ?? 0),
+    totalDu: Number(r.totalDu ?? r.total_du ?? 0),
+    reduction: Number(r.reduction ?? 0),
+    date: r.date ?? r.date_paiement ?? "",
+    statut: r.statut ?? "",
+    createdAt: r.createdAt ?? r.created_at ?? null,
+    updatedAt: r.updatedAt ?? r.updated_at ?? null,
+  };
+}
+
+/* ------------------------------- API calls ------------------------------ */
+async function apiGetPaiements({ passeport = "" } = {}) {
+  const url = new URL(`${API_BASE}/api/paiements`);
+  if (passeport) url.searchParams.set("passeport", passeport);
+  const data = await http(url.toString());
+  const items = Array.isArray(data) ? data : data?.items || [];
+  return items.map(normalizePayment);
+}
+
+/* ==================================================================== */
 
 export default function HistoriquesPaiement() {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Charger depuis le stockage local
+  const reload = async () => {
+    if (loading) return;
+    setLoading(true);
+    setErr("");
+    try {
+      // Côté serveur, le filtre supporté est ?passeport=XXXX
+      const passeport = q.trim();
+      const items = await apiGetPaiements({ passeport });
+      setRows(items);
+    } catch (e) {
+      setErr(e.message || "Impossible de charger les paiements");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setRows(getPayments());
+    // Chargement initial : sans filtre -> liste globale (limit 1000 côté serveur)
+    (async () => {
+      try {
+        setLoading(true);
+        const items = await apiGetPaiements({ passeport: "" });
+        setRows(items);
+      } catch (e) {
+        setErr(e.message || "Impossible de charger les paiements");
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
+  // Filtre client (réf., nom, mode, statut...) pour affiner l’affichage
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
@@ -28,7 +142,7 @@ export default function HistoriquesPaiement() {
 
   return (
     <div className="space-y-4 text-dyn">
-      {/* En-tête carte (clair) */}
+      {/* En-tête carte */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -44,18 +158,37 @@ export default function HistoriquesPaiement() {
                 {totalMontant.toLocaleString("fr-FR")} FCFA
               </span>
             </div>
+            {loading && <div className="text-slate-500 text-xs mt-1">Chargement…</div>}
+            {err && (
+              <div className="text-rose-600 text-xs mt-1">
+                {err}
+                <div className="text-[11px] text-slate-500 mt-1">
+                  API_BASE: <span className="font-mono">{API_BASE || "(vide)"}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (réf., passeport, mode, statut...)"
-            className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
-          />
+          <div className="flex gap-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Rechercher (passeport pour filtrer serveur, sinon filtre local)"
+              className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
+            />
+            <button
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50"
+              onClick={reload}
+              type="button"
+              disabled={loading}
+            >
+              {loading ? "Chargement…" : "Actualiser"}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tableau (clair) */}
+      {/* Tableau */}
       <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] text-[14.5px]">
@@ -75,12 +208,9 @@ export default function HistoriquesPaiement() {
             </thead>
             <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
               {filtered.map((x, i) => (
-                <tr
-                  key={x.id || i}
-                  className="hover:bg-slate-50/70 transition-colors"
-                >
+                <tr key={x.id || `${x.passeport}-${x.ref || i}`} className="hover:bg-slate-50/70 transition-colors">
                   <Td className="text-slate-600">{i + 1}</Td>
-                  <Td className="font-medium text-slate-900">{x.ref}</Td>
+                  <Td className="font-medium text-slate-900">{x.ref || "—"}</Td>
                   <Td className="font-mono text-slate-800">{x.passeport}</Td>
                   <Td className="text-slate-900">
                     {x.nom} {x.prenoms}
@@ -95,13 +225,13 @@ export default function HistoriquesPaiement() {
                   <Td className="text-slate-700">
                     {Number(x.reduction || 0).toLocaleString("fr-FR")} FCFA
                   </Td>
-                  <Td className="text-slate-600">{x.date}</Td>
+                  <Td className="text-slate-600">{x.date || "—"}</Td>
                   <Td className="text-right">
                     <StatusChip value={x.statut} />
                   </Td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 && !loading && (
                 <tr>
                   <Td colSpan={10} className="text-center text-slate-500 py-6">
                     Aucun paiement trouvé
@@ -130,18 +260,9 @@ function StatusChip({ value }) {
       : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
   return <span className={`${base} ${style}`}>{value || "—"}</span>;
 }
-
 function Th({ children, className = "" }) {
-  return (
-    <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>
-      {children}
-    </th>
-  );
+  return <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
-  return (
-    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>
-      {children}
-    </td>
-  );
+  return <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>{children}</td>;
 }

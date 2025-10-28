@@ -1,110 +1,208 @@
 // src/pages/paiement/RecherchePaiement.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import {
-  addPayment,
-  addVersement,
-  generatePaymentRef,
-  getPayments,
-} from "../../utils/paymentsStore";
 
-/* ---------- Utilitaires ---------- */
-const safeId = () =>
-  (typeof window !== "undefined" &&
-    window.crypto &&
-    typeof window.crypto.randomUUID === "function" &&
-    window.crypto.randomUUID()) ||
-  `id_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+/* --------------------------------------------------------------------------
+   CONFIG API
+-------------------------------------------------------------------------- */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
+  "http://localhost:4000";
 
+const TOKEN_KEY = "bmvt_token";
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+/* ----------------------------- helper GET JSON ----------------------------- */
+async function getJson(url, opts = {}) {
+  const token = getToken();
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    },
+    credentials: "include",
+    ...opts,
+  });
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const msg =
+      typeof data === "string" ? data : data?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ----------------------------- normalisations ------------------------------ */
+const toUrl = (val) => {
+  if (!val) return null;
+  if (val.startsWith("http://") || val.startsWith("https://")) return val;
+  if (val.startsWith("/")) return `${API_BASE}${val}`;
+  return `${API_BASE}/${val}`;
+};
+
+// Pèlerin (vient de /api/pelerinspaiement)
+function normalizePelerin(r = {}) {
+  const passeport = r.passeport ?? r.num_passeport ?? r.NUM_PASSEPORT ?? "";
+  const photoPelerin =
+    r.photoPelerin ?? r.photo_pelerin ?? r.photo_pelerin_path
+      ? toUrl(r.photoPelerin || r.photo_pelerin || r.photo_pelerin_path)
+      : null;
+  const photoPasseport =
+    r.photoPasseport ?? r.photo_passeport ?? r.photo_passeport_path
+      ? toUrl(r.photoPasseport || r.photo_passeport || r.photo_passeport_path)
+      : null;
+
+  return {
+    id: r.id,
+    nom: r.nom,
+    prenoms: r.prenoms,
+    passeport,
+    // valeur brute côté pelerins (id ou texte) — on l'écrasera par l'offre courante
+    offre: r.offre ?? r.offre_id ?? r.nom_offre ?? null,
+    // prix éventuellement présent côté pelerins — on l'écrasera par l'offre courante
+    prixOffre: Number(r.prixOffre ?? r.prix_offre ?? 0),
+    photoPelerin: photoPelerin || null,
+    photoPasseport: photoPasseport || null,
+    contact: r.contact ?? null,
+  };
+}
+
+// Paiement (vient de /api/paiements)
+function normalizePayment(r = {}) {
+  return {
+    id: r.id,
+    ref: r.ref,
+    passeport: r.passeport,
+    nom: r.nom,
+    prenoms: r.prenoms,
+    mode: r.mode,
+    montant: Number(r.montant ?? r.montant_paye ?? 0),
+    totalDu: Number(r.totalDu ?? r.total_du ?? 0),
+    reduction: Number(r.reduction ?? 0),
+    date: r.date ?? r.date_paiement ?? null,
+    statut: r.statut,
+  };
+}
+
+// Offre (vient de /api/offres)
+function normalizeOffre(o = {}) {
+  return {
+    id: Number(o.id),
+    nom: o.nom ?? o.nom_offre ?? "",
+    prix: Number(o.prix ?? o.prix_offre ?? 0),
+    hotel: o.hotel ?? "",
+    dateDepart: o.dateDepart ?? o.date_depart ?? null,
+    dateArrivee: o.dateArrivee ?? o.date_arrivee ?? null,
+    createdAt: o.createdAt ?? o.created_at ?? null,
+    updatedAt: o.updatedAt ?? o.updated_at ?? null,
+  };
+}
+
+/* ---------------------------------- API ----------------------------------- */
+const api = {
+  async getPelerinsEtPaiements({ search = "" } = {}) {
+    const url = new URL(`${API_BASE}/api/pelerinspaiement`);
+    if (search) url.searchParams.set("search", search);
+    const data = await getJson(url.toString());
+    const pelerins = (data?.pelerins || []).map(normalizePelerin);
+    const payments = (data?.payments || []).map(normalizePayment);
+    return { pelerins: pelerins.filter((x) => x.passeport), payments };
+  },
+
+  async getOffres() {
+    const data = await getJson(`${API_BASE}/api/offres`);
+    const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+    return items.map(normalizeOffre);
+  },
+
+  async addPayment(payload) {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/paiements`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+    return normalizePayment(data);
+  },
+
+  // ⚠️ IMPORTANT: URL alignée sur ta route backend: /api/paiements/versements
+  async addVersement(payload) {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/paiements/versements`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+    return data;
+  },
+};
+
+/* ------------------------------ UI / logique ------------------------------ */
 const fmt = (n) =>
-  n === "" || n == null || isNaN(Number(n))
-    ? "0"
-    : Number(n).toLocaleString("fr-FR");
+  n === "" || n == null || isNaN(Number(n)) ? "0" : Number(n).toLocaleString("fr-FR");
 
-/* ====== Données de démo ====== */
-const SAMPLE = [
-  {
-    id: 1,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=256&q=80",
-    nom: "BAMBA",
-    prenoms: "Yaya",
-    passeport: "20AD24295",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?w=256&q=80",
-    offre: "OPTION 1",
-    hotel: "Hôtel Riyad DE",
-    prixOffre: 5350000,
-    contact: "0556491797",
-  },
-  {
-    id: 2,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=256&q=80",
-    nom: "ABDOULAYE",
-    prenoms: "DOUKOURE",
-    passeport: "23AP09976",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?w=256&q=80",
-    offre: "OPTION 1",
-    hotel: "Hôtel Riyad DE",
-    prixOffre: 5350000,
-    contact: "0556491797",
-  },
-  {
-    id: 3,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=256&q=80",
-    nom: "ADOU",
-    prenoms: "K.",
-    passeport: "20AD35573",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?w=256&q=80",
-    offre: "OPTION 1",
-    hotel: "Hôtel Riyad DE",
-    prixOffre: 5350000,
-    contact: "070000000",
-  },
-  {
-    id: 4,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1544717305-2782549b5136?w=256&q=80",
-    nom: "BAKAYOKO",
-    prenoms: "M.",
-    passeport: "34AV53041",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?w=256&q=80",
-    offre: "OPTION 1",
-    hotel: "Hôtel Riyad DE",
-    prixOffre: 5350000,
-    contact: "0102030405",
-  },
-  {
-    id: 5,
-    photoPelerin:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=256&q=80",
-    nom: "BALAI",
-    prenoms: "S.",
-    passeport: "24AX02337",
-    photoPasseport:
-      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?w=256&q=80",
-    offre: "OPTION 2",
-    hotel: "Hôtel Riyad DE",
-    prixOffre: 4850000,
-    contact: "070707070",
-  },
-];
+/** On force les champs de l'offre courante (nom/prix/hôtel) dans chaque row */
+function attachCurrentOffreToRow(row, currentOffre) {
+  if (!currentOffre) return { ...row, offre: null, prixOffre: 0, hotelOffre: "" };
+  return {
+    ...row,
+    offre: currentOffre.nom || null, // « Nom offres »
+    prixOffre: Number(currentOffre.prix || 0), // « Prix offres »
+    hotelOffre: currentOffre.hotel || "", // « Hotel »
+  };
+}
 
-const OFFRES = ["TOUTES", "OPTION 1", "OPTION 2"];
-
-/* ---- Calcule l’état de paiement (soldé / en cours / nouveau) ---- */
-function computePaymentState(row) {
-  const payments = getPayments().filter((p) => p.passeport === row.passeport);
+/** État de paiement — jamais "Soldé" par défaut si prix inconnu */
+function computePaymentState(row, allPayments) {
+  const payments = (allPayments || []).filter((p) => p.passeport === row.passeport);
   const dejaPaye = payments.reduce((s, p) => s + Number(p.montant || 0), 0);
   const lockedReduction = (() => {
     const found = payments.find((p) => Number(p.reduction || 0) > 0);
     return found ? Number(found.reduction) : 0;
   })();
-  const prix = row.prixOffre ?? 0;
+
+  const prix = Number(row.prixOffre || 0);
+  const hasListedPrice = prix > 0;
+
+  if (!hasListedPrice) {
+    const statut = dejaPaye > 0 ? "En cours" : "Nouveau";
+    return { dejaPaye, lockedReduction, totalDu: 0, reste: 0, statut };
+  }
+
   const totalDu = Math.max(prix - lockedReduction, dejaPaye);
   const reste = Math.max(totalDu - dejaPaye, 0);
   const statut = reste === 0 ? "Soldé" : dejaPaye > 0 ? "En cours" : "Nouveau";
@@ -113,24 +211,59 @@ function computePaymentState(row) {
 
 export default function RecherchePaiement() {
   const [q, setQ] = useState("");
-  const [offre, setOffre] = useState("TOUTES");
+  const [pelerins, setPelerins] = useState([]);
+  const [payments, setPayments] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
   const [selected, setSelected] = useState(null);
-  const [soldInfo, setSoldInfo] = useState(null); // modale “soldé”
+  const [soldInfo, setSoldInfo] = useState(null);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return SAMPLE.filter((r) => {
-      const okText =
-        !s || `${r.nom} ${r.prenoms} ${r.passeport}`.toLowerCase().includes(s);
-      const okOffre = offre === "TOUTES" || r.offre === offre;
-      return okText && okOffre;
-    });
-  }, [q, offre]);
+  async function reloadAll() {
+    if (loading) return;
+    setLoading(true);
+    setErr("");
+    try {
+      const [{ pelerins: P, payments: Pay }, Offres] = await Promise.all([
+        api.getPelerinsEtPaiements({ search: q.trim() }),
+        api.getOffres(),
+      ]);
 
-  // Empêche d'ouvrir la modale de paiement si soldé → ouvre une modale info
+      // On prend l’offre la plus récente (ta route trie déjà DESC par created_at)
+      const currentOffre = Offres[0] || null;
+
+      // On injecte nom/prix/hôtel dans CHAQUE pèlerin
+      const enriched = P.map((row) => attachCurrentOffreToRow(row, currentOffre));
+
+      setPelerins(enriched);
+      setPayments(Pay);
+    } catch (e) {
+      console.error("[RecherchePaiement] reloadAll error:", e);
+      setErr(e.message || "Erreur de chargement");
+      setPelerins([]);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    reloadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onSearch = async () => {
+    if (loading) return;
+    await reloadAll();
+  };
+  const onEnter = (e) => {
+    if (e.key === "Enter") onSearch();
+  };
+
   const tryOpenPayment = (row) => {
-    const { totalDu, reste, dejaPaye, lockedReduction } = computePaymentState(row);
-    if (reste <= 0) {
+    const { totalDu, reste, dejaPaye, lockedReduction } = computePaymentState(row, payments);
+    if (Number(row.prixOffre || 0) > 0 && reste <= 0) {
       setSoldInfo({ row, totalDu, dejaPaye, reduction: lockedReduction });
       return;
     }
@@ -139,7 +272,7 @@ export default function RecherchePaiement() {
 
   return (
     <div className="space-y-4 text-dyn">
-      {/* En-tête / filtres (carte claire) */}
+      {/* En-tête / recherche */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
         <h2 className="text-dyn-title font-extrabold text-slate-900">
           Recherche Informations Paiement
@@ -154,36 +287,33 @@ export default function RecherchePaiement() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="N° passeport / Nom"
+              onKeyDown={onEnter}
+              placeholder="N° passeport / Nom / Contact"
               className="w-64 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
             />
             <button
-              className="rounded-xl bg-sky-600/90 text-white px-3 py-2 text-[13.5px] hover:brightness-110"
-              onClick={() => {}}
+              className="rounded-xl bg-sky-600/90 text-white px-3 py-2 text-[13.5px] hover:brightness-110 disabled:opacity-60"
+              onClick={onSearch}
+              disabled={loading}
               type="button"
             >
-              Rechercher
+              {loading ? "Recherche…" : "Rechercher"}
             </button>
           </div>
-
-          <div className="sm:ml-auto flex items-center gap-2">
-            <span className="text-[13.5px] text-slate-600">Offres</span>
-            <select
-              value={offre}
-              onChange={(e) => setOffre(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200"
-            >
-              {OFFRES.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
+
+        {loading && <div className="mt-2 text-slate-500 text-sm">Chargement…</div>}
+        {err && (
+          <div className="mt-2 text-rose-600 text-sm">
+            {err}
+            <div className="text-[11px] text-slate-500 mt-1">
+              API_BASE: <span className="font-mono">{API_BASE || "(vide)"}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Tableau (carte claire) */}
+      {/* Tableau */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1100px] text-[15px]">
@@ -193,25 +323,31 @@ export default function RecherchePaiement() {
                 <Th>Nom du pèlerin</Th>
                 <Th>Numéro de passeport</Th>
                 <Th>Passeport du pèlerin</Th>
-                <Th>Offre / État</Th>
+                <Th>Offre / Hôtel / État</Th>
               </tr>
             </thead>
             <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
-              {filtered.map((r) => {
-                const { statut, reste } = computePaymentState(r);
+              {pelerins.map((r) => {
+                const { statut, reste } = computePaymentState(r, payments);
                 return (
                   <tr
-                    key={r.id}
+                    key={r.id || r.passeport}
                     className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     onClick={() => tryOpenPayment(r)}
                     title="Cliquer pour ouvrir la fenêtre Paiement"
                   >
                     <Td>
-                      <img
-                        src={r.photoPelerin}
-                        alt="Pèlerin"
-                        className="h-16 w-16 rounded-xl object-cover border border-slate-200"
-                      />
+                      {r.photoPelerin ? (
+                        <img
+                          src={r.photoPelerin}
+                          alt="Pèlerin"
+                          className="h-16 w-16 rounded-xl object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 grid place-items-center text-slate-500">
+                          —
+                        </div>
+                      )}
                     </Td>
                     <Td>
                       <div className="font-extrabold tracking-wide text-slate-900">{r.nom}</div>
@@ -219,22 +355,31 @@ export default function RecherchePaiement() {
                     </Td>
                     <Td className="font-mono text-slate-800">{r.passeport}</Td>
                     <Td>
-                      <img
-                        src={r.photoPasseport}
-                        alt="Passeport"
-                        className="h-20 w-36 rounded-lg object-cover border border-slate-200"
-                      />
+                      {r.photoPasseport ? (
+                        <img
+                          src={r.photoPasseport}
+                          alt="Passeport"
+                          className="h-20 w-36 rounded-lg object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <div className="h-20 w-36 rounded-lg bg-slate-100 border border-slate-200 grid place-items-center text-slate-400">
+                          —
+                        </div>
+                      )}
                     </Td>
                     <Td className="align-middle">
-                      <div className="font-bold text-slate-900">{r.offre}</div>
+                      <div className="font-bold text-slate-900">{r.offre || "—"}</div>
+                      {r.hotelOffre && (
+                        <div className="text-xs text-slate-600 mt-0.5">Hôtel : {r.hotelOffre}</div>
+                      )}
                       <div className="mt-1 inline-flex items-center gap-2 text-xs">
                         {statut === "Soldé" && <Chip tone="emerald">Soldé</Chip>}
                         {statut === "En cours" && (
                           <>
                             <Chip tone="amber">En cours</Chip>
                             <span className="text-slate-700">
-                              Reste&nbsp;:{" "}
-                              <span className="font-mono font-semibold text-slate-900">
+                              Reste&nbsp;
+                              <span className="ml-1 font-mono font-semibold text-slate-900">
                                 {fmt(reste)}
                               </span>{" "}
                               FCFA
@@ -247,7 +392,7 @@ export default function RecherchePaiement() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && (
+              {pelerins.length === 0 && !loading && (
                 <tr>
                   <Td colSpan={5} className="text-center text-slate-500 py-6">
                     Aucun résultat
@@ -261,64 +406,60 @@ export default function RecherchePaiement() {
 
       {/* Modales */}
       {selected && (
-        <PaiementModal row={selected} onClose={() => setSelected(null)} />
+        <PaiementModal
+          row={selected}
+          payments={payments}
+          onClose={() => setSelected(null)}
+          onSaved={async () => {
+            await reloadAll();
+          }}
+        />
       )}
-      {soldInfo && (
-        <SoldModal info={soldInfo} onClose={() => setSoldInfo(null)} />
-      )}
+      {soldInfo && <SoldModal info={soldInfo} onClose={() => setSoldInfo(null)} />}
     </div>
   );
 }
 
-/* ============ Modale Paiement (thème clair) ============ */
-function PaiementModal({ row, onClose }) {
-  // champs éditables
-  const [datePaiement, setDatePaiement] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+/* ============ Modale Paiement ============ */
+function PaiementModal({ row, payments, onClose, onSaved }) {
+  const [datePaiement, setDatePaiement] = useState(new Date().toISOString().slice(0, 10));
   const [mode, setMode] = useState("Espèces");
   const [reduction, setReduction] = useState(0);
   const [montantPayer, setMontantPayer] = useState(0);
 
-  // paiements antérieurs du même passeport
   const paiementsPrecedents = useMemo(
-    () => getPayments().filter((p) => p.passeport === row.passeport),
-    [row.passeport]
+    () => (payments || []).filter((p) => p.passeport === row.passeport),
+    [payments, row.passeport]
   );
   const dejaPaye = useMemo(
     () => paiementsPrecedents.reduce((s, p) => s + Number(p.montant || 0), 0),
     [paiementsPrecedents]
   );
 
-  // 🔒 Réduction verrouillée si déjà appliquée auparavant
   const lockedReduction = useMemo(() => {
     const found = paiementsPrecedents.find((p) => Number(p.reduction || 0) > 0);
     return found ? Number(found.reduction) : null;
   }, [paiementsPrecedents]);
 
-  const prixOffre = row.prixOffre ?? 0;
+  // ===== Calculs
+  const prixOffre = Number(row.prixOffre || 0);
+  const hasListedPrice = prixOffre > 0;
 
-  // Réduction effective = verrouillée si existe, sinon saisie utilisateur
   const reductionEffective = lockedReduction ?? Number(reduction || 0);
+  const redSafe = Math.min(Math.max(reductionEffective, 0), Math.max(prixOffre, 0));
 
-  // Réduction bornée [0, prixOffre]
-  const redSafe = Math.min(Math.max(reductionEffective, 0), prixOffre);
+  const totalSouhaite = hasListedPrice
+    ? Math.max(prixOffre - redSafe, dejaPaye)
+    : dejaPaye + Math.max(Number(montantPayer || 0), 0);
 
-  // Total dû après réduction (ne descend jamais sous "déjà payé")
-  const totalSouhaite = Math.max(prixOffre - redSafe, dejaPaye);
-
-  // Reste à payer avant ce versement
   const resteAvant = Math.max(totalSouhaite - dejaPaye, 0);
+  const montantMax = hasListedPrice
+    ? Math.max(0, Math.min(totalSouhaite, resteAvant))
+    : Number.MAX_SAFE_INTEGER;
 
-  // 👉 Montant max autorisé : ne peut pas dépasser NI le total dû NI le reste
-  const montantMax = Math.max(0, Math.min(totalSouhaite, resteAvant));
-
-  // Saisie bornée [0, montantMax]
   const paySafe = Math.min(Math.max(Number(montantPayer || 0), 0), montantMax);
+  const resteApres = hasListedPrice ? Math.max(resteAvant - paySafe, 0) : 0;
 
-  const resteApres = Math.max(resteAvant - paySafe, 0);
-
-  // Validation UI
   const [errors, setErrors] = useState({});
   useEffect(() => {
     const e = {};
@@ -327,83 +468,64 @@ function PaiementModal({ row, onClose }) {
 
     if (Number(montantPayer) <= 0) {
       e.montantPayer = "Le montant à payer est obligatoire et doit être > 0.";
-    } else if (paySafe !== Number(montantPayer || 0)) {
-      e.montantPayer = `Montant ajusté entre 0 et ${fmt(
-        montantMax
-      )} FCFA (ne peut pas dépasser le total dû ni le reste à payer).`;
+    } else if (hasListedPrice && paySafe !== Number(montantPayer || 0)) {
+      e.montantPayer = `Montant ajusté entre 0 et ${fmt(montantMax)} FCFA.`;
     }
 
-    if (lockedReduction == null && redSafe !== Number(reduction || 0)) {
-      e.reduction =
-        "Réduction ajustée (0 … prix de l’offre) et ne peut pas faire descendre le total sous le déjà payé.";
+    if (hasListedPrice && lockedReduction == null && redSafe !== Number(reduction || 0)) {
+      e.reduction = "Réduction ajustée (0 … prix de l’offre).";
     }
 
-    if (montantMax === 0) {
-      e.soldé = "Dossier soldé : aucun paiement supplémentaire autorisé.";
+    if (hasListedPrice && montantMax === 0) {
+      e.soldé = "Dossier soldé : aucun paiement autorisé.";
     }
     setErrors(e);
-  }, [
-    datePaiement,
-    mode,
-    reduction,
-    montantPayer,
-    redSafe,
-    paySafe,
-    montantMax,
-    lockedReduction,
-  ]);
+  }, [datePaiement, mode, reduction, montantPayer, redSafe, paySafe, montantMax, lockedReduction, hasListedPrice]);
 
-  const valider = () => {
-    if (Number(montantPayer) <= 0) {
-      setErrors((prev) => ({
-        ...prev,
-        montantPayer: "Le montant à payer est obligatoire et doit être > 0.",
-      }));
-      return;
+  const valider = async () => {
+    if (Number(montantPayer) <= 0 || Object.keys(errors).length) return;
+
+    const statut = hasListedPrice && resteApres === 0 ? "Complet" : "Partiel";
+    const reductionToPersist = hasListedPrice && lockedReduction != null ? 0 : redSafe;
+
+    try {
+      const created = await api.addPayment({
+        passeport: row.passeport,
+        nom: row.nom,
+        prenoms: row.prenoms,
+        mode,
+        montant: Number(paySafe || 0),
+        totalDu: hasListedPrice ? Number(totalSouhaite || 0) : 0,
+        reduction: hasListedPrice ? Number(reductionToPersist || 0) : 0,
+        date: datePaiement,
+        statut,
+      });
+
+      // ⚠️ aligne avec /api/paiements/versements
+      await api.addVersement({
+        passeport: row.passeport,
+        nom: row.nom,
+        prenoms: row.prenoms,
+        echeance: datePaiement,
+        verse: Number(paySafe || 0),
+        restant: hasListedPrice ? Number(resteApres || 0) : 0,
+        statut: hasListedPrice ? (resteApres === 0 ? "Soldé" : "En cours") : "En cours",
+      });
+
+      alert(
+        `Paiement enregistré (#${created?.ref || "N/A"})\n` +
+          `Déjà payé (avant): ${fmt(dejaPaye)} FCFA\n` +
+          (hasListedPrice ? `Total dû: ${fmt(totalSouhaite)} FCFA\n` : "") +
+          `Payé maintenant: ${fmt(paySafe)} FCFA\n` +
+          (hasListedPrice ? `Reste: ${fmt(resteApres)} FCFA` : "")
+      );
+      await onSaved?.();
+      onClose();
+    } catch (e) {
+      alert(e.message || "Erreur lors de l’enregistrement du paiement.");
     }
-    if (Object.keys(errors).length) return;
-
-    const ref = generatePaymentRef();
-    const statut = resteApres === 0 ? "Complet" : "Partiel";
-
-    const reductionToPersist = lockedReduction != null ? 0 : redSafe;
-
-    addPayment({
-      id: safeId(),
-      ref,
-      passeport: row.passeport,
-      nom: row.nom,
-      prenoms: row.prenoms,
-      mode,
-      montant: paySafe,
-      totalDu: totalSouhaite,
-      reduction: reductionToPersist,
-      date: datePaiement,
-      statut,
-    });
-
-    addVersement({
-      id: safeId(),
-      passeport: row.passeport,
-      nom: row.nom,
-      prenoms: row.prenoms,
-      echeance: datePaiement,
-      verse: paySafe,
-      restant: resteApres,
-      statut: resteApres === 0 ? "Soldé" : "En cours",
-    });
-
-    alert(
-      `Paiement enregistré (#${ref})\nDéjà payé (avant): ${fmt(
-        dejaPaye
-      )} FCFA\nTotal dû: ${fmt(totalSouhaite)} FCFA\nPayé maintenant: ${fmt(
-        paySafe
-      )} FCFA\nReste: ${fmt(resteApres)} FCFA`
-    );
-    onClose();
   };
 
-  // handlers numériques sûrs
   const onNumReduction = (e) => {
     const v = e.target.value.replace(/\s/g, "");
     if (v === "") return setReduction(0);
@@ -417,15 +539,10 @@ function PaiementModal({ row, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-[min(1180px,98vw)] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between">
-          <h3 className="text-xl md:text-2xl font-extrabold text-slate-900">
-            Paiement
-          </h3>
+          <h3 className="text-xl md:text-2xl font-extrabold text-slate-900">Paiement</h3>
           <button
             onClick={onClose}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
@@ -436,17 +553,21 @@ function PaiementModal({ row, onClose }) {
         </div>
 
         <div className="mt-3 grid gap-4 sm:grid-cols-[150px,1fr]">
-          {/* Photo */}
           <div className="grid place-items-start">
-            <img
-              src={row.photoPelerin}
-              alt="Pèlerin"
-              className="h-28 w-28 rounded-xl object-cover border border-slate-200"
-            />
+            {row.photoPelerin ? (
+              <img
+                src={row.photoPelerin}
+                alt="Pèlerin"
+                className="h-28 w-28 rounded-xl object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="h-28 w-28 rounded-xl bg-slate-100 border border-slate-200 grid place-items-center text-slate-500">
+                —
+              </div>
+            )}
             <div className="mt-2 text-xs text-slate-600">PHOTO PÈLERIN</div>
           </div>
 
-          {/* Form bloc */}
           <div className="grid gap-3">
             <Read label="Numéro de passeport du pèlerin" value={row.passeport} mono />
             <div className="grid sm:grid-cols-2 gap-3">
@@ -454,20 +575,31 @@ function PaiementModal({ row, onClose }) {
               <Read label="Prénoms du pèlerin" value={row.prenoms} />
             </div>
 
-            {/* Contexte financier */}
-            <div className="grid sm:grid-cols-4 gap-3">
-              <Read label="Nom offre" value={row.offre} />
-              <Read label="Prix offre" value={`${fmt(row.prixOffre)} FCFA`} />
+            {/* CHAMPS issus de la table OFFRES */}
+            <div className="grid sm:grid-cols-5 gap-3">
+              <Read label="Nom offres" value={row.offre} />
+              <Read label="Prix offres" value={`${fmt(row.prixOffre)} FCFA`} />
+              <Read label="Hotel" value={row.hotelOffre || "—"} />
               <Read label="Déjà payé" value={`${fmt(dejaPaye)} FCFA`} />
               <Read label="Reste (avant)" value={`${fmt(resteAvant)} FCFA`} />
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <FieldDate label="Date paiement" value={datePaiement} onChange={setDatePaiement} error={errors.datePaiement} />
-              <Select label="Mode de paiement" value={mode} onChange={setMode} options={["Espèces", "Mobile Money", "Chèque", "Virement"]} error={errors.mode} />
+              <FieldDate
+                label="Date paiement"
+                value={datePaiement}
+                onChange={setDatePaiement}
+                error={errors.datePaiement}
+              />
+              <Select
+                label="Mode de paiement"
+                value={mode}
+                onChange={setMode}
+                options={["Espèces", "Mobile Money", "Chèque", "Virement"]}
+                error={errors.mode}
+              />
 
-              {/* Réduction : verrouillée = lecture seule */}
-              {lockedReduction != null ? (
+              {hasListedPrice && lockedReduction != null ? (
                 <div className="grid">
                   <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
                     Réduction (verrouillée)
@@ -479,7 +611,7 @@ function PaiementModal({ row, onClose }) {
                     </span>
                   </div>
                 </div>
-              ) : (
+              ) : hasListedPrice ? (
                 <FieldMoney
                   label="Réduction"
                   value={String(reduction)}
@@ -487,23 +619,37 @@ function PaiementModal({ row, onClose }) {
                   help={`0 … ${fmt(row.prixOffre)} FCFA`}
                   error={errors.reduction}
                 />
+              ) : (
+                <div className="grid">
+                  <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
+                    Réduction
+                  </div>
+                  <div className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+                    N/A (offre sans prix)
+                  </div>
+                </div>
               )}
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <Read label="Total dû (après réduction)" value={`${fmt(totalSouhaite)} FCFA`} />
+              <Read
+                label="Total dû (après réduction)"
+                value={hasListedPrice ? `${fmt(totalSouhaite)} FCFA` : "— (offre sans prix)"}
+              />
               <FieldMoney
                 label="Montant payé maintenant"
                 value={String(montantPayer)}
                 onChange={onNumMontant}
                 help={
-                  montantMax === 0
+                  !hasListedPrice
+                    ? "Offre sans prix : paiement libre."
+                    : montantMax === 0
                     ? "Aucun paiement autorisé (dossier soldé)."
                     : `max ${fmt(montantMax)} FCFA`
                 }
                 error={errors.montantPayer || errors.soldé}
               />
-              <Read label="Reste (après)" value={`${fmt(resteApres)} FCFA`} />
+              <Read label="Reste (après)" value={hasListedPrice ? `${fmt(resteApres)} FCFA` : "—"} />
             </div>
 
             <div className="pt-2">
@@ -519,20 +665,25 @@ function PaiementModal({ row, onClose }) {
           </div>
         </div>
 
-        {/* aperçu passeport */}
         <div className="mt-4">
-          <img
-            src={row.photoPasseport}
-            alt="Passeport"
-            className="h-48 w-32 object-cover rounded-md border border-slate-200"
-          />
+          {row.photoPasseport ? (
+            <img
+              src={row.photoPasseport}
+              alt="Passeport"
+              className="h-48 w-32 object-cover rounded-md border border-slate-200"
+            />
+          ) : (
+            <div className="h-48 w-32 rounded-md bg-slate-100 border border-slate-200 grid place-items-center text-slate-500">
+              —
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* --------- Modale “Paiement soldé” (claire) --------- */
+/* --------- Modale “Paiement soldé” --------- */
 function SoldModal({ info, onClose }) {
   const { row, totalDu, dejaPaye, reduction } = info || {};
   return (
@@ -552,7 +703,9 @@ function SoldModal({ info, onClose }) {
 
         <div className="mt-3">
           <p className="text-slate-800">
-            Le dossier de <span className="font-semibold">{row?.nom} {row?.prenoms}</span> (passeport <span className="font-mono">{row?.passeport}</span>) est <span className="text-emerald-700 font-bold">déjà soldé</span>.
+            Le dossier de <span className="font-semibold">{row?.nom} {row?.prenoms}</span> (passeport{" "}
+            <span className="font-mono">{row?.passeport}</span>) est{" "}
+            <span className="text-emerald-700 font-bold">déjà soldé</span>.
           </p>
           <div className="mt-3 grid sm:grid-cols-2 gap-3">
             <Detail label="Prix offre" value={`${fmt(row?.prixOffre)} FCFA`} />
@@ -568,16 +721,18 @@ function SoldModal({ info, onClose }) {
     </div>
   );
 }
+
+/* ---------- sous-composants ---------- */
 function Detail({ label, value }) {
   return (
     <div className="grid">
       <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
-      <div className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900">{value || "—"}</div>
+      <div className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+        {value || "—"}
+      </div>
     </div>
   );
 }
-
-/* ---------- sous-composants ---------- */
 function Chip({ children, tone = "slate" }) {
   const styles = {
     emerald: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
@@ -585,21 +740,21 @@ function Chip({ children, tone = "slate" }) {
     slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
   };
   return (
-    <span className={`rounded-lg px-2 py-0.5 text-[12px] font-semibold ${styles[tone] || styles.slate}`}>
+    <span
+      className={`rounded-lg px-2 py-0.5 text-[12px] font-semibold ${
+        styles[tone] || styles.slate
+      }`}
+    >
       {children}
     </span>
   );
 }
-
 function Th({ children }) {
   return <th className="text-left px-4 py-3 whitespace-nowrap">{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
   return (
-    <td
-      colSpan={colSpan}
-      className={`px-4 py-3 whitespace-nowrap align-middle ${className}`}
-    >
+    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap align-middle ${className}`}>
       {children}
     </td>
   );
@@ -607,9 +762,7 @@ function Td({ children, className = "", colSpan }) {
 function Read({ label, value, mono = false }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
-        {label}
-      </div>
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
       <div
         className={`mt-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 ${
           mono ? "font-mono" : ""
@@ -623,9 +776,7 @@ function Read({ label, value, mono = false }) {
 function FieldDate({ label, value, onChange, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
-        {label}
-      </div>
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
       <input
         type="date"
         value={value}
@@ -639,9 +790,7 @@ function FieldDate({ label, value, onChange, error }) {
 function FieldMoney({ label, value, onChange, help, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
-        {label}
-      </div>
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
       <div className="flex items-center gap-2 mt-1">
         <input
           inputMode="numeric"
@@ -659,9 +808,7 @@ function FieldMoney({ label, value, onChange, help, error }) {
 function Select({ label, value, onChange, options, error }) {
   return (
     <div className="grid">
-      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">
-        {label}
-      </div>
+      <div className="text-[11px] font-black tracking-wide text-slate-600 uppercase">{label}</div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

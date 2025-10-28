@@ -14,20 +14,6 @@ function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
 }
 
-/* ========= Récup user (même logique que AjouterPelerin) ========= */
-const USER_KEYS = ["bmvt_user", "bmvt_me", "user"];
-function getUserFromStorage() {
-  for (const k of USER_KEYS) {
-    try {
-      const raw = localStorage.getItem(k);
-      if (!raw) continue;
-      const u = JSON.parse(raw);
-      if (u && (u.name || u.email || u.id)) return u;
-    } catch {}
-  }
-  return null;
-}
-
 // ❗ Si tu utilises exclusivement Authorization: Bearer (pas de cookies),
 // il vaut mieux ne PAS envoyer withCredentials, ça évite beaucoup d’erreurs CORS.
 const SEND_COOKIES = false;
@@ -59,11 +45,17 @@ function useToast() {
 
 /* ========= helpers diag ========= */
 function explainAxiosError(err) {
+  // axios "Network Error" sans response = problème réseau/CORS/HTTPS mix.
   if (err?.response) {
     const data = err.response.data;
-    return data?.message || data?.error || `Erreur API (HTTP ${err.response.status})`;
+    return (
+      data?.message ||
+      data?.error ||
+      `Erreur API (HTTP ${err.response.status})`
+    );
   }
   if (err?.request) {
+    // Requête envoyée mais pas de réponse (souvent CORS/HTTPS mixte)
     return "Requête envoyée mais sans réponse (CORS / HTTPS mix / pare-feu ?)";
   }
   return err?.message || "Erreur réseau inconnue.";
@@ -117,16 +109,13 @@ export default function AjoutMedicale() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-
     if (name === "passeport") {
-      // ✅ même logique que la page pèlerins : MAJ + alphanum + longueur max 9
-      const v = value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 9);
+      const v = value.replace(/\s+/g, "").toUpperCase();
       setAutofilled(false);
       setMatches([]);
       setFetchError("");
       return setFormData((f) => ({ ...f, passeport: v }));
     }
-
     if (name === "nom") {
       return setFormData((f) => ({ ...f, nom: value.toUpperCase() }));
     }
@@ -160,17 +149,12 @@ export default function AjoutMedicale() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-
-    // ✅ même critère que sur d’autres pages: exactement 9 alphanum
-    if (!/^[A-Z0-9]{9}$/.test(formData.passeport || "")) {
-      push("Numéro de passeport invalide (exactement 9 caractères alphanumériques).", "err");
+    if (!formData.passeport || !/^[A-Z0-9]{5,15}$/.test(formData.passeport)) {
+      push("Numéro de passeport invalide (5–15 alphanum.)", "err");
       return;
     }
-
     try {
       const token = getToken();
-
-      // Champs envoyés en snake_case (comme la route medicales)
       const payload = {
         numero_cmah: formData.numeroCMAH || null,
         passeport: formData.passeport,
@@ -191,21 +175,13 @@ export default function AjoutMedicale() {
         antecedents: formData.antecedents || null,
       };
 
-      // 👤 Ajoute l’agent (même logique que AjouterPelerin.jsx)
-      const me = getUserFromStorage();
-      if (me) {
-        payload.created_by_name = me.name || me.email || null;
-        if (me.id != null) payload.created_by_id = Number(me.id);
-      } else {
-        payload.created_by_name = "Anonyme";
-      }
-
       await axios.post(MEDICALES_POST_URL, payload, {
         headers: {
-          Accept: "application/json",
+          "Accept": "application/json",
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        // ✅ n'envoie PAS les cookies si tu ne les utilises pas
         withCredentials: SEND_COOKIES,
         timeout: 15000,
       });
@@ -219,7 +195,7 @@ export default function AjoutMedicale() {
     }
   }
 
-  // --- Debounce lookup par passeport (via /api/pelerins/by-passport)
+  // --- Debounce lookup par passeport
   useEffect(() => {
     const p = formData.passeport;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -252,14 +228,19 @@ export default function AjoutMedicale() {
         }
       } catch (err) {
         console.error("[lookup passeport]", err);
-        setFetchError(explainAxiosError(err) || "Erreur lors de la recherche du passeport.");
+        setFetchError(
+          explainAxiosError(err) ||
+          "Erreur lors de la recherche du passeport."
+        );
         setMatches([]);
         setAutofilled(false);
       } finally {
         setSearching(false);
       }
     }, 500);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [formData.passeport]);
 
   function applyMatch(match) {
@@ -295,42 +276,98 @@ export default function AjoutMedicale() {
           --err:#ef4444;
           --shadow:0 12px 30px rgba(2,6,23,.08);
         }
-        .medical-page{min-height:100%;background:
-          radial-gradient(1000px 700px at -10% 0%, var(--bg-accent) 0%, transparent 60%),
-          radial-gradient(900px 600px at 110% -10%, rgba(96,165,250,.22) 0%, transparent 65%),
-          var(--bg);
+        .medical-page{
+          min-height:100%;
+          background:
+            radial-gradient(1000px 700px at -10% 0%, var(--bg-accent) 0%, transparent 60%),
+            radial-gradient(900px 600px at 110% -10%, rgba(96,165,250,.22) 0%, transparent 65%),
+            var(--bg);
           color:var(--text);
           font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
-          padding: clamp(16px, 2.5vw, 28px);}
-        .page-title{ text-align:center;font-weight:900;letter-spacing:.3px;margin-bottom:20px;color:#1e40af;
-          font-size:clamp(1.25rem,1.05rem + .9vw,1.75rem);text-transform:uppercase;}
-        form{ width:min(1200px,100%);margin:0 auto;background:var(--card);padding: clamp(18px, 2.2vw, 26px);
-          border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);}
-        .grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.6vw, 20px);}
+          padding: clamp(16px, 2.5vw, 28px);
+        }
+        .page-title{
+          text-align:center;
+          font-weight:900;
+          letter-spacing:.3px;
+          margin-bottom:20px;
+          color:#1e40af;
+          font-size:clamp(1.25rem,1.05rem + .9vw,1.75rem);
+          text-transform:uppercase;
+        }
+        form{
+          width:min(1200px,100%);
+          margin:0 auto;
+          background:var(--card);
+          padding: clamp(18px, 2.2vw, 26px);
+          border-radius:16px;
+          border:1px solid var(--border);
+          box-shadow:var(--shadow);
+        }
+        .grid{
+          display:grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: clamp(12px, 1.6vw, 20px);
+        }
         @media (max-width: 1000px){ .grid{grid-template-columns: repeat(2,1fr);} }
         @media (max-width: 700px){ .grid{grid-template-columns:1fr;} }
-        label{ display:block; font-weight:800; font-size:13px; color:#1e3a8a; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; }
-        input, select, textarea{ width:100%; background:#ffffff; color:var(--text); border:1px solid var(--border);
-          border-radius:12px; padding:12px 12px; font-size:15px; outline:none; transition:.15s ease; }
+
+        label{
+          display:block;
+          font-weight:800;
+          font-size:13px;
+          color:#1e3a8a;
+          text-transform:uppercase;
+          letter-spacing:.4px;
+          margin-bottom:6px;
+        }
+        input, select, textarea{
+          width:100%;
+          background:#ffffff;
+          color:var(--text);
+          border:1px solid var(--border);
+          border-radius:12px;
+          padding:12px 12px;
+          font-size:15px;
+          outline:none;
+          transition:.15s ease;
+        }
         input::placeholder, textarea::placeholder{ color:#94a3b8; }
-        input:focus, select:focus, textarea:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px rgba(37,99,235,.18); }
+        input:focus, select:focus, textarea:focus{
+          border-color:#93c5fd;
+          box-shadow:0 0 0 3px rgba(37,99,235,.18);
+        }
+
         .hint{display:block;margin-top:6px;font-size:12px;color:#64748b;}
-        .inline-note{ margin-top:8px;font-size:12px;display:inline-flex;align-items:center;gap:8px;
-          padding:8px 10px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#0f172a; }
+        .inline-note{
+          margin-top:8px;font-size:12px;display:inline-flex;align-items:center;gap:8px;
+          padding:8px 10px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#0f172a;
+        }
         .inline-note.success{ background:#ecfdf5; border-color:#bbf7d0; color:#065f46; }
         .inline-note.error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
-        .results{ margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#ffffff; }
-        .results button{ width:100%;text-align:left;background:transparent;color:var(--text);border:0;
-          padding:12px 12px;font-size:14px;cursor:pointer; }
+
+        .results{
+          margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#ffffff;
+        }
+        .results button{
+          width:100%;text-align:left;background:transparent;color:var(--text);border:0;
+          padding:12px 12px;font-size:14px;cursor:pointer;
+        }
         .results button:hover{background:#f1f5f9;}
-        .actions{ display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-top: clamp(20px, 3vw, 28px); }
+
+        .actions{
+          display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-top: clamp(20px, 3vw, 28px);
+        }
         .actions > *{flex:1 1 200px;}
-        button{ border:none;border-radius:12px;font-weight:800;letter-spacing:.4px;cursor:pointer;padding:12px 20px;
-          font-size:15px;transition:.25s ease; }
+        button{
+          border:none;border-radius:12px;font-weight:800;letter-spacing:.4px;cursor:pointer;padding:12px 20px;
+          font-size:15px;transition:.25s ease;
+        }
         button.cancel{background:linear-gradient(135deg,#94a3b8,#64748b);color:#fff;}
         button.cancel:hover{filter:brightness(1.06);}
         button.submit{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
         button.submit:hover{filter:brightness(1.06);}
+
         .t-sm{font-size:14px;}
       `}</style>
 
@@ -357,16 +394,13 @@ export default function AjoutMedicale() {
               onChange={handleChange}
               placeholder="Ex: 20AD24295 ou A12345678"
               inputMode="text"
-              // ✅ mêmes contraintes que « AjouterPelerin »
-              minLength={9}
-              maxLength={9}
-              pattern="[A-Za-z0-9]{9}"
-              title="9 caractères alphanumériques (A–Z, 0–9)"
+              pattern="[A-Za-z0-9]{5,15}"
+              maxLength={15}
               required
               aria-describedby="help-pass"
             />
             <small id="help-pass" className="hint">
-              Obligatoire · 9 caractères alphanumériques, sans espace (converti en MAJUSCULES).
+              5 à 15 caractères alphanumériques, sans espace (converti en MAJUSCULES).
             </small>
 
             {searching && <div className="inline-note t-sm">Recherche en cours…</div>}
