@@ -66,17 +66,24 @@ function normalizeVersement(r = {}) {
     passeport: r.passeport ?? "",
     nom: r.nom ?? "",
     prenoms: r.prenoms ?? "",
-    echeance: r.echeance ?? r.date ?? "",
+    echeance: r.echeance ?? r.date ?? r.createdAt ?? "",
     verse: Number(r.verse ?? 0),
     restant: Number(r.restant ?? 0),
     statut: r.statut ?? "",
   };
 }
+function normalizeVol(r = {}) {
+  return {
+    id: r.id ?? r.vol_id ?? r.flight_id ?? null,
+    code: r.code ?? r.numero ?? r.flight_no ?? "",
+    date: r.date ?? r.depart ?? r.createdAt ?? "",
+  };
+}
+
 async function apiGetPelerinsEtPaiements() {
   const data = await http(`${API_BASE}/api/pelerinspaiement`);
   const pelerins = Array.isArray(data?.pelerins) ? data.pelerins : [];
   const payments = (Array.isArray(data?.payments) ? data.payments : []).map(normalizePayment);
-  // on ne garde que ceux avec passeport
   return { pelerins: pelerins.filter((x) => x?.passeport || x?.num_passeport), payments };
 }
 async function apiGetPaiements() {
@@ -85,7 +92,6 @@ async function apiGetPaiements() {
   return items.map(normalizePayment);
 }
 async function apiGetVersements() {
-  // priorité: /api/versements ; fallback: /api/paiements/versements
   try {
     const data = await http(`${API_BASE}/api/versements`);
     const items = Array.isArray(data) ? data : data?.items || [];
@@ -96,14 +102,15 @@ async function apiGetVersements() {
     return items.map(normalizeVersement);
   }
 }
-async function apiGetTotalDepenses() {
-  // si tu as un endpoint dédié, sinon 0
+async function apiGetVols() {
   try {
-    const d = await http(`${API_BASE}/api/depenses/total`);
-    const total = Number(d?.total ?? 0);
-    return Number.isFinite(total) ? total : 0;
+    const data = await http(`${API_BASE}/api/vols`);
+    const items = Array.isArray(data) ? data : data?.items || [];
+    return items.map(normalizeVol);
   } catch {
-    return 0;
+    const data = await http(`${API_BASE}/api/flights`);
+    const items = Array.isArray(data) ? data : data?.items || [];
+    return items.map(normalizeVol);
   }
 }
 
@@ -120,7 +127,6 @@ function sum(arr, sel) {
   return arr.reduce((t, x) => t + Number(sel(x) || 0), 0);
 }
 function yyyymm(dateStr) {
-  // "2025-10-28" -> "2025-10"
   const s = String(dateStr || "");
   return /^\d{4}-\d{2}/.test(s) ? s.slice(0, 7) : "";
 }
@@ -136,28 +142,17 @@ function lastNMonthsLabels(n = 3) {
 function shortMonth(d) {
   return d.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
 }
-function buildRevenusVsDepenses(payments, depensesTotal) {
-  // Agrège paiements par mois
+function buildRevenusMensuels(payments) {
   const byMonth = new Map(); // key=YYYY-MM -> sum
   for (const p of payments) {
     const key = yyyymm(p.date);
     if (!key) continue;
     byMonth.set(key, (byMonth.get(key) || 0) + Number(p.montant || 0));
   }
-  // On prend les 3 derniers mois
   const months = lastNMonthsLabels(3);
-  // Répartition des dépenses: si pas de détail, on met 0 partout (ou on répartit uniformément si tu préfères)
-  const depensesByMonth = new Map();
-  for (const m of months) depensesByMonth.set(m.key, 0);
-
-  return months.map((m) => ({
-    mois: m.mois,
-    revenus: byMonth.get(m.key) || 0,
-    depenses: depensesByMonth.get(m.key) || 0,
-  }));
+  return months.map((m) => ({ mois: m.mois, revenus: byMonth.get(m.key) || 0 }));
 }
 function computeStatusCounts(payments) {
-  // Par passeport: somme montant et max(totalDu) pour savoir "complet" vs "partiel"
   const byPass = groupBy(payments, (p) => p.passeport || "");
   let complets = 0;
   let partiels = 0;
@@ -174,99 +169,82 @@ function computeStatusCounts(payments) {
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [lastSync, setLastSync] = useState(null);
+
   const [state, setState] = useState({
     totalPelerins: 0,
     confirmes: 0,
-    paiementsRecus: 0,
-    depenses: 0,
+    paiementsRecus: 0,     // somme des paiements (montant)
+    totalVersements: 0,    // somme des versements (verse)
+    nbVols: 0,
     paiementsComplets: 0,
     paiementsPartiels: 0,
-    occupation: { used: 0, total: 0 },
-    revenusVsDepenses: [],
+    revenusMensuels: [],
     statutPaiements: [],
   });
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setErr("");
-      try {
-        // Charge en parallèle
-        const [{ pelerins, payments: payFromPelerin }, payments, versements, depensesTotal] =
-          await Promise.all([
-            apiGetPelerinsEtPaiements(),
-            apiGetPaiements(),
-            apiGetVersements(),
-            apiGetTotalDepenses(),
-          ]);
+  async function reload() {
+    setLoading(true);
+    setErr("");
+    try {
+      const [{ pelerins, payments: payFromPelerin }, payments, versements, vols] = await Promise.all([
+        apiGetPelerinsEtPaiements(),
+        apiGetPaiements(),
+        apiGetVersements(),
+        apiGetVols(),
+      ]);
 
-        // Unifie la source paiements (priorité à /api/paiements)
-        const allPayments = (Array.isArray(payments) && payments.length ? payments : payFromPelerin).map(
-          normalizePayment
-        );
+      const allPayments = (Array.isArray(payments) && payments.length ? payments : payFromPelerin).map(
+        normalizePayment
+      );
 
-        // total pelerins
-        const totalPelerins = pelerins.length;
+      const totalPelerins = pelerins.length;
+      const paidByPass = groupBy(allPayments, (p) => p.passeport || "");
+      let confirmes = 0;
+      for (const [, rows] of paidByPass) {
+        if (sum(rows, (r) => r.montant) > 0) confirmes++;
+      }
 
-        // confirmés = ceux ayant payé > 0
-        const paidByPass = groupBy(allPayments, (p) => p.passeport || "");
-        let confirmes = 0;
-        for (const [, rows] of paidByPass) {
-          if (sum(rows, (r) => r.montant) > 0) confirmes++;
-        }
+      const paiementsRecus = sum(allPayments, (r) => r.montant);
+      const totalVersements = sum(versements, (v) => v.verse);
+      const { complets, partiels } = computeStatusCounts(allPayments);
+      const revenusMensuels = buildRevenusMensuels(allPayments);
 
-        const paiementsRecus = sum(allPayments, (r) => r.montant);
-        const depenses = Number(depensesTotal || 0);
-
-        const { complets, partiels } = computeStatusCounts(allPayments);
-
-        // occupation (à défaut d’API dédiée) : used = nb pelerins ; total = nb pelerins
-        const occupation = { used: totalPelerins, total: totalPelerins || 1 };
-
-        const revenusVsDepenses = buildRevenusVsDepenses(allPayments, depenses);
-
-        const statutPaiements = [
+      setState({
+        totalPelerins,
+        confirmes,
+        paiementsRecus,
+        totalVersements,
+        nbVols: Array.isArray(vols) ? vols.length : 0,
+        paiementsComplets: complets,
+        paiementsPartiels: partiels,
+        revenusMensuels,
+        statutPaiements: [
           { label: "Complets", value: complets, color: "#16a34a" },
           { label: "Partiels", value: partiels, color: "#f59e0b" },
-        ];
+        ],
+      });
+      setLastSync(new Date());
+    } catch (e) {
+      setErr(e.message || "Impossible de charger le tableau de bord");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-        setState({
-          totalPelerins,
-          confirmes,
-          paiementsRecus,
-          depenses,
-          paiementsComplets: complets,
-          paiementsPartiels: partiels,
-          occupation,
-          revenusVsDepenses,
-          statutPaiements,
-        });
-      } catch (e) {
-        setErr(e.message || "Impossible de charger le tableau de bord");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  useEffect(() => { reload(); }, []);
 
   const {
     totalPelerins,
     confirmes,
     paiementsRecus,
-    depenses,
+    totalVersements,
+    nbVols,
     paiementsComplets,
     paiementsPartiels,
-    occupation,
-    revenusVsDepenses,
+    revenusMensuels,
     statutPaiements,
   } = state;
-
-  const solde = useMemo(() => (paiementsRecus || 0) - (depenses || 0), [paiementsRecus, depenses]);
-
-  const tauxOcc = useMemo(() => {
-    const pct = Math.round(((occupation?.used || 0) / Math.max(1, occupation?.total || 0)) * 100);
-    return { pct, label: `${occupation?.used || 0}/${occupation?.total || 0}` };
-  }, [occupation]);
 
   const pieTotal = useMemo(
     () => statutPaiements.reduce((s, x) => s + x.value, 0),
@@ -277,10 +255,26 @@ export default function Dashboard() {
     <div className="space-y-4 md:space-y-6 text-dyn">
       {/* HEADER */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-        <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
-        <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble de la gestion du Hajj 2025</p>
-        {loading && <div className="text-slate-500 text-xs mt-1">Chargement…</div>}
-        {err && <div className="text-rose-600 text-xs mt-1">{err}</div>}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
+            <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble de la gestion du Hajj 2025</p>
+            {err && <div className="text-rose-600 text-xs mt-1">{err}</div>}
+            {lastSync && (
+              <div className="text-slate-500 text-xs mt-1">
+                Dernière mise à jour : {lastSync.toLocaleDateString("fr-FR")} {lastSync.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={reload}
+            disabled={loading}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50 disabled:opacity-50"
+            title="Recharger les données"
+          >
+            {loading ? "Rechargement…" : "Recharger"}
+          </button>
+        </div>
       </div>
 
       {/* LIGNE KPI PRINCIPALE */}
@@ -292,15 +286,9 @@ export default function Dashboard() {
           icon="👥"
           tone="blue"
         />
-        <BigMoneyTile title="Paiements Reçus" amount={paiementsRecus} icon="💲" tone="indigo" />
-        <BigMoneyTile title="Dépenses" amount={depenses} icon="📈" tone="rose" />
-        <KpiTile
-          title="Solde"
-          value={formatCFA(solde)}
-          strong
-          icon="🧾"
-          tone={solde >= 0 ? "emerald" : "rose"}
-        />
+        <BigMoneyTile title="Paiements Reçus" amount={paiementsRecus} icon="💳" tone="indigo" />
+        <BigMoneyTile title="Total Versements" amount={totalVersements} icon="💰" tone="indigo" />
+        <KpiTile title="Nombre de vols" value={nbVols} icon="✈️" tone="sky" />
       </section>
 
       {/* BANDE KPI SECONDAIRE */}
@@ -308,24 +296,21 @@ export default function Dashboard() {
         <SoftTile title="Paiements Complets" value={paiementsComplets} icon="✅" tone="emerald" />
         <SoftTile title="Paiements Partiels" value={paiementsPartiels} icon="⏲️" tone="amber" />
         <SoftTile
-          title="Occupation Chambres"
-          value={tauxOcc.label}
-          right={<Progress value={tauxOcc.pct} tone="blue" />}
-          icon="🏨"
+          title="Synchronisation"
+          value={loading ? "En cours…" : "À jour"}
+          right={<Progress value={loading ? 50 : 100} tone="sky" />}
+          icon="🔄"
           tone="sky"
         />
       </section>
 
       {/* ZONE GRAPHIQUES */}
       <section className="grid gap-3 sm:gap-4 xl:grid-cols-2">
-        <Card title="Revenus vs Dépenses">
+        <Card title="Revenus (montants payés) – 3 derniers mois">
           <BarChart
-            data={revenusVsDepenses}
-            maxY={guessNiceMax(revenusVsDepenses)}
-            series={[
-              { key: "revenus", label: "Revenus", color: "#2563eb" }, // blue-600
-              { key: "depenses", label: "Dépenses", color: "#7c3aed" }, // violet-600
-            ]}
+            data={revenusMensuels}
+            maxY={guessNiceMaxMono(revenusMensuels)}
+            series={[{ key: "revenus", label: "Revenus", color: "#2563eb" }]}
           />
         </Card>
 
@@ -503,7 +488,6 @@ function BarChart({ data = [], maxY, series }) {
     <div ref={wrapRef} className="w-full">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: "block" }}>
         <rect x="0" y="0" width={W} height={H} fill="#ffffff" rx="12" />
-        {/* Grille */}
         {ticks.map((t, i) => {
           const y = padding.t + yScale(t);
           return (
@@ -516,7 +500,6 @@ function BarChart({ data = [], maxY, series }) {
           );
         })}
 
-        {/* Barres */}
         {data.map((d, i) => {
           const x0 = padding.l + groupWidth * i + groupWidth * 0.2;
           return (
@@ -539,7 +522,6 @@ function BarChart({ data = [], maxY, series }) {
                   />
                 );
               })}
-              {/* Label X */}
               <text
                 x={padding.l + groupWidth * i + groupWidth / 2}
                 y={H - 8}
@@ -554,7 +536,6 @@ function BarChart({ data = [], maxY, series }) {
         })}
       </svg>
 
-      {/* Légende */}
       <div className="mt-2 flex flex-wrap gap-3 text-dyn-sm">
         {series.map((s) => (
           <div key={s.key} className="inline-flex items-center gap-2">
@@ -621,8 +602,8 @@ function formatCompact(n) {
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
   return String(n);
 }
-function guessNiceMax(rows) {
-  const m = Math.max(1, ...rows.map((r) => Math.max(r.revenus || 0, r.depenses || 0)));
+function guessNiceMaxMono(rows) {
+  const m = Math.max(1, ...rows.map((r) => r.revenus || 0));
   const step = 500_000;
   return Math.ceil(m / step) * step;
 }

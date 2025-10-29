@@ -42,11 +42,15 @@ import Utilisateurs from "./pages/utilisateurs/Utilisateurs.jsx";
 import ListeUtilisateurs from "./pages/utilisateurs/sections/ListeUtilisateurs.jsx";
 import HistoriqueConnexion from "./pages/utilisateurs/sections/HistoriqueConnexion.jsx";
 import InscriptionUtilisateur from "./pages/utilisateurs/sections/InscriptionUtilisateur.jsx";
-import Settings from "./pages/Settings";
+
+// ⚠️ Import correct (export par défaut)
+import ListsPilgrims from "./pages/ListsPilgrims.jsx";
+
 import Profile from "./pages/Profile";
 import StatsPelerins from "./pages/StatsPelerins";
 import ImpressionsPasseports from "./pages/Impressions-passeport.jsx";
 import EnregistrementOffres from "./pages/offres/EnregistrementOffres.jsx";
+
 export default function App() {
   return (
     <Routes>
@@ -74,9 +78,8 @@ export default function App() {
           {/* Impression fiche(s) pèlerins */}
           <Route path="Impressions-Pelerins" element={<ImpressionsPelerins />} />
 
-      {/* Enregistrement des offres */}
-     <Route path="Enregistrement_Offres" element={<EnregistrementOffres/>} />
-
+          {/* Enregistrement des offres */}
+          <Route path="Enregistrement_Offres" element={<EnregistrementOffres />} />
 
           {/* Médicale avec sous-routes */}
           <Route path="medicale" element={<Medicale />}>
@@ -118,15 +121,15 @@ export default function App() {
 
           {/* Autres sections */}
           <Route path="factures" element={<Factures />} />
-          <Route path="settings" element={<Settings />} />
+
+          {/* ✅ Utilisation correcte du composant */}
+          <Route path="listes-pelerins" element={<ListsPilgrims />} />
+
           <Route path="profile" element={<Profile />} />
           <Route path="stats-pelerins" element={<StatsPelerins />} />
 
           {/* 404 protégée */}
-          <Route
-            path="*"
-            element={<div style={{ padding: 16 }}>Page introuvable</div>}
-          />
+          <Route path="*" element={<div style={{ padding: 16 }}>Page introuvable</div>} />
         </Route>
       </Route>
 

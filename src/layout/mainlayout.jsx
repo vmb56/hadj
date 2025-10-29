@@ -8,7 +8,7 @@ import {
   Wallet,
   Plane,
   FileText,
-  Settings,
+  List,
   UserCircle2,
   Printer,
   BarChart3,
@@ -221,6 +221,7 @@ export default function MainLayout() {
             <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
             <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />
             <Item to="/stats-pelerins" icon={BarChart3} label="Statistiques" collapsed={collapsed} />
+              <Item to="/listes-pelerins" icon={List} label="Lists-pelerins" collapsed={collapsed} />
           </Section>
 
           <Section title="Médicale" collapsed={collapsed}>
@@ -246,7 +247,7 @@ export default function MainLayout() {
             {canSee("comptes") && (
               <Item to="/utilisateurs" icon={UserCircle2} label="Comptes" collapsed={collapsed} />
             )}
-            <Item to="/settings" icon={Settings} label="Paramètres" collapsed={collapsed} />
+          
           </Section>
 
           {/* <Section title="Impressions" collapsed={collapsed}>
@@ -446,6 +447,7 @@ export default function MainLayout() {
                 <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
                 <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
                 <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
+                  <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
               </MobileGroup>
               <MobileGroup title="Médicale">
                 <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
@@ -463,7 +465,7 @@ export default function MainLayout() {
               </MobileGroup>
               <MobileGroup title="Utilisateurs">
                 {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
-                <MobileItem to="/settings" icon={Settings} label="Paramètres" />
+              
               </MobileGroup>
               {/* <MobileGroup title="Impressions">
                 <MobileItem to="/impressions-passeports" icon={Printer} label="Photos / Passeport" />
