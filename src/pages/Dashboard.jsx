@@ -174,8 +174,8 @@ export default function Dashboard() {
   const [state, setState] = useState({
     totalPelerins: 0,
     confirmes: 0,
-    paiementsRecus: 0,     // somme des paiements (montant)
-    totalVersements: 0,    // somme des versements (verse)
+    paiementsRecus: 0,
+    totalVersements: 0,
     nbVols: 0,
     paiementsComplets: 0,
     paiementsPartiels: 0,
@@ -252,9 +252,9 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6 text-dyn">
+    <div className="space-y-4 md:space-y-6 text-dyn slide-up">
       {/* HEADER */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm fade-in">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
@@ -269,7 +269,7 @@ export default function Dashboard() {
           <button
             onClick={reload}
             disabled={loading}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[13.5px] hover:bg-slate-50 disabled:opacity-50 hover-lift btn-press"
             title="Recharger les données"
           >
             {loading ? "Rechargement…" : "Recharger"}
@@ -332,6 +332,23 @@ export default function Dashboard() {
           </div>
         </Card>
       </section>
+
+      {/* Animations & styles légers (bleu clair) */}
+      <style>{`
+        /* Effets généraux */
+        .hover-lift{transition:transform .18s ease, box-shadow .18s ease}
+        .hover-lift:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(30,58,138,.10)}
+        .btn-press:active{transform:translateY(1px)}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        .fade-in{animation:fadeIn .45s ease both}
+        @keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .slide-up{animation:slideUp .45s ease both}
+
+        /* Shimmer pour texte de chargement */
+        .shimmer{position:relative;overflow:hidden}
+        .shimmer::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,rgba(59,130,246,0),rgba(191,219,254,.6),rgba(59,130,246,0));animation:sh 1.4s linear infinite}
+        @keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+      `}</style>
     </div>
   );
 }
@@ -339,7 +356,7 @@ export default function Dashboard() {
 /* ================= UI BLOCKS ================= */
 function Card({ title, children }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm hover-lift fade-in">
       <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-blue-800 ring-1 ring-blue-200 text-dyn-sm font-extrabold">
         {title}
       </div>
@@ -358,7 +375,7 @@ function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
     }[tone] || { chip: "bg-slate-50 ring-slate-200", num: "text-slate-700" };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wide text-slate-500">{title}</div>
@@ -382,7 +399,7 @@ function BigMoneyTile({ title, amount, icon, tone = "indigo" }) {
     }[tone] || { chip: "bg-slate-50 ring-slate-200" };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wide text-slate-600">{title}</div>
@@ -408,7 +425,7 @@ function SoftTile({ title, value, icon, tone = "blue", right = null }) {
     }[tone] || { box: "bg-slate-50 ring-slate-200", txt: "text-slate-700" };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-dyn-sm text-slate-600">{title}</div>
@@ -438,7 +455,7 @@ function Progress({ value = 0, tone = "blue" }) {
   return (
     <div className="w-24 sm:w-28">
       <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-        <div className={`h-2 ${bar}`} style={{ width: `${v}%` }} />
+        <div className={`h-2 ${bar}`} style={{ width: `${v}%`, transition: "width .6s ease" }} />
       </div>
       <div className="text-[11px] text-right text-slate-500 mt-1">{v}%</div>
     </div>
@@ -519,6 +536,8 @@ function BarChart({ data = [], maxY, series }) {
                     rx="6"
                     fill={s.color}
                     opacity={0.9}
+                    data-anim="bar"
+                    style={{ transformOrigin: `${x + (barWidth - 2) / 2}px ${H}px`, animation: `grow .6s ease ${0.06 * (i * series.length + j)}s both` }}
                   />
                 );
               })}
@@ -544,6 +563,13 @@ function BarChart({ data = [], maxY, series }) {
           </div>
         ))}
       </div>
+
+      <style>{`
+        @keyframes grow {
+          from { transform: scaleY(0.05); opacity: .3; }
+          to   { transform: scaleY(1);   opacity: .95; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -571,20 +597,31 @@ function PieChart({ data = [], total = 0 }) {
   const cx = r, cy = r;
 
   let angle = -Math.PI / 2;
-  const arcs = data.map((d) => {
+  const arcs = data.map((d, idx) => {
     const ratio = total ? d.value / total : 0;
     const a2 = angle + ratio * Math.PI * 2;
     const path = arcPath(cx, cy, r - 10, angle, a2);
+    const delay = 0.06 * idx;
     angle = a2;
-    return { ...d, path };
+    return { ...d, path, delay };
   });
 
   return (
     <div ref={ref} className="w-full" style={{ aspectRatio: "1/1" }}>
       <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="100%">
         <circle cx={cx} cy={cy} r={r - 10} fill="#f8fafc" />
-        {arcs.map((a) => <path key={a.label} d={a.path} fill={a.color} />)}
+        {arcs.map((a) => (
+          <path
+            key={a.label}
+            d={a.path}
+            fill={a.color}
+            style={{ transformOrigin: "center", transformBox: "fill-box", animation: `sector .6s ease ${a.delay}s both` }}
+          />
+        ))}
       </svg>
+      <style>{`
+        @keyframes sector { from { transform: scale(.8); opacity:.3 } to { transform: scale(1); opacity:1 } }
+      `}</style>
     </div>
   );
 }

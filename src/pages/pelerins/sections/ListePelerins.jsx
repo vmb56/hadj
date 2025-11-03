@@ -1,5 +1,6 @@
 // src/pages/pelerins/EnregistrementsPelerins.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 /* ========= Config API ========= */
 const API_BASE =
@@ -74,7 +75,10 @@ function useToast() {
   };
   const Toast = () =>
     msg ? (
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
         className={
           "fixed bottom-4 right-4 z-[60] max-w-[90vw] sm:max-w-xs rounded-xl px-4 py-3 text-sm shadow-lg text-white " +
           (msg.type === "err" ? "bg-rose-600" : "bg-emerald-600")
@@ -83,7 +87,7 @@ function useToast() {
         aria-live="polite"
       >
         {msg.text}
-      </div>
+      </motion.div>
     ) : null;
   return { push, Toast };
 }
@@ -277,32 +281,51 @@ export default function EnregistrementsPelerins() {
     }
   }
 
+  /* ===== Variants (framer-motion) ===== */
+  const fadeUp = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0 },
+  };
+  const list = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.05 } },
+  };
+
   return (
     <section className="mt-6">
       <Toast />
+
       {/* barre d’action */}
-      <div className="no-print mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="no-print mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Enregistrements des pèlerins</h2>
           <p className="text-slate-600 text-sm">Toutes les informations saisies + agent enregistreur.</p>
           {loading && <p className="text-slate-500 text-sm mt-1">Chargement…</p>}
           {err && <p className="text-rose-600 text-sm mt-1">{err}</p>}
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="search" value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (nom, passeport, agent, ville, offre...)"
-            className="w-full sm:w-72 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="relative w-full sm:w-72">
+            <input
+              type="search" value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Rechercher (nom, passeport, agent, ville, offre...)"
+              className="peer w-full rounded-xl border border-slate-200 bg-white/90 backdrop-blur px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm focus:shadow transition"
+            />
+            <motion.span
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: q ? 1 : 0 }}
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400"
+            >{filtered.length} résultats</motion.span>
+          </div>
           <select
             value={sexe} onChange={(e) => setSexe(e.target.value)}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm transition"
           >
             <option value="all">Tous</option>
             <option value="Masculin">Masculin</option>
             <option value="Féminin">Féminin</option>
           </select>
-          <button onClick={handlePrint} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+          <button onClick={handlePrint} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 active:scale-[.98] shadow-sm">
             Imprimer la liste
           </button>
         </div>
@@ -316,93 +339,42 @@ export default function EnregistrementsPelerins() {
         </div>
 
         {/* ===== CARTES (mobile) ===== */}
-        <div className="cards grid gap-3 lg:hidden">
-          {filtered.length === 0 ? (
-            <p className="text-slate-600 text-center py-6">
-              {loading ? "Chargement…" : "Aucun enregistrement trouvé."}
-            </p>
-          ) : (
-            filtered.map((p, i) => {
-              const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
-              const photoPil = mediaURL(p.photoPelerin);
-              const photoPass = mediaURL(p.photoPasseport);
-              const passIsPdf = isPdfPath(photoPass);
-              const pilIsPdf  = isPdfPath(photoPil);
-              return (
-                <article key={p.id ?? i} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                  {/* images / PDF badges */}
-                  <div className="flex justify-center gap-2 mb-2">
-                    {photoPil ? (
-                      pilIsPdf ? (
-                        <button
-                          type="button"
-                          onClick={() => setPdfSrc(photoPil)}
-                          title="Voir PDF"
-                          className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
-                        >PDF</button>
-                      ) : (
-                        <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image">
-                          <img src={photoPil} alt="Pèlerin" className="h-20 w-16 object-cover rounded-md border" />
-                        </button>
-                      )
-                    ) : (
-                      <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de photo</div>
-                    )}
-                    {photoPass ? (
-                      passIsPdf ? (
-                        <button
-                          type="button"
-                          onClick={() => setPdfSrc(photoPass)}
-                          title="Voir PDF"
-                          className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
-                        >PDF</button>
-                      ) : (
-                        <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image">
-                          <img src={photoPass} alt="Passeport" className="h-20 w-16 object-cover rounded-md border" />
-                        </button>
-                      )
-                    ) : (
-                      <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de passeport</div>
-                    )}
-                  </div>
-
-                  {/* entête */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[13px] text-slate-500">#{i + 1}</div>
-                      <div className="text-base font-extrabold text-slate-900">{p.nom} {p.prenoms}</div>
-                      <div className="text-[13px] text-slate-600">
-                        {p.sexe || "—"} • Passeport : <span className="font-mono">{p.numPasseport || "—"}</span>
-                      </div>
-                    </div>
-                    <div className="text-right text-[13px] text-slate-600">
-                      <div>{formatDate(p.createdAt)}</div>
-                      <div className="text-slate-900 font-semibold">Agent: {agentName}</div>
-                    </div>
-                  </div>
-
-                  {/* actions */}
-                  <div className="mt-3 flex justify-end gap-2 flex-wrap">
-                    <Btn onClick={() => openDetail(p.id)}>Détail</Btn>
-                    <Btn onClick={() => openEdit(p)} tone="primary">Modifier</Btn>
-                    <Btn onClick={() => askDelete(p)} tone="warn">Supprimer</Btn>
-                  </div>
-                </article>
-              );
-            })
-          )}
-        </div>
+        <AnimatePresence initial={false}>
+          <motion.div
+            variants={list}
+            initial="hidden"
+            animate="show"
+            className="cards grid gap-3 lg:hidden"
+          >
+            {loading ? (
+              <SkeletonCards />
+            ) : filtered.length === 0 ? (
+              <EmptyState />
+            ) : (
+              filtered.map((p, i) => (
+                <CardRow key={p.id ?? i} i={i} p={p}
+                  onOpenDetail={() => openDetail(p.id)}
+                  onOpenEdit={() => openEdit(p)}
+                  onDelete={() => askDelete(p)}
+                  setPdfSrc={setPdfSrc}
+                  setImgSrc={setImgSrc}
+                  fadeUp={fadeUp}
+                />
+              ))
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         {/* ===== TABLEAU (desktop) ===== */}
         <div className="paper hidden lg:block">
-          {filtered.length === 0 ? (
-            <p className="text-slate-600 text-center py-6">
-              {loading ? "Chargement…" : "Aucun enregistrement trouvé."}
-            </p>
+          {loading ? (
+            <SkeletonTable rows={6} />
+          ) : filtered.length === 0 ? (
+            <EmptyState />
           ) : (
-            <div className="table-wrap overflow-x-auto">
+            <div className="table-wrap overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
               <table className="w-full data-table">
-                <thead>
+                <thead className="bg-slate-50/80 sticky top-0 backdrop-blur z-10">
                   <tr>
                     <Th>#</Th>
                     <Th>Photos/passeports</Th>
@@ -422,79 +394,15 @@ export default function EnregistrementsPelerins() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p, i) => {
-                    const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
-                    const photoPil = mediaURL(p.photoPelerin);
-                    const photoPass = mediaURL(p.photoPasseport);
-                    const pilIsPdf  = isPdfPath(photoPil);
-                    const passIsPdf = isPdfPath(photoPass);
-                    return (
-                      <tr key={p.id ?? i} className="row">
-                        <Td className="muted">{i + 1}</Td>
-                        <Td>
-                          <div className="flex gap-1">
-                            {photoPil ? (
-                              pilIsPdf ? (
-                                <button
-                                  type="button"
-                                  title="Voir PDF"
-                                  onClick={() => setPdfSrc(photoPil)}
-                                  className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
-                                >PDF</button>
-                              ) : (
-                                <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image">
-                                  <img src={photoPil} alt="Pèlerin" className="h-10 w-8 rounded border object-cover" />
-                                </button>
-                              )
-                            ) : (
-                              <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
-                            )}
-                            {photoPass ? (
-                              passIsPdf ? (
-                                <button
-                                  type="button"
-                                  title="Voir PDF"
-                                  onClick={() => setPdfSrc(photoPass)}
-                                  className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
-                                >PDF</button>
-                              ) : (
-                                <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image">
-                                  <img src={photoPass} alt="Passeport" className="h-10 w-8 rounded border object-cover" />
-                                </button>
-                              )
-                            ) : (
-                              <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
-                            )}
-                          </div>
-                        </Td>
-                        <Td className="strong">{p.nom} {p.prenoms}</Td>
-                        <Td>
-                          <div>{formatDate(p.dateNaissance)}</div>
-                          <div className="muted">{p.lieuNaissance || "—"}</div>
-                        </Td>
-                        <Td>{p.sexe || "—"}</Td>
-                        <Td className="wrap hidden xl:table-cell">{p.adresse || "—"}</Td>
-                        <Td>{p.contacts || "—"}</Td>
-                        <Td className="mono">{p.numPasseport || "—"}</Td>
-                        <Td className="hidden lg:table-cell">{p.offre || "—"}</Td>
-                        <Td className="wrap hidden lg:table-cell">{p.voyage || "—"}</Td>
-                        <Td>{p.anneeVoyage || "—"}</Td>
-                        <Td className="wrap hidden lg:table-cell">
-                          <span className="strong">{p.urgenceNom} {p.urgencePrenoms}</span>{" "}
-                          • {p.urgenceContact || "—"} • {p.urgenceResidence || "—"}
-                        </Td>
-                        <Td className="strong">{agentName}</Td>
-                        <Td>{formatDate(p.createdAt)}</Td>
-                        <Td className="text-right">
-                          <div className="inline-flex gap-2 flex-wrap justify-end">
-                            <Btn onClick={() => openDetail(p.id)}>Détail</Btn>
-                            <Btn onClick={() => openEdit(p)} tone="primary">Modifier</Btn>
-                            <Btn onClick={() => askDelete(p)} tone="warn">Supprimer</Btn>
-                          </div>
-                        </Td>
-                      </tr>
-                    );
-                  })}
+                  {filtered.map((p, i) => (
+                    <MotionTableRow key={p.id ?? i} index={i} p={p}
+                      onOpenDetail={() => openDetail(p.id)}
+                      onOpenEdit={() => openEdit(p)}
+                      onDelete={() => askDelete(p)}
+                      setPdfSrc={setPdfSrc}
+                      setImgSrc={setImgSrc}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -503,27 +411,35 @@ export default function EnregistrementsPelerins() {
       </div>
 
       {/* Modales (full responsive) */}
-      {detail && (
-        <DetailModal
-          data={detail}
-          onClose={() => setDetail(null)}
-          onOpenPdf={(src)=>setPdfSrc(src)}
-          onOpenImage={(src)=>setImgSrc(src)}
-        />
-      )}
-      {editing && (
-        <EditModal
-          data={editing}
-          onClose={() => setEditing(null)}
-          onSave={saveEdit}
-          onOpenPdf={(src)=>setPdfSrc(src)}
-          onOpenImage={(src)=>setImgSrc(src)}
-        />
-      )}
+      <AnimatePresence>
+        {detail && (
+          <DetailModal
+            data={detail}
+            onClose={() => setDetail(null)}
+            onOpenPdf={(src)=>setPdfSrc(src)}
+            onOpenImage={(src)=>setImgSrc(src)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {editing && (
+          <EditModal
+            data={editing}
+            onClose={() => setEditing(null)}
+            onSave={saveEdit}
+            onOpenPdf={(src)=>setPdfSrc(src)}
+            onOpenImage={(src)=>setImgSrc(src)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Viewers plein écran */}
-      {pdfSrc && <PDFViewer src={pdfSrc} onClose={() => setPdfSrc("")} />}
-      {imgSrc && <ImageViewer src={imgSrc} onClose={() => setImgSrc("")} />}
+      <AnimatePresence>
+        {pdfSrc && <PDFViewer src={pdfSrc} onClose={() => setPdfSrc("")} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {imgSrc && <ImageViewer src={imgSrc} onClose={() => setImgSrc("")} />}
+      </AnimatePresence>
     </section>
   );
 }
@@ -546,13 +462,165 @@ function Btn({ children, tone = "default", type = "button", className="", ...pro
     warn: "bg-rose-600 text-white hover:bg-rose-700 border border-transparent",
   };
   return (
-    <button
+    <motion.button
       type={type}
+      whileTap={{ scale: 0.98 }}
+      whileHover={{ y: -1 }}
       {...props}
       className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${styles[tone]} ${className}`}
     >
       {children}
-    </button>
+    </motion.button>
+  );
+}
+
+/* ====== Cartes (mobile) ====== */
+function CardRow({ i, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSrc, fadeUp }) {
+  const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+  const photoPil = mediaURL(p.photoPelerin);
+  const photoPass = mediaURL(p.photoPasseport);
+  const passIsPdf = isPdfPath(photoPass);
+  const pilIsPdf  = isPdfPath(photoPil);
+
+  return (
+    <motion.article
+      variants={fadeUp}
+      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow transition"
+    >
+      {/* images / PDF badges */}
+      <div className="flex justify-center gap-2 mb-2">
+        {photoPil ? (
+          pilIsPdf ? (
+            <button
+              type="button"
+              onClick={() => setPdfSrc(photoPil)}
+              title="Voir PDF"
+              className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+            >PDF</button>
+          ) : (
+            <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded-md">
+              <img src={photoPil} alt="Pèlerin" className="h-20 w-16 object-cover rounded-md border" />
+            </button>
+          )
+        ) : (
+          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de photo</div>
+        )}
+        {photoPass ? (
+          passIsPdf ? (
+            <button
+              type="button"
+              onClick={() => setPdfSrc(photoPass)}
+              title="Voir PDF"
+              className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
+            >PDF</button>
+          ) : (
+            <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded-md">
+              <img src={photoPass} alt="Passeport" className="h-20 w-16 object-cover rounded-md border" />
+            </button>
+          )
+        ) : (
+          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de passeport</div>
+        )}
+      </div>
+
+      {/* entête */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[13px] text-slate-500">#{i + 1}</div>
+          <div className="text-base font-extrabold text-slate-900">{p.nom} {p.prenoms}</div>
+          <div className="text-[13px] text-slate-600">
+            {p.sexe || "—"} • Passeport : <span className="font-mono">{p.numPasseport || "—"}</span>
+          </div>
+        </div>
+        <div className="text-right text-[13px] text-slate-600">
+          <div>{formatDate(p.createdAt)}</div>
+          <div className="text-slate-900 font-semibold">Agent: {agentName}</div>
+        </div>
+      </div>
+
+      {/* actions */}
+      <div className="mt-3 flex justify-end gap-2 flex-wrap">
+        <Btn onClick={onOpenDetail}>Détail</Btn>
+        <Btn onClick={onOpenEdit} tone="primary">Modifier</Btn>
+        <Btn onClick={onDelete} tone="warn">Supprimer</Btn>
+      </div>
+    </motion.article>
+  );
+}
+
+/* ====== Lignes tableau (desktop) ====== */
+function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSrc }) {
+  const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+  const photoPil = mediaURL(p.photoPelerin);
+  const photoPass = mediaURL(p.photoPasseport);
+  const pilIsPdf  = isPdfPath(photoPil);
+  const passIsPdf = isPdfPath(photoPass);
+
+  return (
+    <motion.tr initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }} className="row">
+      <Td className="muted">{index + 1}</Td>
+      <Td>
+        <div className="flex gap-1">
+          {photoPil ? (
+            pilIsPdf ? (
+              <button
+                type="button"
+                title="Voir PDF"
+                onClick={() => setPdfSrc(photoPil)}
+                className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
+              >PDF</button>
+            ) : (
+              <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded">
+                <img src={photoPil} alt="Pèlerin" className="h-10 w-8 rounded border object-cover" />
+              </button>
+            )
+          ) : (
+            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+          )}
+          {photoPass ? (
+            passIsPdf ? (
+              <button
+                type="button"
+                title="Voir PDF"
+                onClick={() => setPdfSrc(photoPass)}
+                className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
+              >PDF</button>
+            ) : (
+              <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded">
+                <img src={photoPass} alt="Passeport" className="h-10 w-8 rounded border object-cover" />
+              </button>
+            )
+          ) : (
+            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+          )}
+        </div>
+      </Td>
+      <Td className="strong">{p.nom} {p.prenoms}</Td>
+      <Td>
+        <div>{formatDate(p.dateNaissance)}</div>
+        <div className="muted">{p.lieuNaissance || "—"}</div>
+      </Td>
+      <Td>{p.sexe || "—"}</Td>
+      <Td className="wrap hidden xl:table-cell">{p.adresse || "—"}</Td>
+      <Td>{p.contacts || "—"}</Td>
+      <Td className="mono">{p.numPasseport || "—"}</Td>
+      <Td className="hidden lg:table-cell">{p.offre || "—"}</Td>
+      <Td className="wrap hidden lg:table-cell">{p.voyage || "—"}</Td>
+      <Td>{p.anneeVoyage || "—"}</Td>
+      <Td className="wrap hidden lg:table-cell">
+        <span className="strong">{p.urgenceNom} {p.urgencePrenoms}</span>{" "}
+        • {p.urgenceContact || "—"} • {p.urgenceResidence || "—"}
+      </Td>
+      <Td className="strong">{agentName}</Td>
+      <Td>{formatDate(p.createdAt)}</Td>
+      <Td className="text-right">
+        <div className="inline-flex gap-2 flex-wrap justify-end">
+          <Btn onClick={onOpenDetail}>Détail</Btn>
+          <Btn onClick={onOpenEdit} tone="primary">Modifier</Btn>
+          <Btn onClick={onDelete} tone="warn">Supprimer</Btn>
+        </div>
+      </Td>
+    </motion.tr>
   );
 }
 
@@ -564,9 +632,9 @@ function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
   const passIsPdf = isPdfPath(pass);
 
   return (
-    <div className="fixed inset-0 z-50">
+    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 h-full w-full p-2 sm:p-4 grid">
+      <motion.div className="relative z-10 h-full w-full p-2 sm:p-4 grid" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }}>
         <div
           role="dialog"
           aria-modal="true"
@@ -642,8 +710,8 @@ function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -687,9 +755,9 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
   const passIsPdf = form._filePasseport && (form._filePasseport.type === "application/pdf" || form._filePasseport.name?.toLowerCase().endsWith(".pdf"));
 
   return (
-    <div className="fixed inset-0 z-50">
+    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 h-full w-full p-2 sm:p-4 grid">
+      <motion.div className="relative z-10 h-full w-full p-2 sm:p-4 grid" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }}>
         <form
           onSubmit={submit}
           role="dialog"
@@ -804,18 +872,18 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
             </Btn>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 /* ====== PDF Viewer ====== */
 function PDFViewer({ src, onClose }) {
   return (
-    <div className="fixed inset-0 z-[70]">
+    <motion.div className="fixed inset-0 z-[70]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative z-10 h-full w-full flex flex-col">
-        <div className="bg-slate-900/90 text-white px-3 py-2 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/90 text-white px-3 py-2 flex items-center justify-between">
           <div className="font-semibold text-sm truncate">Aperçu PDF</div>
           <div className="flex items-center gap-2">
             <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
@@ -826,17 +894,17 @@ function PDFViewer({ src, onClose }) {
           <iframe title="PDF" src={src} className="w-full h-full" />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 /* ====== Image Viewer (lightbox) ====== */
 function ImageViewer({ src, onClose }) {
   return (
-    <div className="fixed inset-0 z-[70]">
+    <motion.div className="fixed inset-0 z-[70]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="absolute inset-0 bg-black/80" onClick={onClose} />
       <div className="relative z-10 flex h-full w-full flex-col">
-        <div className="bg-slate-900/90 text-white px-3 py-2 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/90 text-white px-3 py-2 flex items-center justify-between">
           <div className="font-semibold text-sm truncate">Aperçu image</div>
           <div className="flex items-center gap-2">
             <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
@@ -844,14 +912,18 @@ function ImageViewer({ src, onClose }) {
           </div>
         </div>
         <div className="flex-1 grid place-items-center bg-black">
-          <img
+          <motion.img
             src={src}
             alt="aperçu"
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 240, damping: 24 }}
             className="max-h-[92vh] max-w-[96vw] object-contain"
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -869,7 +941,7 @@ function Text({ label, ...props }) {
     <Field label={label}>
       <input
         {...props}
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm"
       />
     </Field>
   );
@@ -879,12 +951,52 @@ function Select({ label, options, ...props }) {
     <Field label={label}>
       <select
         {...props}
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm"
       >
         {options.map((o) => (
           <option key={o.v} value={o.v}>{o.l}</option>
         ))}
       </select>
     </Field>
+  );
+}
+
+/* ====== Skeletons & Empty ====== */
+function SkeletonCards() {
+  return (
+    <div className="grid gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="animate-pulse space-y-3">
+            <div className="h-20 w-full bg-slate-100 rounded" />
+            <div className="h-4 w-1/2 bg-slate-100 rounded" />
+            <div className="h-3 w-2/3 bg-slate-100 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function SkeletonTable({ rows = 8 }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="h-10 bg-slate-50" />
+      <div className="divide-y">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="h-12 animate-pulse bg-white" />
+        ))}
+      </div>
+    </div>
+  );
+}
+function EmptyState() {
+  return (
+    <div className="text-center py-10 text-slate-600">
+      <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 grid place-items-center border border-slate-200">
+        <span className="text-lg">🔎</span>
+      </div>
+      <p className="font-semibold">Aucun enregistrement trouvé</p>
+      <p className="text-sm">Essayez un autre mot-clé ou retirez les filtres.</p>
+    </div>
   );
 }
