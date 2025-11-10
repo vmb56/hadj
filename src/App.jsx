@@ -1,7 +1,7 @@
 // src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layout/mainlayout.jsx";
-
+import CommunicationHubBMVT from "./pages/agence/agenceDis.jsx";
 // === Auth (public)
 import LoginPage from "./auth/Login.jsx";
 import RegisterPage from "./auth/Register.jsx";
@@ -107,6 +107,14 @@ export default function App() {
             <Route path="historiques" element={<HistoriquesPaiement />} />
             <Route path="versements" element={<HistoriquesVersements />} />
           </Route>
+
+
+       {/* Discussion entre agence */ }
+<Route path="Discussion" element={<CommunicationHubBMVT/>} />
+
+
+
+
 
           {/* Impression des passeports (photos) */}
           <Route path="impressions-passeports" element={<ImpressionsPasseports />} />

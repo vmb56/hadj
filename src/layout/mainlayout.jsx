@@ -21,6 +21,7 @@ import {
   Sun,
   Moon,
   HandCoins,
+  House,
 } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
 
@@ -247,7 +248,11 @@ export default function MainLayout() {
             {canSee("comptes") && (
               <Item to="/utilisateurs" icon={UserCircle2} label="Comptes" collapsed={collapsed} />
             )}
-          
+          </Section>
+
+           <Section title="AGENCE" collapsed={collapsed}>
+            <Item to="/Discussion" icon={House} label="Disscusion Entre Agence" collapsed={collapsed} />
+            
           </Section>
 
           {/* <Section title="Impressions" collapsed={collapsed}>
@@ -465,7 +470,9 @@ export default function MainLayout() {
               </MobileGroup>
               <MobileGroup title="Utilisateurs">
                 {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
-              
+              </MobileGroup>
+              <MobileGroup title="Agence">
+                <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence"/>
               </MobileGroup>
               {/* <MobileGroup title="Impressions">
                 <MobileItem to="/impressions-passeports" icon={Printer} label="Photos / Passeport" />
