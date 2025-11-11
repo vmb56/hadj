@@ -362,9 +362,9 @@ export default function MainLayout() {
                         </li>
                       ))}
                     </ul>
-                    {notifications.length === 0 && (
+                    {/* {notifications.length === 0 && (
                       <div className="text-center text-slate-500 text-dyn-sm py-4">Aucune notification</div>
-                    )}
+                    )} */}
                   </div>
                 )}
               </div>
