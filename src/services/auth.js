@@ -1,3 +1,4 @@
+// src/services/auth.js
 import { apiFetch } from "./api";
 
 const TOKEN_KEY = "bmvt_token";
@@ -83,13 +84,14 @@ export function clearSession() {
   }
 }
 
-// src/services/auth.js
+// (optionnel) si tu utilises encore getSession quelque part
 export function getSession() {
   try {
-    const v = localStorage.getItem("bmvt_session") || sessionStorage.getItem("bmvt_session");
-    return v ? JSON.parse(v) : null;
+    const token = getToken();
+    const user = getUser();
+    if (!token || !user) return null;
+    return { token, user };
   } catch {
     return null;
   }
 }
-

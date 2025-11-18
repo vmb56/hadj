@@ -1,30 +1,53 @@
-// Petit helper pour appeler ton backend
+// src/services/api.js
+
+// URL de ton backend Render
 const BASE_URL =
-  import.meta?.env?.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:4000";
+  import.meta.env.VITE_API_URL || "https://hadjbackend.onrender.com";
 
-export async function apiFetch(path, { method = "GET", body, headers, token } = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    credentials: "include", // si tu utilises des cookies côté API
-    body: body ? JSON.stringify(body) : undefined,
-  });
+/**
+ * Wrapper fetch pour appeler l’API backend
+ * @param {string} path - ex: "/api/auth/login"
+ * @param {object} options - { method, body, headers, ... }
+ */
+export async function apiFetch(path, options = {}) {
+  const url = `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
-  let data;
-  try { data = await res.json(); } catch { data = null; }
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  const fetchOptions = {
+    method: options.method || "GET",
+    headers,
+    credentials: "include", // si tu utilises des cookies côté backend
+  };
+
+  if (options.body !== undefined) {
+    fetchOptions.body =
+      typeof options.body === "string"
+        ? options.body
+        : JSON.stringify(options.body);
+  }
+
+  const res = await fetch(url, fetchOptions);
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // pas de JSON -> on laisse data = null
+  }
 
   if (!res.ok) {
-    const msg = data?.message || data?.error || `HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.data = data;
-    throw err;
+    const message =
+      (data && data.message) ||
+      `Erreur API (${res.status})`;
+    const error = new Error(message);
+    error.status = res.status;
+    error.data = data;
+    throw error;
   }
+
   return data;
 }
-
-export { BASE_URL };
