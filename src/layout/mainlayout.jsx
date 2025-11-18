@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import LogoutButton from "../components/LogoutButton.jsx";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  LayoutGrid,
   Users,
   Stethoscope,
   Wallet,
@@ -29,19 +28,17 @@ import useAuthUser from "../hooks/useAuthUser";
 // 🎯 Logo entreprise
 import Logo from "../pages/pelerins/Logo.png";
 
-/** Thème clair par défaut (valeurs de base) */
+/** Thème clair / sombre */
 const APP_GRADIENT_LIGHT = "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
 const CONTENT_BG_LIGHT = "bg-slate-100";
-
-/** Thème sombre */
 const APP_GRADIENT_DARK = "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-700";
 const CONTENT_BG_DARK = "bg-slate-900";
 
-/** Chrome latéral (verre) — identique dans les deux thèmes */
+/** Chrome latéral (verre) */
 const SIDEBAR_CHROME =
   "backdrop-blur-md border-r border-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]";
 
-/** Liens de la sidebar */
+/** Liens sidebar */
 const linkBase =
   "group relative flex items-center gap-3 rounded-xl px-3 py-2 font-semibold outline-none transition-all duration-200 will-change-transform";
 const linkIdle =
@@ -57,12 +54,12 @@ function ActiveAccent() {
 }
 
 export default function MainLayout() {
-  const authUser = useAuthUser(); // utilisateur connecté ou null
+  const authUser = useAuthUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { pathname } = useLocation();
 
-  /** ====== Thème clair/sombre (persisté) ====== */
+  /** ====== Thème ====== */
   const [theme, setTheme] = useState(() => {
     const v = localStorage.getItem("app_theme") || "light";
     return v === "dark" ? "dark" : "light";
@@ -77,13 +74,18 @@ export default function MainLayout() {
   const APP_GRADIENT = isDark ? APP_GRADIENT_DARK : APP_GRADIENT_LIGHT;
   const CONTENT_BG = isDark ? CONTENT_BG_DARK : CONTENT_BG_LIGHT;
 
-  /** ====== Taille de police (fixe) ====== */
-  const baseFont = 16; // px
+  /** ====== Taille de police ====== */
+  const baseFont = 16;
 
+  // Ferme le menu mobile quand on change de page
   useEffect(() => setMobileOpen(false), [pathname]);
+
+  // Bloquer scroll body quand menu mobile ouvert
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => (document.body.style.overflow = "");
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   const sbWidthClass = collapsed ? "md:ml-[80px]" : "md:ml-72";
@@ -121,12 +123,11 @@ export default function MainLayout() {
   }
 
   /** ====== Permissions par rôle ====== */
-  const role = (authUser?.role || "").toLowerCase(); // "admin" | "agent" | "superviseur" | ...
+  const role = (authUser?.role || "").toLowerCase();
   const isAdmin = role === "admin";
   const isAgent = role === "agent";
   const isSuperviseur = role === "superviseur";
 
-  // keys: "dashboard", "comptes"
   function canSee(key) {
     if (isAdmin) return true;
     if (isAgent) {
@@ -138,7 +139,6 @@ export default function MainLayout() {
       if (key === "comptes") return false;
       return true;
     }
-    // rôle inconnu -> par défaut on autorise tout sauf "comptes"
     if (key === "comptes") return false;
     return true;
   }
@@ -182,7 +182,7 @@ export default function MainLayout() {
         .shine-on-hover:hover::after { animation: shine .9s ease; }
       `}</style>
 
-      {/* ==== Sidebar ==== */}
+      {/* ==== Sidebar desktop ==== */}
       <aside
         className={[
           "hidden md:flex fixed left-0 top-0 h-screen flex-col transition-[width] duration-300 z-40",
@@ -193,9 +193,8 @@ export default function MainLayout() {
       >
         {/* Logo + bouton collapse */}
         <div className="relative px-4 py-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Logo entreprise */}
-            <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm shrink-0">
               <img
                 src={Logo}
                 alt="Logo BMVT"
@@ -204,11 +203,11 @@ export default function MainLayout() {
             </div>
 
             {!collapsed && (
-              <div className="flex flex-col">
-                <span className="text-white drop-shadow-sm text-dyn-brand">
+              <div className="flex flex-col min-w-0">
+                <span className="text-white drop-shadow-sm text-dyn-brand truncate">
                   BMVT HADJ &amp; OUMRA
                 </span>
-                <span className="text-[11px] uppercase tracking-[0.2em] text-white/70">
+                <span className="text-[11px] uppercase tracking-[0.2em] text-white/70 truncate">
                   Bakayoko Mawa Voyages &amp; Tourismes
                 </span>
               </div>
@@ -227,7 +226,7 @@ export default function MainLayout() {
           </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation desktop */}
         <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
           {canSee("dashboard") && (
             <Section title="Tableau de bord" collapsed={collapsed}>
@@ -273,15 +272,15 @@ export default function MainLayout() {
       </aside>
 
       {/* ==== Contenu principal ==== */}
-      <div className={`min-w-0 ${sbWidthClass} flex flex-col`}>
+      <div className={`min-w-0 flex flex-col ${sbWidthClass}`}>
         {/* Topbar */}
         <header
           className={`sticky top-0 z-30 border-b ${
             isDark ? "border-slate-800 bg-slate-900/80" : "border-slate-200/60 bg-white/70"
           } backdrop-blur supports-[backdrop-filter]:bg-white/60`}
         >
-          <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 h-[70px] flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 h-[60px] sm:h-[70px] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setMobileOpen(true)}
                 className="rounded-lg p-2 hover:bg-blue-50/30 focus-visible:ring-2 focus-visible:ring-blue-300 md:hidden transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
@@ -291,15 +290,23 @@ export default function MainLayout() {
               <div
                 className={`hidden md:block text-dyn-title ${
                   isDark ? "text-slate-100" : "text-slate-800"
-                } text-topbar`}
+                } text-topbar truncate`}
+              >
+                {pageTitle}
+              </div>
+              {/* Sur mobile on peut afficher un titre plus petit si tu veux */}
+              <div
+                className={`md:hidden text-sm font-semibold ${
+                  isDark ? "text-slate-100" : "text-slate-800"
+                } truncate`}
               >
                 {pageTitle}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2">
-              {/* Bouton thème */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Thème */}
               <button
                 className="btn-chips shine-on-hover"
                 onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
@@ -319,7 +326,7 @@ export default function MainLayout() {
                             }`}
               />
 
-              <div className={`h-8 w-[1px] ${isDark ? "bg-slate-700" : "bg-slate-200"} mx-1`} />
+              <div className={`hidden sm:block h-8 w-[1px] ${isDark ? "bg-slate-700" : "bg-slate-200"} mx-1`} />
 
               {/* Notifications */}
               <div className="relative" ref={notifRef}>
@@ -336,7 +343,6 @@ export default function MainLayout() {
                   )}
                 </button>
 
-                {/* Panneau notifications */}
                 {notifOpen && (
                   <div
                     className={`absolute right-0 mt-2 w-80 rounded-2xl border p-3 shadow-xl panel-card ${
@@ -375,7 +381,7 @@ export default function MainLayout() {
                 )}
               </div>
 
-              {/* Profil rapide — DYNAMIQUE */}
+              {/* Profil rapide */}
               {(() => {
                 const fullName =
                   authUser?.name?.trim() || authUser?.email?.split("@")[0] || "Compte";
@@ -384,7 +390,7 @@ export default function MainLayout() {
                 const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
                 return (
                   <div
-                    className={`flex items-center gap-3 rounded-xl border ${
+                    className={`hidden xs:flex items-center gap-3 rounded-xl border ${
                       isDark ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"
                     } px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
                     title={authUser?.email || ""}
@@ -396,10 +402,10 @@ export default function MainLayout() {
                       style={{ width: `calc(var(--app-fs) + 10px)`, height: `calc(var(--app-fs) + 10px)` }}
                     />
                     <div className="hidden sm:block">
-                      <div className={`${isDark ? "text-slate-100" : "text-slate-800"} font-semibold text-dyn-sm`}>
+                      <div className={`${isDark ? "text-slate-100" : "text-slate-800"} font-semibold text-dyn-sm truncate`}>
                         {fullName}
                       </div>
-                      <div className="text-slate-500 text-dyn-xs">{roleLabel}</div>
+                      <div className="text-slate-500 text-dyn-xs truncate">{roleLabel}</div>
                     </div>
                   </div>
                 );
@@ -408,110 +414,109 @@ export default function MainLayout() {
           </div>
         </header>
 
-        {/* Drawer Mobile */}
-        <div
-          className={["fixed inset-0 z-50 md:hidden pointer-events-none", mobileOpen ? "pointer-events-auto" : ""].join(
-            " "
-          )}
-          aria-hidden={!mobileOpen}
-        >
+        {/* Drawer Mobile (rendu seulement quand ouvert) */}
+        {mobileOpen && (
           <div
-            className={["absolute inset-0 bg-black/50 transition-opacity duration-300", mobileOpen ? "opacity-100" : "opacity-0"].join(
-              " "
-            )}
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside
-            className={[
-              "absolute left-0 top-0 h-full w-[82%] max-w-[320px]",
-              APP_GRADIENT,
-              SIDEBAR_CHROME,
-              "shadow-2xl will-change-transform transform transition-transform duration-300 ease-out",
-              mobileOpen ? "translate-x-0" : "-translate-x-full",
-            ].join(" ")}
+            className="fixed inset-0 z-50 md:hidden"
             role="dialog"
             aria-modal="true"
-            style={{ ["--app-fs"]: `${baseFont}px` }}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
-              <div className="flex items-center gap-2">
-                {/* Logo + nom mobile */}
-                <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm">
-                  <img
-                    src={Logo}
-                    alt="Logo BMVT"
-                    className="h-8 w-8 object-contain"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <div className="text-white text-dyn-brand">BMVT HADJ &amp; OUMRA</div>
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-white/70">
-                    Bakayoko Mawa Voyages &amp; Tourismes
+            <div
+              className="absolute inset-0 bg-black/50 transition-opacity duration-300 opacity-100"
+              onClick={() => setMobileOpen(false)}
+            />
+            <aside
+              className={[
+                "absolute left-0 top-0 h-full w-[82%] max-w-[320px]",
+                APP_GRADIENT,
+                SIDEBAR_CHROME,
+                "shadow-2xl will-change-transform transform transition-transform duration-300 ease-out translate-x-0",
+              ].join(" ")}
+              style={{ ["--app-fs"]: `${baseFont}px` }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm shrink-0">
+                    <img
+                      src={Logo}
+                      alt="Logo BMVT"
+                      className="h-8 w-8 object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="text-white text-dyn-brand truncate">BMVT HADJ &amp; OUMRA</div>
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-white/70 truncate">
+                      Bakayoko Mawa Voyages &amp; Tourismes
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg p-2 hover:bg-white/10 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
+                  aria-label="Fermer le menu"
+                >
+                  <X className="text-white icon-dyn-sm" />
+                </button>
               </div>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-2 hover:bg-white/10 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
-                aria-label="Fermer le menu"
-              >
-                <X className="text-white icon-dyn-sm" />
-              </button>
-            </div>
 
-            <nav className="p-3 space-y-5 overflow-y-auto h-[calc(100%-56px)]">
-              {canSee("dashboard") && (
-                <MobileGroup title="Tableau de bord">
-                  <MobileItem to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" />
+              <nav className="p-3 space-y-5 overflow-y-auto h-[calc(100%-56px)]">
+                {canSee("dashboard") && (
+                  <MobileGroup title="Tableau de bord">
+                    <MobileItem to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" />
+                  </MobileGroup>
+                )}
+
+                <MobileGroup title="Pèlerins">
+                  <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
+                  <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
+                  <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
+                  <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
                 </MobileGroup>
-              )}
+                <MobileGroup title="Médicale">
+                  <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
+                </MobileGroup>
+                <MobileGroup title="Offres">
+                  <MobileItem to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" />
+                </MobileGroup>
+                <MobileGroup title="Paiement">
+                  <MobileItem to="/paiement" icon={Wallet} label="Règlements & échéances" />
+                  <MobileItem to="/factures" icon={FileText} label="Factures" />
+                </MobileGroup>
+                <MobileGroup title="Voyage">
+                  <MobileItem to="/voyage" icon={Plane} label="Vols & Chambres" />
+                  <MobileItem to="/voyages" icon={Plane} label="Voyages" />
+                </MobileGroup>
+                <MobileGroup title="Utilisateurs">
+                  {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
+                </MobileGroup>
+                <MobileGroup title="Agence">
+                  <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence" />
+                </MobileGroup>
 
-              <MobileGroup title="Pèlerins">
-                <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
-                <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
-                <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
-                <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
-              </MobileGroup>
-              <MobileGroup title="Médicale">
-                <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
-              </MobileGroup>
-              <MobileGroup title="Offres">
-                <MobileItem to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" />
-              </MobileGroup>
-              <MobileGroup title="Paiement">
-                <MobileItem to="/paiement" icon={Wallet} label="Règlements & échéances" />
-                <MobileItem to="/factures" icon={FileText} label="Factures" />
-              </MobileGroup>
-              <MobileGroup title="Voyage">
-                <MobileItem to="/voyage" icon={Plane} label="Vols & Chambres" />
-                <MobileItem to="/voyages" icon={Plane} label="Voyages" />
-              </MobileGroup>
-              <MobileGroup title="Utilisateurs">
-                {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
-              </MobileGroup>
-              <MobileGroup title="Agence">
-                <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence" />
-              </MobileGroup>
-
-              {/* Déconnexion (mobile) */}
-              <div className="pt-2">
-                <LogoutButton
-                  className={`w-full inline-flex items-center gap-2 rounded-xl px-3 py-2.5 font-semibold 
-                              transition-all duration-200 hover:translate-x-1 ring-1
-                              ${
-                                isDark
-                                  ? "bg-rose-600/90 text-white ring-rose-500 hover:bg-rose-600"
-                                  : "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100"
-                              }`}
-                />
-              </div>
-            </nav>
-          </aside>
-        </div>
+                {/* Déconnexion (mobile) */}
+                <div className="pt-2">
+                  <LogoutButton
+                    className={`w-full inline-flex items-center gap-2 rounded-xl px-3 py-2.5 font-semibold 
+                                transition-all duration-200 hover:translate-x-1 ring-1
+                                ${
+                                  isDark
+                                    ? "bg-rose-600/90 text-white ring-rose-500 hover:bg-rose-600"
+                                    : "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100"
+                                }`}
+                  />
+                </div>
+              </nav>
+            </aside>
+          </div>
+        )}
 
         {/* Zone pages */}
-        <main className="min-w-0 h-[calc(100vh-70px)] overflow-y-auto">
-          <div className={`mx-auto max-w-[1400px] p-5 md:p-7 lg:p-9 text-dyn ${isDark ? "text-slate-100" : "text-slate-900"}`}>
+        <main className="min-w-0 h-[calc(100vh-60px)] sm:h-[calc(100vh-70px)] overflow-y-auto">
+          <div
+            className={`mx-auto max-w-[1400px] p-4 sm:p-5 md:p-7 lg:p-9 text-dyn ${
+              isDark ? "text-slate-100" : "text-slate-900"
+            }`}
+          >
             <Outlet />
           </div>
         </main>
@@ -568,6 +573,7 @@ function MobileGroup({ title, children }) {
     </div>
   );
 }
+
 function MobileItem({ to, icon: Icon, label }) {
   return (
     <NavLink

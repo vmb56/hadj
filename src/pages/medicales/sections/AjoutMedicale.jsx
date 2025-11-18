@@ -7,12 +7,20 @@ const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" &&
     (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+  // 🔹 fallback : localhost en dev, backend Render en prod
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:4000"
+    : "https://hadjbackend.onrender.com");
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
+
 
 // ❗ Si tu utilises exclusivement Authorization: Bearer (pas de cookies),
 // il vaut mieux ne PAS envoyer withCredentials, ça évite beaucoup d’erreurs CORS.

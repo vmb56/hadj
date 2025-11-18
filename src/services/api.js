@@ -1,8 +1,8 @@
 // src/services/api.js
 
-// URL de ton backend Render
+// En Create React App, les variables d'env commencent par REACT_APP_
 const BASE_URL =
-  import.meta.env.VITE_API_URL || "https://hadjbackend.onrender.com";
+  process.env.REACT_APP_API_URL || "https://hadjbackend.onrender.com";
 
 /**
  * Wrapper fetch pour appeler l’API backend
@@ -20,7 +20,7 @@ export async function apiFetch(path, options = {}) {
   const fetchOptions = {
     method: options.method || "GET",
     headers,
-    credentials: "include", // si tu utilises des cookies côté backend
+    credentials: "include", // garde si tu utilises des cookies côté backend
   };
 
   if (options.body !== undefined) {
@@ -51,3 +51,5 @@ export async function apiFetch(path, options = {}) {
 
   return data;
 }
+
+export { BASE_URL };
