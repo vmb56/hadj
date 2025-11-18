@@ -1,10 +1,13 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 /* ======================= Connexion API commune ======================= */
 function getApiBase() {
   let viteUrl;
-  try { viteUrl = typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL; } catch {}
+  try {
+    viteUrl =
+      typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL;
+  } catch {}
   const craUrl =
     typeof process !== "undefined" &&
     process?.env &&
@@ -23,7 +26,11 @@ const API_BASE = getApiBase();
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 async function http(url, opts = {}) {
   const token = getToken();
@@ -39,9 +46,14 @@ async function http(url, opts = {}) {
     ...opts,
   });
   const ct = res.headers.get("content-type") || "";
-  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  const data = ct.includes("application/json")
+    ? await res.json()
+    : await res.text();
   if (!res.ok) {
-    const msg = typeof data === "string" ? data : data?.message || data?.error || `HTTP ${res.status}`;
+    const msg =
+      typeof data === "string"
+        ? data
+        : data?.message || data?.error || `HTTP ${res.status}`;
     throw new Error(msg);
   }
   return data;
@@ -83,8 +95,13 @@ function normalizeVol(r = {}) {
 async function apiGetPelerinsEtPaiements() {
   const data = await http(`${API_BASE}/api/pelerinspaiement`);
   const pelerins = Array.isArray(data?.pelerins) ? data.pelerins : [];
-  const payments = (Array.isArray(data?.payments) ? data.payments : []).map(normalizePayment);
-  return { pelerins: pelerins.filter((x) => x?.passeport || x?.num_passeport), payments };
+  const payments = (Array.isArray(data?.payments) ? data.payments : []).map(
+    normalizePayment
+  );
+  return {
+    pelerins: pelerins.filter((x) => x?.passeport || x?.num_passeport),
+    payments,
+  };
 }
 async function apiGetPaiements() {
   const data = await http(`${API_BASE}/api/paiements`);
@@ -135,7 +152,13 @@ function lastNMonthsLabels(n = 3) {
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    labels.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, mois: shortMonth(d) });
+    labels.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}`,
+      mois: shortMonth(d),
+    });
   }
   return labels;
 }
@@ -150,7 +173,10 @@ function buildRevenusMensuels(payments) {
     byMonth.set(key, (byMonth.get(key) || 0) + Number(p.montant || 0));
   }
   const months = lastNMonthsLabels(3);
-  return months.map((m) => ({ mois: m.mois, revenus: byMonth.get(m.key) || 0 }));
+  return months.map((m) => ({
+    mois: m.mois,
+    revenus: byMonth.get(m.key) || 0,
+  }));
 }
 function computeStatusCounts(payments) {
   const byPass = groupBy(payments, (p) => p.passeport || "");
@@ -158,7 +184,10 @@ function computeStatusCounts(payments) {
   let partiels = 0;
   for (const [, rows] of byPass) {
     const paid = sum(rows, (r) => r.montant);
-    const maxTotalDu = Math.max(...rows.map((r) => Number(r.totalDu || 0)), 0);
+    const maxTotalDu = Math.max(
+      ...rows.map((r) => Number(r.totalDu || 0)),
+      0
+    );
     if (maxTotalDu > 0 && paid >= maxTotalDu) complets++;
     else if (paid > 0) partiels++;
   }
@@ -187,16 +216,21 @@ export default function Dashboard() {
     setLoading(true);
     setErr("");
     try {
-      const [{ pelerins, payments: payFromPelerin }, payments, versements, vols] = await Promise.all([
+      const [
+        { pelerins, payments: payFromPelerin },
+        payments,
+        versements,
+        vols,
+      ] = await Promise.all([
         apiGetPelerinsEtPaiements(),
         apiGetPaiements(),
         apiGetVersements(),
         apiGetVols(),
       ]);
 
-      const allPayments = (Array.isArray(payments) && payments.length ? payments : payFromPelerin).map(
-        normalizePayment
-      );
+      const allPayments = (
+        Array.isArray(payments) && payments.length ? payments : payFromPelerin
+      ).map(normalizePayment);
 
       const totalPelerins = pelerins.length;
       const paidByPass = groupBy(allPayments, (p) => p.passeport || "");
@@ -232,7 +266,9 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+  }, []);
 
   const {
     totalPelerins,
@@ -257,12 +293,21 @@ export default function Dashboard() {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm fade-in">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">Tableau de bord</h1>
-            <p className="mt-1 text-dyn-sm text-slate-600">Vue d’ensemble de la gestion du Hajj 2025</p>
+            <h1 className="text-xl md:text-dyn-title font-extrabold text-slate-900">
+              Tableau de bord
+            </h1>
+            <p className="mt-1 text-dyn-sm text-slate-600">
+              Vue d’ensemble de la gestion du Hajj 2025
+            </p>
             {err && <div className="text-rose-600 text-xs mt-1">{err}</div>}
             {lastSync && (
               <div className="text-slate-500 text-xs mt-1">
-                Dernière mise à jour : {lastSync.toLocaleDateString("fr-FR")} {lastSync.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})}
+                Dernière mise à jour :{" "}
+                {lastSync.toLocaleDateString("fr-FR")}{" "}
+                {lastSync.toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </div>
             )}
           </div>
@@ -286,15 +331,35 @@ export default function Dashboard() {
           icon="👥"
           tone="blue"
         />
-        <BigMoneyTile title="Paiements Reçus" amount={paiementsRecus} icon="💳" tone="indigo" />
-        <BigMoneyTile title="Total Versements" amount={totalVersements} icon="💰" tone="indigo" />
+        <BigMoneyTile
+          title="Paiements Reçus"
+          amount={paiementsRecus}
+          icon="💳"
+          tone="indigo"
+        />
+        <BigMoneyTile
+          title="Total Versements"
+          amount={totalVersements}
+          icon="💰"
+          tone="indigo"
+        />
         <KpiTile title="Nombre de vols" value={nbVols} icon="✈️" tone="sky" />
       </section>
 
       {/* BANDE KPI SECONDAIRE */}
       <section className="grid gap-3 sm:gap-4 lg:grid-cols-3">
-        <SoftTile title="Paiements Complets" value={paiementsComplets} icon="✅" tone="emerald" />
-        <SoftTile title="Paiements Partiels" value={paiementsPartiels} icon="⏲️" tone="amber" />
+        <SoftTile
+          title="Paiements Complets"
+          value={paiementsComplets}
+          icon="✅"
+          tone="emerald"
+        />
+        <SoftTile
+          title="Paiements Partiels"
+          value={paiementsPartiels}
+          icon="⏲️"
+          tone="amber"
+        />
         <SoftTile
           title="Synchronisation"
           value={loading ? "En cours…" : "À jour"}
@@ -307,35 +372,56 @@ export default function Dashboard() {
       {/* ZONE GRAPHIQUES */}
       <section className="grid gap-3 sm:gap-4 xl:grid-cols-2">
         <Card title="Revenus (montants payés) – 3 derniers mois">
-          <BarChart
-            data={revenusMensuels}
-            maxY={guessNiceMaxMono(revenusMensuels)}
-            series={[{ key: "revenus", label: "Revenus", color: "#2563eb" }]}
-          />
+          <div className="w-full">
+            <BarChart
+              data={revenusMensuels}
+              maxY={guessNiceMaxMono(revenusMensuels)}
+              series={[
+                { key: "revenus", label: "Revenus", color: "#2563eb" },
+              ]}
+            />
+            {(!revenusMensuels || !revenusMensuels.some((d) => d.revenus)) && (
+              <p className="mt-2 text-[12px] text-slate-500">
+                Aucune donnée de paiement disponible pour les 3 derniers mois.
+              </p>
+            )}
+          </div>
         </Card>
 
         <Card title="Statut des Paiements">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(160px,240px)_1fr] items-center">
-            <div className="w-full">
-              <PieChart data={statutPaiements} total={pieTotal} />
-            </div>
+          <div className="space-y-4">
+            {/* Barre empilée de statut */}
+            <StatusBar data={statutPaiements} total={pieTotal} />
+
+            {/* Légende / pourcentages */}
             <ul className="space-y-2">
               {statutPaiements.map((s) => (
-                <li key={s.label} className="flex items-center gap-2 text-dyn-sm">
-                  <span className="inline-block h-3 w-3 rounded-full" style={{ background: s.color }} />
+                <li
+                  key={s.label}
+                  className="flex items-center gap-2 text-dyn-sm"
+                >
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ background: s.color }}
+                  />
                   <span className="text-slate-700">{s.label}</span>
-                  <span className="ml-auto font-semibold text-slate-900">{pct(s.value, pieTotal)}%</span>
+                  <span className="ml-auto font-semibold text-slate-900">
+                    {pct(s.value, pieTotal)}%
+                  </span>
                 </li>
               ))}
-              {!statutPaiements.length && <li className="text-slate-500">Aucune donnée</li>}
+              {!statutPaiements.length && (
+                <li className="text-slate-500 text-[13px]">
+                  Aucune donnée pour le moment.
+                </li>
+              )}
             </ul>
           </div>
         </Card>
       </section>
 
-      {/* Animations & styles légers (bleu clair) */}
+      {/* Animations & styles légers */}
       <style>{`
-        /* Effets généraux */
         .hover-lift{transition:transform .18s ease, box-shadow .18s ease}
         .hover-lift:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(30,58,138,.10)}
         .btn-press:active{transform:translateY(1px)}
@@ -343,11 +429,6 @@ export default function Dashboard() {
         .fade-in{animation:fadeIn .45s ease both}
         @keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
         .slide-up{animation:slideUp .45s ease both}
-
-        /* Shimmer pour texte de chargement */
-        .shimmer{position:relative;overflow:hidden}
-        .shimmer::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,rgba(59,130,246,0),rgba(191,219,254,.6),rgba(59,130,246,0));animation:sh 1.4s linear infinite}
-        @keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
       `}</style>
     </div>
   );
@@ -370,7 +451,10 @@ function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
       blue: { chip: "bg-blue-50 ring-blue-200", num: "text-blue-700" },
       indigo: { chip: "bg-indigo-50 ring-indigo-200", num: "text-indigo-700" },
       sky: { chip: "bg-sky-50 ring-sky-200", num: "text-sky-700" },
-      emerald: { chip: "bg-emerald-50 ring-emerald-200", num: "text-emerald-700" },
+      emerald: {
+        chip: "bg-emerald-50 ring-emerald-200",
+        num: "text-emerald-700",
+      },
       rose: { chip: "bg-rose-50 ring-rose-200", num: "text-rose-700" },
     }[tone] || { chip: "bg-slate-50 ring-slate-200", num: "text-slate-700" };
 
@@ -378,13 +462,23 @@ function KpiTile({ title, value, sub, icon, tone = "blue", strong = false }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">{title}</div>
-          <div className={`mt-1 ${strong ? "text-3xl" : "text-2xl"} font-extrabold ${toneMap.num}`}>
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">
+            {title}
+          </div>
+          <div
+            className={`mt-1 ${
+              strong ? "text-3xl" : "text-2xl"
+            } font-extrabold ${toneMap.num}`}
+          >
             {value}
           </div>
-          {sub ? <div className="text-dyn-sm text-slate-500 mt-1">{sub}</div> : null}
+          {sub ? (
+            <div className="text-dyn-sm text-slate-500 mt-1">{sub}</div>
+          ) : null}
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}
+        >
           <span className="text-lg">{icon}</span>
         </div>
       </div>
@@ -402,12 +496,16 @@ function BigMoneyTile({ title, amount, icon, tone = "indigo" }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-slate-600">{title}</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-600">
+            {title}
+          </div>
           <div className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
             {formatCFA(amount)}
           </div>
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip} ring-1`}
+        >
           <span className="text-lg">{icon}</span>
         </div>
       </div>
@@ -420,7 +518,10 @@ function SoftTile({ title, value, icon, tone = "blue", right = null }) {
       blue: { box: "bg-blue-50 ring-blue-200", txt: "text-blue-700" },
       indigo: { box: "bg-indigo-50 ring-indigo-200", txt: "text-indigo-700" },
       sky: { box: "bg-sky-50 ring-sky-200", txt: "text-sky-700" },
-      emerald: { box: "bg-emerald-50 ring-emerald-200", txt: "text-emerald-700" },
+      emerald: {
+        box: "bg-emerald-50 ring-emerald-200",
+        txt: "text-emerald-700",
+      },
       amber: { box: "bg-amber-50 ring-amber-200", txt: "text-amber-700" },
     }[tone] || { box: "bg-slate-50 ring-slate-200", txt: "text-slate-700" };
 
@@ -429,14 +530,46 @@ function SoftTile({ title, value, icon, tone = "blue", right = null }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-dyn-sm text-slate-600">{title}</div>
-          <div className="mt-1 text-2xl font-extrabold text-slate-900">{value}</div>
+          <div className="mt-1 text-2xl font-extrabold text-slate-900">
+            {value}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {right}
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.box} ring-1 ${toneMap.txt}`}>
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.box} ring-1 ${toneMap.txt}`}
+          >
             <span className="text-lg">{icon}</span>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Barre de statut empilée ---------- */
+function StatusBar({ data = [], total = 0 }) {
+  const segments = data.map((d) => ({
+    ...d,
+    pct: total ? (d.value / total) * 100 : 0,
+  }));
+
+  return (
+    <div className="w-full">
+      <div className="h-4 md:h-5 rounded-full bg-slate-100 overflow-hidden flex">
+        {segments.map((s) => (
+          <div
+            key={s.label}
+            className="h-full"
+            style={{
+              width: `${s.pct}%`,
+              background: s.color || "#64748b",
+            }}
+          />
+        ))}
+      </div>
+      <div className="mt-1 text-[11px] text-slate-500 text-right">
+        Total dossiers : {total}
       </div>
     </div>
   );
@@ -455,36 +588,20 @@ function Progress({ value = 0, tone = "blue" }) {
   return (
     <div className="w-24 sm:w-28">
       <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-        <div className={`h-2 ${bar}`} style={{ width: `${v}%`, transition: "width .6s ease" }} />
+        <div
+          className={`h-2 ${bar}`}
+          style={{ width: `${v}%`, transition: "width .6s ease" }}
+        />
       </div>
       <div className="text-[11px] text-right text-slate-500 mt-1">{v}%</div>
     </div>
   );
 }
 
-/* ---------- Hook utilitaire pour taille conteneur ---------- */
-function useContainerSize() {
-  const ref = useRef(null);
-  const [w, setW] = useState(640);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) setW(Math.max(320, Math.floor(e.contentRect.width)));
-    });
-    ro.observe(el);
-    setW(Math.max(320, Math.floor(el.clientWidth)));
-    return () => ro.disconnect();
-  }, []);
-  return [ref, w];
-}
-
-/* ---------- BarChart (responsive, sans lib) ---------- */
+/* ---------- BarChart (fixe, responsive via viewBox) ---------- */
 function BarChart({ data = [], maxY, series }) {
-  const [wrapRef, width] = useContainerSize();
-  const W = width;
-  const H = Math.max(220, Math.round(W * 0.42));
-
+  const W = 500;
+  const H = 260;
   const padding = { t: 20, r: 16, b: 28, l: 56 };
   const innerW = W - padding.l - padding.r;
   const innerH = H - padding.t - padding.b;
@@ -496,27 +613,50 @@ function BarChart({ data = [], maxY, series }) {
   );
   const yScale = (v) => innerH - (v / maxVal) * innerH;
 
-  const groupWidth = innerW / Math.max(1, data.length);
-  const barWidth = (groupWidth * 0.6) / series.length;
+  const groupWidth = innerW / Math.max(1, data.length || 1);
+  const barWidth = (groupWidth * 0.6) / Math.max(1, series.length);
 
-  const ticks = Array.from({ length: 6 }, (_, i) => Math.round((maxVal / 5) * i));
+  const ticks = Array.from({ length: 6 }, (_, i) =>
+    Math.round((maxVal / 5) * i)
+  );
 
   return (
-    <div ref={wrapRef} className="w-full">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: "block" }}>
+    <div className="w-full">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        style={{ display: "block" }}
+      >
         <rect x="0" y="0" width={W} height={H} fill="#ffffff" rx="12" />
+
+        {/* Lignes horizontales + labels Y */}
         {ticks.map((t, i) => {
           const y = padding.t + yScale(t);
           return (
             <g key={i}>
-              <line x1={padding.l} x2={W - padding.r} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="4 4" />
-              <text x={padding.l - 8} y={y + 4} fontSize="10" textAnchor="end" fill="#64748b">
+              <line
+                x1={padding.l}
+                x2={W - padding.r}
+                y1={y}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={padding.l - 8}
+                y={y + 4}
+                fontSize="10"
+                textAnchor="end"
+                fill="#64748b"
+              >
                 {formatCompact(t)}
               </text>
             </g>
           );
         })}
 
+        {/* Barres */}
         {data.map((d, i) => {
           const x0 = padding.l + groupWidth * i + groupWidth * 0.2;
           return (
@@ -536,8 +676,12 @@ function BarChart({ data = [], maxY, series }) {
                     rx="6"
                     fill={s.color}
                     opacity={0.9}
-                    data-anim="bar"
-                    style={{ transformOrigin: `${x + (barWidth - 2) / 2}px ${H}px`, animation: `grow .6s ease ${0.06 * (i * series.length + j)}s both` }}
+                    style={{
+                      transformOrigin: `${x + (barWidth - 2) / 2}px ${H}px`,
+                      animation: `grow .6s ease ${
+                        0.06 * (i * series.length + j)
+                      }s both`,
+                    }}
                   />
                 );
               })}
@@ -558,7 +702,10 @@ function BarChart({ data = [], maxY, series }) {
       <div className="mt-2 flex flex-wrap gap-3 text-dyn-sm">
         {series.map((s) => (
           <div key={s.key} className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-sm" style={{ background: s.color }} />
+            <span
+              className="inline-block h-3 w-3 rounded-sm"
+              style={{ background: s.color }}
+            />
             <span className="text-slate-700">{s.label}</span>
           </div>
         ))}
@@ -574,65 +721,16 @@ function BarChart({ data = [], maxY, series }) {
   );
 }
 
-/* ---------- PieChart (responsive, sans lib) ---------- */
-function PieChart({ data = [], total = 0 }) {
-  const ref = useRef(null);
-  const [size, setSize] = useState(220);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const w = e.contentRect.width;
-        setSize(Math.max(160, Math.min(280, Math.round(w))));
-      }
-    });
-    ro.observe(el);
-    setSize(Math.max(160, Math.min(280, Math.round(el.clientWidth))));
-    return () => ro.disconnect();
-  }, []);
-
-  const r = size / 2;
-  const cx = r, cy = r;
-
-  let angle = -Math.PI / 2;
-  const arcs = data.map((d, idx) => {
-    const ratio = total ? d.value / total : 0;
-    const a2 = angle + ratio * Math.PI * 2;
-    const path = arcPath(cx, cy, r - 10, angle, a2);
-    const delay = 0.06 * idx;
-    angle = a2;
-    return { ...d, path, delay };
-  });
-
-  return (
-    <div ref={ref} className="w-full" style={{ aspectRatio: "1/1" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="100%">
-        <circle cx={cx} cy={cy} r={r - 10} fill="#f8fafc" />
-        {arcs.map((a) => (
-          <path
-            key={a.label}
-            d={a.path}
-            fill={a.color}
-            style={{ transformOrigin: "center", transformBox: "fill-box", animation: `sector .6s ease ${a.delay}s both` }}
-          />
-        ))}
-      </svg>
-      <style>{`
-        @keyframes sector { from { transform: scale(.8); opacity:.3 } to { transform: scale(1); opacity:1 } }
-      `}</style>
-    </div>
-  );
-}
-
 /* ================= Helpers ================= */
 function formatCFA(n) {
   const abs = Math.abs(n || 0);
   const s = new Intl.NumberFormat("fr-FR").format(abs) + " FCFA";
   return n < 0 ? "-" + s : s;
 }
-function pct(n, total) { if (!total) return 0; return Math.round((n * 1000) / total) / 10; }
+function pct(n, total) {
+  if (!total) return 0;
+  return Math.round((n * 1000) / total) / 10;
+}
 function formatCompact(n) {
   if (!n) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -645,8 +743,10 @@ function guessNiceMaxMono(rows) {
   return Math.ceil(m / step) * step;
 }
 function arcPath(cx, cy, r, a1, a2) {
-  const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-  const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+  const x1 = cx + r * Math.cos(a1),
+    y1 = cy + r * Math.sin(a1);
+  const x2 = cx + r * Math.cos(a2),
+    y2 = cy + r * Math.sin(a2);
   const large = a2 - a1 > Math.PI ? 1 : 0;
   return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
 }
