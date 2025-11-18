@@ -1,6 +1,7 @@
 // src/pages/pelerins/EnregistrementsPelerins.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import useAuthUser from "../../../hooks/useAuthUser";
 
 /* ========= Config API ========= */
 const API_BASE =
@@ -100,6 +101,10 @@ function useToast() {
    Composant principal
    ========================= */
 export default function EnregistrementsPelerins() {
+  const authUser = useAuthUser();
+  const role = (authUser?.role || "").toLowerCase();
+  const isAdmin = role === "admin";
+
   const [records, setRecords] = useState([]);
   const [q, setQ] = useState("");
   const [sexe, setSexe] = useState("all");
@@ -198,6 +203,12 @@ export default function EnregistrementsPelerins() {
   }
 
   async function askDelete(row) {
+    // 🔐 Sécurité côté front : seuls les admins peuvent supprimer
+    if (!isAdmin) {
+      push("Vous n'avez pas l'autorisation de supprimer un pèlerin.", "err");
+      return;
+    }
+
     if (!window.confirm(`Supprimer le pèlerin "${row.nom} ${row.prenoms}" ?`))
       return;
     const prev = records;
@@ -413,6 +424,7 @@ export default function EnregistrementsPelerins() {
                   onOpenDetail={() => openDetail(p.id)}
                   onOpenEdit={() => openEdit(p)}
                   onDelete={() => askDelete(p)}
+                  canDelete={isAdmin}
                   setPdfSrc={setPdfSrc}
                   setImgSrc={setImgSrc}
                   fadeUp={fadeUp}
@@ -461,6 +473,7 @@ export default function EnregistrementsPelerins() {
                       onOpenDetail={() => openDetail(p.id)}
                       onOpenEdit={() => openEdit(p)}
                       onDelete={() => askDelete(p)}
+                      canDelete={isAdmin}
                       setPdfSrc={setPdfSrc}
                       setImgSrc={setImgSrc}
                     />
@@ -552,6 +565,7 @@ function CardRow({
   onOpenDetail,
   onOpenEdit,
   onDelete,
+  canDelete,
   setPdfSrc,
   setImgSrc,
   fadeUp,
@@ -656,9 +670,11 @@ function CardRow({
         <Btn onClick={onOpenEdit} tone="primary">
           Modifier
         </Btn>
-        <Btn onClick={onDelete} tone="warn">
-          Supprimer
-        </Btn>
+        {canDelete && (
+          <Btn onClick={onDelete} tone="warn">
+            Supprimer
+          </Btn>
+        )}
       </div>
     </motion.article>
   );
@@ -671,6 +687,7 @@ function MotionTableRow({
   onOpenDetail,
   onOpenEdit,
   onDelete,
+  canDelete,
   setPdfSrc,
   setImgSrc,
 }) {
@@ -779,9 +796,11 @@ function MotionTableRow({
           <Btn onClick={onOpenEdit} tone="primary">
             Modifier
           </Btn>
-          <Btn onClick={onDelete} tone="warn">
-            Supprimer
-          </Btn>
+          {canDelete && (
+            <Btn onClick={onDelete} tone="warn">
+              Supprimer
+            </Btn>
+          )}
         </div>
       </Td>
     </motion.tr>

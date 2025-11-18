@@ -1,3 +1,4 @@
+// src/layout/mainlayout.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import LogoutButton from "../components/LogoutButton.jsx";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -24,6 +25,9 @@ import {
   House,
 } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
+
+// 🎯 Logo entreprise
+import Logo from "../pages/pelerins/Logo.png";
 
 /** Thème clair par défaut (valeurs de base) */
 const APP_GRADIENT_LIGHT = "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
@@ -190,11 +194,24 @@ export default function MainLayout() {
         {/* Logo + bouton collapse */}
         <div className="relative px-4 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-white/15 flex items-center justify-center ring-1 ring-white/20 transition-transform duration-200 hover:rotate-3 hover:scale-105">
-              <LayoutGrid className="text-white icon-dyn-sm" />
+            {/* Logo entreprise */}
+            <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm">
+              <img
+                src={Logo}
+                alt="Logo BMVT"
+                className="h-8 w-8 object-contain"
+              />
             </div>
+
             {!collapsed && (
-              <div className="text-white drop-shadow-sm text-dyn-brand">BMVT HADJ & OUMRA</div>
+              <div className="flex flex-col">
+                <span className="text-white drop-shadow-sm text-dyn-brand">
+                  BMVT HADJ &amp; OUMRA
+                </span>
+                <span className="text-[11px] uppercase tracking-[0.2em] text-white/70">
+                  Bakayoko Mawa Voyages &amp; Tourismes
+                </span>
+              </div>
             )}
           </div>
           <button
@@ -222,7 +239,7 @@ export default function MainLayout() {
             <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
             <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />
             <Item to="/stats-pelerins" icon={BarChart3} label="Statistiques" collapsed={collapsed} />
-              <Item to="/listes-pelerins" icon={List} label="Lists-pelerins" collapsed={collapsed} />
+            <Item to="/listes-pelerins" icon={List} label="Lists-pelerins" collapsed={collapsed} />
           </Section>
 
           <Section title="Médicale" collapsed={collapsed}>
@@ -232,7 +249,6 @@ export default function MainLayout() {
           <Section title="Offres" collapsed={collapsed}>
             <Item to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" collapsed={collapsed} />
           </Section>
-
 
           <Section title="Paiement" collapsed={collapsed}>
             <Item to="/paiement" icon={Wallet} label="Règlements & échéances" collapsed={collapsed} />
@@ -250,17 +266,10 @@ export default function MainLayout() {
             )}
           </Section>
 
-           <Section title="AGENCE" collapsed={collapsed}>
+          <Section title="AGENCE" collapsed={collapsed}>
             <Item to="/Discussion" icon={House} label="Disscusion Entre Agence" collapsed={collapsed} />
-            
           </Section>
-
-          {/* <Section title="Impressions" collapsed={collapsed}>
-            <Item to="/impressions-passeports" icon={Printer} label="Photos / Passeport" collapsed={collapsed} />
-          </Section> */}
         </nav>
-
-        {/* pied de sidebar supprimé */}
       </aside>
 
       {/* ==== Contenu principal ==== */}
@@ -362,9 +371,6 @@ export default function MainLayout() {
                         </li>
                       ))}
                     </ul>
-                    {/* {notifications.length === 0 && (
-                      <div className="text-center text-slate-500 text-dyn-sm py-4">Aucune notification</div>
-                    )} */}
                   </div>
                 )}
               </div>
@@ -429,8 +435,20 @@ export default function MainLayout() {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
               <div className="flex items-center gap-2">
-                <LayoutGrid className="text-white icon-dyn-sm" />
-                <div className="text-white text-dyn-brand">BMVT HADJ & OUMRA</div>
+                {/* Logo + nom mobile */}
+                <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm">
+                  <img
+                    src={Logo}
+                    alt="Logo BMVT"
+                    className="h-8 w-8 object-contain"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <div className="text-white text-dyn-brand">BMVT HADJ &amp; OUMRA</div>
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-white/70">
+                    Bakayoko Mawa Voyages &amp; Tourismes
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
@@ -452,7 +470,7 @@ export default function MainLayout() {
                 <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
                 <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
                 <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
-                  <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
+                <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
               </MobileGroup>
               <MobileGroup title="Médicale">
                 <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
@@ -472,11 +490,8 @@ export default function MainLayout() {
                 {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
               </MobileGroup>
               <MobileGroup title="Agence">
-                <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence"/>
+                <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence" />
               </MobileGroup>
-              {/* <MobileGroup title="Impressions">
-                <MobileItem to="/impressions-passeports" icon={Printer} label="Photos / Passeport" />
-              </MobileGroup> */}
 
               {/* Déconnexion (mobile) */}
               <div className="pt-2">

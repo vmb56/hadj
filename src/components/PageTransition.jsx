@@ -7,12 +7,12 @@ export default function PageTransition() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Dès que l'URL change → on lance la transition
+    // Dès que l'URL change → on affiche l'overlay
     setShow(true);
 
     const timer = setTimeout(() => {
       setShow(false);
-    }, 700); // durée de l'anim en ms (doit matcher animation-duration)
+    }, 600); // durée de la transition en ms
 
     return () => clearTimeout(timer);
   }, [location]);
@@ -20,109 +20,37 @@ export default function PageTransition() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none">
-      {/* Rideau qui se lève */}
-      <div className="transition-overlay">
-        {/* Contenu centré */}
-        <div className="overlay-inner">
-          <div className="brand-bubble">
-            <span className="brand-icon">🕋</span>
-          </div>
-          <div className="brand-text">
-            <p className="brand-sub">Bakayoko Mawa</p>
-            <p className="brand-main">Voyages &amp; Tourismes</p>
-          </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center space-y-3 text-white">
+        {/* Petit logo/icone */}
+        <div className="h-12 w-12 rounded-2xl border border-sky-400/60 bg-sky-500/10 flex items-center justify-center">
+          <span className="text-2xl">🕋</span>
         </div>
+        {/* Loader */}
+        <div className="flex gap-2">
+          <span className="loader-dot" />
+          <span className="loader-dot" />
+          <span className="loader-dot" />
+        </div>
+        <p className="text-xs sm:text-sm text-slate-200/80">
+          Transition vers la page suivante…
+        </p>
       </div>
 
-      {/* Styles */}
       <style>{`
-        .transition-overlay {
-          position: fixed;
-          inset: 0;
-          background: radial-gradient(circle at top, #0ea5e9 0, #0f172a 45%, #020617 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          animation: curtainUp 0.7s ease-in-out forwards;
-          transform-origin: top center;
+        .loader-dot{
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          background: #38bdf8;
+          animation: loaderBounce .9s infinite ease-in-out;
         }
+        .loader-dot:nth-child(2){ animation-delay: .15s; }
+        .loader-dot:nth-child(3){ animation-delay: .30s; }
 
-        .overlay-inner {
-          text-align: center;
-          color: white;
-          pointer-events: none;
-        }
-
-        .brand-bubble {
-          width: 72px;
-          height: 72px;
-          border-radius: 24px;
-          border: 2px solid rgba(56, 189, 248, 0.7);
-          background: radial-gradient(circle at 30% 0%, rgba(56, 189, 248, .4), rgba(15, 23, 42, .9));
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 10px;
-          box-shadow:
-            0 0 0 1px rgba(15, 23, 42, 0.9),
-            0 15px 40px rgba(8, 47, 73, 0.8);
-          animation: pulseLogo 1.1s ease-in-out infinite;
-        }
-
-        .brand-icon {
-          font-size: 30px;
-        }
-
-        .brand-text {
-          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-
-        .brand-sub {
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: .30em;
-          color: rgba(148, 163, 184, 0.8);
-          margin-bottom: 2px;
-        }
-
-        .brand-main {
-          font-size: 17px;
-          font-weight: 800;
-          letter-spacing: .04em;
-          color: #e5e7eb;
-        }
-
-        /* Rideau qui se lève */
-        @keyframes curtainUp {
-          0% {
-            transform: translateY(0%);
-            opacity: 1;
-          }
-          70% {
-            transform: translateY(-5%);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-100%);
-            opacity: 0;
-          }
-        }
-
-        /* Petit effet de "respiration" du logo */
-        @keyframes pulseLogo {
-          0%, 100% {
-            transform: scale(1);
-            box-shadow:
-              0 0 0 1px rgba(15, 23, 42, 0.9),
-              0 15px 40px rgba(8, 47, 73, 0.8);
-          }
-          50% {
-            transform: scale(1.05);
-            box-shadow:
-              0 0 0 1px rgba(56, 189, 248, 0.8),
-              0 20px 55px rgba(8, 47, 73, 0.95);
-          }
+        @keyframes loaderBounce{
+          0%,80%,100%{ transform: translateY(0); opacity:.4; }
+          40%{ transform: translateY(-7px); opacity:1; }
         }
       `}</style>
     </div>
