@@ -11,7 +11,11 @@ const API_BASE =
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
 /* ========= Helpers ========= */
@@ -19,10 +23,10 @@ function mediaURL(p) {
   if (!p) return "";
   if (/^https?:\/\//i.test(p)) return p;
   const base = API_BASE.replace(/\/+$/, "");
-  const rel  = String(p).startsWith("/") ? p : `/${p}`;
+  const rel = String(p).startsWith("/") ? p : `/${p}`;
   return `${base}${rel}`;
 }
-function isPdfPath(p="") {
+function isPdfPath(p = "") {
   return typeof p === "string" && /\.pdf(\?|#|$)/i.test(p);
 }
 function normSexe(s) {
@@ -68,7 +72,7 @@ function normalizeRow(r) {
 /* ========= mini toast ========= */
 function useToast() {
   const [msg, setMsg] = useState(null); // {text,type}
-  const push = (text, type="ok") => {
+  const push = (text, type = "ok") => {
     setMsg({ text, type });
     clearTimeout(push._t);
     push._t = setTimeout(() => setMsg(null), 2500);
@@ -104,7 +108,7 @@ export default function EnregistrementsPelerins() {
   const { push, Toast } = useToast();
 
   // états modales
-  const [detail, setDetail] = useState(null);   // objet normalisé
+  const [detail, setDetail] = useState(null); // objet normalisé
   const [editing, setEditing] = useState(null); // objet normalisé
 
   // viewers
@@ -122,7 +126,10 @@ export default function EnregistrementsPelerins() {
       });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
         throw new Error(msg);
       }
       const data = await res.json();
@@ -135,21 +142,39 @@ export default function EnregistrementsPelerins() {
     }
   }
 
-  useEffect(() => { fetchList(); }, []);
+  useEffect(() => {
+    fetchList();
+  }, []);
 
   /* Filtrage */
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return records.filter((p) => {
-      const bySex = sexe === "all" ? true : String(p.sexe || "").toLowerCase() === sexe.toLowerCase();
+      const bySex =
+        sexe === "all"
+          ? true
+          : String(p.sexe || "").toLowerCase() === sexe.toLowerCase();
       if (!bySex) return false;
       if (!s) return true;
       const hay = [
-        p.nom, p.prenoms, p.contacts, p.numPasseport, p.offre, p.voyage,
-        p.anneeVoyage, p.sexe, p.adresse, p.lieuNaissance,
-        p.urgenceNom, p.urgencePrenoms, p.urgenceContact, p.urgenceResidence,
+        p.nom,
+        p.prenoms,
+        p.contacts,
+        p.numPasseport,
+        p.offre,
+        p.voyage,
+        p.anneeVoyage,
+        p.sexe,
+        p.adresse,
+        p.lieuNaissance,
+        p.urgenceNom,
+        p.urgencePrenoms,
+        p.urgenceContact,
+        p.urgenceResidence,
         p.enregistrePar,
-      ].map((x) => String(x || "").toLowerCase()).join(" ");
+      ]
+        .map((x) => String(x || "").toLowerCase())
+        .join(" ");
       return hay.includes(s);
     });
   }, [q, sexe, records]);
@@ -173,7 +198,8 @@ export default function EnregistrementsPelerins() {
   }
 
   async function askDelete(row) {
-    if (!window.confirm(`Supprimer le pèlerin "${row.nom} ${row.prenoms}" ?`)) return;
+    if (!window.confirm(`Supprimer le pèlerin "${row.nom} ${row.prenoms}" ?`))
+      return;
     const prev = records;
     setRecords((a) => a.filter((x) => x.id !== row.id)); // optimiste
     try {
@@ -183,7 +209,11 @@ export default function EnregistrementsPelerins() {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!res.ok) {
-        let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg = j?.message || msg; } catch {}
+        let msg = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          msg = j?.message || msg;
+        } catch {}
         throw new Error(msg);
       }
       push("Pèlerin supprimé.");
@@ -193,15 +223,20 @@ export default function EnregistrementsPelerins() {
     }
   }
 
+  // ⚠️ openEdit mis à jour pour garder les valeurs telles qu'elles sont
   function openEdit(row) {
     setEditing({
       ...row,
       _filePelerin: null,
       _filePasseport: null,
-      sexe: row.sexe?.startsWith("Mas") ? "M" : row.sexe?.startsWith("Fé") ? "F" : "",
+      sexe: row.sexe?.startsWith("Mas")
+        ? "M"
+        : row.sexe?.startsWith("Fé")
+        ? "F"
+        : "",
       dateNaissance: row.dateNaissance?.slice(0, 10) || "",
-      offre: row.offre?.toLowerCase() || "",
-      voyage: row.voyage?.toLowerCase() || "",
+      offre: row.offre || "",
+      voyage: row.voyage || "",
     });
   }
 
@@ -228,7 +263,7 @@ export default function EnregistrementsPelerins() {
         fd.append("ur_prenoms", form.urgencePrenoms || "");
         fd.append("ur_contact", form.urgenceContact || "");
         fd.append("ur_residence", form.urgenceResidence || "");
-        if (form._filePelerin)   fd.append("photoPelerin", form._filePelerin);
+        if (form._filePelerin) fd.append("photoPelerin", form._filePelerin);
         if (form._filePasseport) fd.append("photoPasseport", form._filePasseport);
 
         res = await fetch(`${API_BASE}/api/pelerins/${form.id}`, {
@@ -268,7 +303,10 @@ export default function EnregistrementsPelerins() {
 
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
         throw new Error(msg);
       }
 
@@ -298,15 +336,23 @@ export default function EnregistrementsPelerins() {
       {/* barre d’action */}
       <div className="no-print mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Enregistrements des pèlerins</h2>
-          <p className="text-slate-600 text-sm">Toutes les informations saisies + agent enregistreur.</p>
-          {loading && <p className="text-slate-500 text-sm mt-1">Chargement…</p>}
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+            Enregistrements des pèlerins
+          </h2>
+          <p className="text-slate-600 text-sm">
+            Toutes les informations saisies + agent enregistreur.
+          </p>
+          {loading && (
+            <p className="text-slate-500 text-sm mt-1">Chargement…</p>
+          )}
           {err && <p className="text-rose-600 text-sm mt-1">{err}</p>}
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
           <div className="relative w-full sm:w-72">
             <input
-              type="search" value={q} onChange={(e) => setQ(e.target.value)}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
               placeholder="Rechercher (nom, passeport, agent, ville, offre...)"
               className="peer w-full rounded-xl border border-slate-200 bg-white/90 backdrop-blur px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm focus:shadow transition"
             />
@@ -315,17 +361,23 @@ export default function EnregistrementsPelerins() {
               initial={{ opacity: 0 }}
               animate={{ opacity: q ? 1 : 0 }}
               className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400"
-            >{filtered.length} résultats</motion.span>
+            >
+              {filtered.length} résultats
+            </motion.span>
           </div>
           <select
-            value={sexe} onChange={(e) => setSexe(e.target.value)}
+            value={sexe}
+            onChange={(e) => setSexe(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm transition"
           >
             <option value="all">Tous</option>
             <option value="Masculin">Masculin</option>
             <option value="Féminin">Féminin</option>
           </select>
-          <button onClick={handlePrint} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 active:scale-[.98] shadow-sm">
+          <button
+            onClick={handlePrint}
+            className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 active:scale-[.98] shadow-sm"
+          >
             Imprimer la liste
           </button>
         </div>
@@ -335,7 +387,9 @@ export default function EnregistrementsPelerins() {
       <div className="print-area report">
         <div className="print-header text-center mb-3">
           <h1 className="title">LISTE DES PÈLERINS</h1>
-          <p className="subtitle">({sexe === "all" ? "TOUS" : sexe.toUpperCase()})</p>
+          <p className="subtitle">
+            ({sexe === "all" ? "TOUS" : sexe.toUpperCase()})
+          </p>
         </div>
 
         {/* ===== CARTES (mobile) ===== */}
@@ -352,7 +406,10 @@ export default function EnregistrementsPelerins() {
               <EmptyState />
             ) : (
               filtered.map((p, i) => (
-                <CardRow key={p.id ?? i} i={i} p={p}
+                <CardRow
+                  key={p.id ?? i}
+                  i={i}
+                  p={p}
                   onOpenDetail={() => openDetail(p.id)}
                   onOpenEdit={() => openEdit(p)}
                   onDelete={() => askDelete(p)}
@@ -387,7 +444,9 @@ export default function EnregistrementsPelerins() {
                     <Th className="hidden lg:table-cell">Offre</Th>
                     <Th className="hidden lg:table-cell">Voyage</Th>
                     <Th>Année</Th>
-                    <Th className="hidden lg:table-cell">Urgence (Nom, Prénoms, Tél, Résidence)</Th>
+                    <Th className="hidden lg:table-cell">
+                      Urgence (Nom, Prénoms, Tél, Résidence)
+                    </Th>
                     <Th>Agent</Th>
                     <Th>Créé le</Th>
                     <Th className="text-right">Actions</Th>
@@ -395,7 +454,10 @@ export default function EnregistrementsPelerins() {
                 </thead>
                 <tbody>
                   {filtered.map((p, i) => (
-                    <MotionTableRow key={p.id ?? i} index={i} p={p}
+                    <MotionTableRow
+                      key={p.id ?? i}
+                      index={i}
+                      p={p}
                       onOpenDetail={() => openDetail(p.id)}
                       onOpenEdit={() => openEdit(p)}
                       onDelete={() => askDelete(p)}
@@ -416,8 +478,8 @@ export default function EnregistrementsPelerins() {
           <DetailModal
             data={detail}
             onClose={() => setDetail(null)}
-            onOpenPdf={(src)=>setPdfSrc(src)}
-            onOpenImage={(src)=>setImgSrc(src)}
+            onOpenPdf={(src) => setPdfSrc(src)}
+            onOpenImage={(src) => setImgSrc(src)}
           />
         )}
       </AnimatePresence>
@@ -427,8 +489,8 @@ export default function EnregistrementsPelerins() {
             data={editing}
             onClose={() => setEditing(null)}
             onSave={saveEdit}
-            onOpenPdf={(src)=>setPdfSrc(src)}
-            onOpenImage={(src)=>setImgSrc(src)}
+            onOpenPdf={(src) => setPdfSrc(src)}
+            onOpenImage={(src) => setImgSrc(src)}
           />
         )}
       </AnimatePresence>
@@ -447,17 +509,26 @@ export default function EnregistrementsPelerins() {
 /* ====== UI bits ====== */
 function Th({ children, className = "" }) {
   return (
-    <th className={`px-3 py-2 border-b border-slate-200 text-slate-600 text-[12px] font-semibold ${className}`}>{children}</th>
+    <th
+      className={`px-3 py-2 border-b border-slate-200 text-slate-600 text-[12px] font-semibold ${className}`}
+    >
+      {children}
+    </th>
   );
 }
 function Td({ children, className = "" }) {
   return (
-    <td className={`px-3 py-2 border-b border-slate-200 text-slate-900 ${className}`}>{children}</td>
+    <td
+      className={`px-3 py-2 border-b border-slate-200 text-slate-900 ${className}`}
+    >
+      {children}
+    </td>
   );
 }
-function Btn({ children, tone = "default", type = "button", className="", ...props }) {
+function Btn({ children, tone = "default", type = "button", className = "", ...props }) {
   const styles = {
-    default: "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50",
+    default:
+      "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50",
     primary: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent",
     warn: "bg-rose-600 text-white hover:bg-rose-700 border border-transparent",
   };
@@ -475,12 +546,22 @@ function Btn({ children, tone = "default", type = "button", className="", ...pro
 }
 
 /* ====== Cartes (mobile) ====== */
-function CardRow({ i, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSrc, fadeUp }) {
-  const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+function CardRow({
+  i,
+  p,
+  onOpenDetail,
+  onOpenEdit,
+  onDelete,
+  setPdfSrc,
+  setImgSrc,
+  fadeUp,
+}) {
+  const agentName =
+    String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
   const photoPil = mediaURL(p.photoPelerin);
   const photoPass = mediaURL(p.photoPasseport);
   const passIsPdf = isPdfPath(photoPass);
-  const pilIsPdf  = isPdfPath(photoPil);
+  const pilIsPdf = isPdfPath(photoPil);
 
   return (
     <motion.article
@@ -496,14 +577,27 @@ function CardRow({ i, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSr
               onClick={() => setPdfSrc(photoPil)}
               title="Voir PDF"
               className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
-            >PDF</button>
+            >
+              PDF
+            </button>
           ) : (
-            <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded-md">
-              <img src={photoPil} alt="Pèlerin" className="h-20 w-16 object-cover rounded-md border" />
+            <button
+              type="button"
+              onClick={() => setImgSrc(photoPil)}
+              title="Voir l’image"
+              className="focus:ring-2 focus:ring-blue-300 rounded-md"
+            >
+              <img
+                src={photoPil}
+                alt="Pèlerin"
+                className="h-20 w-16 object-cover rounded-md border"
+              />
             </button>
           )
         ) : (
-          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de photo</div>
+          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">
+            Pas de photo
+          </div>
         )}
         {photoPass ? (
           passIsPdf ? (
@@ -512,14 +606,27 @@ function CardRow({ i, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSr
               onClick={() => setPdfSrc(photoPass)}
               title="Voir PDF"
               className="h-20 w-16 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
-            >PDF</button>
+            >
+              PDF
+            </button>
           ) : (
-            <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded-md">
-              <img src={photoPass} alt="Passeport" className="h-20 w-16 object-cover rounded-md border" />
+            <button
+              type="button"
+              onClick={() => setImgSrc(photoPass)}
+              title="Voir l’image"
+              className="focus:ring-2 focus:ring-blue-300 rounded-md"
+            >
+              <img
+                src={photoPass}
+                alt="Passeport"
+                className="h-20 w-16 object-cover rounded-md border"
+              />
             </button>
           )
         ) : (
-          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">Pas de passeport</div>
+          <div className="h-20 w-16 rounded-md border grid place-items-center text-[11px] text-slate-400">
+            Pas de passeport
+          </div>
         )}
       </div>
 
@@ -527,37 +634,60 @@ function CardRow({ i, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSr
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] text-slate-500">#{i + 1}</div>
-          <div className="text-base font-extrabold text-slate-900">{p.nom} {p.prenoms}</div>
+          <div className="text-base font-extrabold text-slate-900">
+            {p.nom} {p.prenoms}
+          </div>
           <div className="text-[13px] text-slate-600">
-            {p.sexe || "—"} • Passeport : <span className="font-mono">{p.numPasseport || "—"}</span>
+            {p.sexe || "—"} • Passeport :{" "}
+            <span className="font-mono">{p.numPasseport || "—"}</span>
           </div>
         </div>
         <div className="text-right text-[13px] text-slate-600">
           <div>{formatDate(p.createdAt)}</div>
-          <div className="text-slate-900 font-semibold">Agent: {agentName}</div>
+          <div className="text-slate-900 font-semibold">
+            Agent: {agentName}
+          </div>
         </div>
       </div>
 
       {/* actions */}
       <div className="mt-3 flex justify-end gap-2 flex-wrap">
         <Btn onClick={onOpenDetail}>Détail</Btn>
-        <Btn onClick={onOpenEdit} tone="primary">Modifier</Btn>
-        <Btn onClick={onDelete} tone="warn">Supprimer</Btn>
+        <Btn onClick={onOpenEdit} tone="primary">
+          Modifier
+        </Btn>
+        <Btn onClick={onDelete} tone="warn">
+          Supprimer
+        </Btn>
       </div>
     </motion.article>
   );
 }
 
 /* ====== Lignes tableau (desktop) ====== */
-function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSrc, setImgSrc }) {
-  const agentName = String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
+function MotionTableRow({
+  index,
+  p,
+  onOpenDetail,
+  onOpenEdit,
+  onDelete,
+  setPdfSrc,
+  setImgSrc,
+}) {
+  const agentName =
+    String(p.enregistrePar || "").replace(/^agent\s*:\s*/i, "").trim() || "—";
   const photoPil = mediaURL(p.photoPelerin);
   const photoPass = mediaURL(p.photoPasseport);
-  const pilIsPdf  = isPdfPath(photoPil);
+  const pilIsPdf = isPdfPath(photoPil);
   const passIsPdf = isPdfPath(photoPass);
 
   return (
-    <motion.tr initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }} className="row">
+    <motion.tr
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.02 }}
+      className="row"
+    >
       <Td className="muted">{index + 1}</Td>
       <Td>
         <div className="flex gap-1">
@@ -568,14 +698,27 @@ function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSr
                 title="Voir PDF"
                 onClick={() => setPdfSrc(photoPil)}
                 className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
-              >PDF</button>
+              >
+                PDF
+              </button>
             ) : (
-              <button type="button" onClick={() => setImgSrc(photoPil)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded">
-                <img src={photoPil} alt="Pèlerin" className="h-10 w-8 rounded border object-cover" />
+              <button
+                type="button"
+                onClick={() => setImgSrc(photoPil)}
+                title="Voir l’image"
+                className="focus:ring-2 focus:ring-blue-300 rounded"
+              >
+                <img
+                  src={photoPil}
+                  alt="Pèlerin"
+                  className="h-10 w-8 rounded border object-cover"
+                />
               </button>
             )
           ) : (
-            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">
+              —
+            </div>
           )}
           {photoPass ? (
             passIsPdf ? (
@@ -584,18 +727,33 @@ function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSr
                 title="Voir PDF"
                 onClick={() => setPdfSrc(photoPass)}
                 className="h-10 w-8 rounded border bg-blue-50 grid place-items-center text-[9px] font-bold text-blue-700"
-              >PDF</button>
+              >
+                PDF
+              </button>
             ) : (
-              <button type="button" onClick={() => setImgSrc(photoPass)} title="Voir l’image" className="focus:ring-2 focus:ring-blue-300 rounded">
-                <img src={photoPass} alt="Passeport" className="h-10 w-8 rounded border object-cover" />
+              <button
+                type="button"
+                onClick={() => setImgSrc(photoPass)}
+                title="Voir l’image"
+                className="focus:ring-2 focus:ring-blue-300 rounded"
+              >
+                <img
+                  src={photoPass}
+                  alt="Passeport"
+                  className="h-10 w-8 rounded border object-cover"
+                />
               </button>
             )
           ) : (
-            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">—</div>
+            <div className="h-10 w-8 rounded border bg-gray-50 grid place-items-center text-[9px] text-gray-400">
+              —
+            </div>
           )}
         </div>
       </Td>
-      <Td className="strong">{p.nom} {p.prenoms}</Td>
+      <Td className="strong">
+        {p.nom} {p.prenoms}
+      </Td>
       <Td>
         <div>{formatDate(p.dateNaissance)}</div>
         <div className="muted">{p.lieuNaissance || "—"}</div>
@@ -608,7 +766,9 @@ function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSr
       <Td className="wrap hidden lg:table-cell">{p.voyage || "—"}</Td>
       <Td>{p.anneeVoyage || "—"}</Td>
       <Td className="wrap hidden lg:table-cell">
-        <span className="strong">{p.urgenceNom} {p.urgencePrenoms}</span>{" "}
+        <span className="strong">
+          {p.urgenceNom} {p.urgencePrenoms}
+        </span>{" "}
         • {p.urgenceContact || "—"} • {p.urgenceResidence || "—"}
       </Td>
       <Td className="strong">{agentName}</Td>
@@ -616,8 +776,12 @@ function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSr
       <Td className="text-right">
         <div className="inline-flex gap-2 flex-wrap justify-end">
           <Btn onClick={onOpenDetail}>Détail</Btn>
-          <Btn onClick={onOpenEdit} tone="primary">Modifier</Btn>
-          <Btn onClick={onDelete} tone="warn">Supprimer</Btn>
+          <Btn onClick={onOpenEdit} tone="primary">
+            Modifier
+          </Btn>
+          <Btn onClick={onDelete} tone="warn">
+            Supprimer
+          </Btn>
         </div>
       </Td>
     </motion.tr>
@@ -628,13 +792,23 @@ function MotionTableRow({ index, p, onOpenDetail, onOpenEdit, onDelete, setPdfSr
 function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
   const pil = mediaURL(data.photoPelerin);
   const pass = mediaURL(data.photoPasseport);
-  const pilIsPdf  = isPdfPath(pil);
+  const pilIsPdf = isPdfPath(pil);
   const passIsPdf = isPdfPath(pass);
 
   return (
-    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div
+      className="fixed inset-0 z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <motion.div className="relative z-10 h-full w-full p-2 sm:p-4 grid" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }}>
+      <motion.div
+        className="relative z-10 h-full w-full p-2 sm:p-4 grid"
+        initial={{ y: 20 }}
+        animate={{ y: 0 }}
+        exit={{ y: 20 }}
+      >
         <div
           role="dialog"
           aria-modal="true"
@@ -649,7 +823,9 @@ function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
           "
         >
           <div className="flex items-center justify-between gap-4 p-4 border-b bg-white sticky top-0">
-            <h4 className="text-base sm:text-lg font-extrabold">Détail du pèlerin</h4>
+            <h4 className="text-base sm:text-lg font-extrabold">
+              Détail du pèlerin
+            </h4>
             <button
               className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
               onClick={onClose}
@@ -667,14 +843,26 @@ function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
                     onClick={() => onOpenPdf?.(pil)}
                     className="h-28 w-24 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
                     title="Voir le PDF"
-                  >PDF</button>
+                  >
+                    PDF
+                  </button>
                 ) : (
-                  <button type="button" onClick={() => onOpenImage?.(pil)} title="Voir l’image">
-                    <img src={pil} alt="" className="h-28 w-24 object-cover rounded-md border" />
+                  <button
+                    type="button"
+                    onClick={() => onOpenImage?.(pil)}
+                    title="Voir l’image"
+                  >
+                    <img
+                      src={pil}
+                      alt=""
+                      className="h-28 w-24 object-cover rounded-md border"
+                    />
                   </button>
                 )
               ) : (
-                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">—</div>
+                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">
+                  —
+                </div>
               )}
               {pass ? (
                 passIsPdf ? (
@@ -683,29 +871,54 @@ function DetailModal({ data, onClose, onOpenPdf, onOpenImage }) {
                     onClick={() => onOpenPdf?.(pass)}
                     className="h-28 w-24 rounded-md border grid place-items-center text-[11px] font-bold text-blue-700 bg-blue-50"
                     title="Voir le PDF"
-                  >PDF</button>
+                  >
+                    PDF
+                  </button>
                 ) : (
-                  <button type="button" onClick={() => onOpenImage?.(pass)} title="Voir l’image">
-                    <img src={pass} alt="" className="h-28 w-24 object-cover rounded-md border" />
+                  <button
+                    type="button"
+                    onClick={() => onOpenImage?.(pass)}
+                    title="Voir l’image"
+                  >
+                    <img
+                      src={pass}
+                      alt=""
+                      className="h-28 w-24 object-cover rounded-md border"
+                    />
                   </button>
                 )
               ) : (
-                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">—</div>
+                <div className="h-28 w-24 rounded-md border grid place-items-center text-[11px] text-slate-400">
+                  —
+                </div>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <Field label="Nom & Prénoms">{data.nom} {data.prenoms}</Field>
+              <Field label="Nom & Prénoms">
+                {data.nom} {data.prenoms}
+              </Field>
               <Field label="Sexe">{data.sexe}</Field>
-              <Field label="Naissance">{formatDate(data.dateNaissance)} — {data.lieuNaissance || "—"}</Field>
+              <Field label="Naissance">
+                {formatDate(data.dateNaissance)} — {data.lieuNaissance || "—"}
+              </Field>
               <Field label="Adresse">{data.adresse || "—"}</Field>
               <Field label="Contacts">{data.contacts || "—"}</Field>
               <Field label="Passeport">{data.numPasseport || "—"}</Field>
               <Field label="Offre">{data.offre || "—"}</Field>
               <Field label="Voyage">{data.voyage || "—"}</Field>
               <Field label="Année">{data.anneeVoyage || "—"}</Field>
-              <Field label="Urgence">{data.urgenceNom} {data.urgencePrenoms} • {data.urgenceContact || "—"} • {data.urgenceResidence || "—"}</Field>
-              <Field label="Agent">{String(data.enregistrePar || "").replace(/^agent\s*:\s*/i, "") || "—"}</Field>
+              <Field label="Urgence">
+                {data.urgenceNom} {data.urgencePrenoms} •{" "}
+                {data.urgenceContact || "—"} •{" "}
+                {data.urgenceResidence || "—"}
+              </Field>
+              <Field label="Agent">
+                {String(data.enregistrePar || "").replace(
+                  /^agent\s*:\s*/i,
+                  ""
+                ) || "—"}
+              </Field>
               <Field label="Créé le">{formatDate(data.createdAt)}</Field>
             </div>
           </div>
@@ -722,15 +935,109 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
   const [urlPil, setUrlPil] = useState("");
   const [urlPass, setUrlPass] = useState("");
 
+  // ====== voyages / offres depuis l'API ======
+  const [voyages, setVoyages] = useState([]);
+  const [loadingVoyages, setLoadingVoyages] = useState(false);
+  const [errVoyages, setErrVoyages] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVoyages() {
+      setLoadingVoyages(true);
+      setErrVoyages("");
+      try {
+        const res = await fetch(`${API_BASE}/api/voyages`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (!cancelled) {
+          setVoyages(items);
+        }
+      } catch (e) {
+        if (!cancelled)
+          setErrVoyages(e.message || "Échec de chargement des voyages");
+      } finally {
+        if (!cancelled) setLoadingVoyages(false);
+      }
+    }
+
+    loadVoyages();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // listes dérivées (mêmes principes que dans AjouterPelerin)
+  const nomsVoyage = useMemo(() => uniqueNoms(voyages), [voyages]);
+
+  const anneesForSelectedNom = useMemo(
+    () => (form.voyage ? yearsForNom(voyages, form.voyage) : []),
+    [voyages, form.voyage]
+  );
+
+  const offresGlobales = useMemo(() => {
+    const set = new Set();
+    for (const v of voyages || []) {
+      parseOffres(v?.offres).forEach((o) => set.add(o));
+    }
+    return Array.from(set);
+  }, [voyages]);
+
+  // garde-fous comme dans AjouterPelerin
+  useEffect(() => {
+    if (form.voyage && !nomsVoyage.includes(form.voyage)) {
+      setForm((f) => ({ ...f, voyage: "", anneeVoyage: "", offre: "" }));
+    }
+  }, [nomsVoyage, form.voyage]);
+
+  useEffect(() => {
+    if (!form.voyage) return;
+    const years = anneesForSelectedNom.map(String);
+    if (form.anneeVoyage && !years.includes(String(form.anneeVoyage))) {
+      setForm((f) => ({
+        ...f,
+        anneeVoyage: years[0] ?? "",
+        offre: "",
+      }));
+    }
+  }, [anneesForSelectedNom, form.voyage, form.anneeVoyage]);
+
+  useEffect(() => {
+    if (form.offre && !offresGlobales.includes(form.offre)) {
+      setForm((f) => ({ ...f, offre: "" }));
+    }
+  }, [offresGlobales, form.offre]);
+
+  // ====== handlers ======
   function ch(e) {
     const { name, value } = e.target;
+
     if (name === "numPasseport") {
       const v = value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 9);
       setForm((f) => ({ ...f, numPasseport: v }));
       return;
     }
+
+    if (name === "voyage") {
+      const yearsFor = yearsForNom(voyages, value);
+      setForm((f) => ({
+        ...f,
+        voyage: value,
+        anneeVoyage: yearsFor[0] ? String(yearsFor[0]) : "",
+        offre: "",
+      }));
+      return;
+    }
+
+    if (name === "anneeVoyage") {
+      setForm((f) => ({ ...f, anneeVoyage: value, offre: "" }));
+      return;
+    }
+
     setForm((f) => ({ ...f, [name]: value }));
   }
+
   function chFile(e) {
     const { name, files } = e.target;
     const file = files?.[0] || null;
@@ -743,6 +1050,7 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
       setUrlPass(file ? URL.createObjectURL(file) : "");
     }
   }
+
   async function submit(e) {
     e.preventDefault();
     if (saving) return;
@@ -751,13 +1059,29 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
     setSaving(false);
   }
 
-  const pilIsPdf  = form._filePelerin && (form._filePelerin.type === "application/pdf" || form._filePelerin.name?.toLowerCase().endsWith(".pdf"));
-  const passIsPdf = form._filePasseport && (form._filePasseport.type === "application/pdf" || form._filePasseport.name?.toLowerCase().endsWith(".pdf"));
+  const pilIsPdf =
+    form._filePelerin &&
+    (form._filePelerin.type === "application/pdf" ||
+      form._filePelerin.name?.toLowerCase().endsWith(".pdf"));
+  const passIsPdf =
+    form._filePasseport &&
+    (form._filePasseport.type === "application/pdf" ||
+      form._filePasseport.name?.toLowerCase().endsWith(".pdf"));
 
   return (
-    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div
+      className="fixed inset-0 z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <motion.div className="relative z-10 h-full w-full p-2 sm:p-4 grid" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }}>
+      <motion.div
+        className="relative z-10 h-full w-full p-2 sm:p-4 grid"
+        initial={{ y: 20 }}
+        animate={{ y: 0 }}
+        exit={{ y: 20 }}
+      >
         <form
           onSubmit={submit}
           role="dialog"
@@ -773,8 +1097,14 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
           "
         >
           <div className="flex items-center justify-between gap-4 p-4 border-b bg-white sticky top-0">
-            <h4 className="text-base sm:text-lg font-extrabold">Modifier le pèlerin</h4>
-            <button type="button" className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50" onClick={onClose}>
+            <h4 className="text-base sm:text-lg font-extrabold">
+              Modifier le pèlerin
+            </h4>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
+              onClick={onClose}
+            >
               Fermer
             </button>
           </div>
@@ -783,8 +1113,15 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
             {/* Fichiers (optionnels) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold mb-1">Photo pèlerin (JPG/PNG/PDF)</label>
-                <input type="file" name="_filePelerin" accept="image/*,.pdf,application/pdf" onChange={chFile} />
+                <label className="block font-semibold mb-1">
+                  Photo pèlerin (JPG/PNG/PDF)
+                </label>
+                <input
+                  type="file"
+                  name="_filePelerin"
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={chFile}
+                />
                 {form._filePelerin && (
                   <div className="mt-2 h-28 w-24 rounded border overflow-hidden">
                     {pilIsPdf ? (
@@ -793,18 +1130,35 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
                         onClick={() => onOpenPdf?.(urlPil)}
                         title="Voir le PDF"
                         className="h-full w-full grid place-items-center text-[12px] font-bold text-blue-700 bg-blue-50"
-                      >PDF</button>
+                      >
+                        PDF
+                      </button>
                     ) : (
-                      <button type="button" onClick={() => onOpenImage?.(urlPil)} title="Voir l’image">
-                        <img src={urlPil} alt="Aperçu" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => onOpenImage?.(urlPil)}
+                        title="Voir l’image"
+                      >
+                        <img
+                          src={urlPil}
+                          alt="Aperçu"
+                          className="h-full w-full object-cover"
+                        />
                       </button>
                     )}
                   </div>
                 )}
               </div>
               <div>
-                <label className="block font-semibold mb-1">Photo passeport (JPG/PNG/PDF)</label>
-                <input type="file" name="_filePasseport" accept="image/*,.pdf,application/pdf" onChange={chFile} />
+                <label className="block font-semibold mb-1">
+                  Photo passeport (JPG/PNG/PDF)
+                </label>
+                <input
+                  type="file"
+                  name="_filePasseport"
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={chFile}
+                />
                 {form._filePasseport && (
                   <div className="mt-2 h-28 w-24 rounded border overflow-hidden">
                     {passIsPdf ? (
@@ -813,10 +1167,20 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
                         onClick={() => onOpenPdf?.(urlPass)}
                         title="Voir le PDF"
                         className="h-full w-full grid place-items-center text-[12px] font-bold text-blue-700 bg-blue-50"
-                      >PDF</button>
+                      >
+                        PDF
+                      </button>
                     ) : (
-                      <button type="button" onClick={() => onOpenImage?.(urlPass)} title="Voir l’image">
-                        <img src={urlPass} alt="Aperçu" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => onOpenImage?.(urlPass)}
+                        title="Voir l’image"
+                      >
+                        <img
+                          src={urlPass}
+                          alt="Aperçu"
+                          className="h-full w-full object-cover"
+                        />
                       </button>
                     )}
                   </div>
@@ -824,19 +1188,51 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
               </div>
             </div>
 
-            {/* Champs texte */}
+            {/* Champs texte + listes dynamiques */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <Text label="Nom" name="nom" value={form.nom} onChange={ch} />
-              <Text label="Prénoms" name="prenoms" value={form.prenoms} onChange={ch} />
-              <Text label="Date de naissance" type="date" name="dateNaissance" value={form.dateNaissance} onChange={ch} />
-              <Text label="Lieu de naissance" name="lieuNaissance" value={form.lieuNaissance} onChange={ch} />
-              <Select
-                label="Sexe" name="sexe" value={form.sexe}
+              <Text
+                label="Prénoms"
+                name="prenoms"
+                value={form.prenoms}
                 onChange={ch}
-                options={[{v:"",l:"—"}, {v:"M",l:"Masculin"}, {v:"F",l:"Féminin"}]}
               />
-              <Text label="Adresse" name="adresse" value={form.adresse} onChange={ch} />
-              <Text label="Contacts" name="contacts" value={form.contacts} onChange={ch} />
+              <Text
+                label="Date de naissance"
+                type="date"
+                name="dateNaissance"
+                value={form.dateNaissance}
+                onChange={ch}
+              />
+              <Text
+                label="Lieu de naissance"
+                name="lieuNaissance"
+                value={form.lieuNaissance}
+                onChange={ch}
+              />
+              <Select
+                label="Sexe"
+                name="sexe"
+                value={form.sexe}
+                onChange={ch}
+                options={[
+                  { v: "", l: "—" },
+                  { v: "M", l: "Masculin" },
+                  { v: "F", l: "Féminin" },
+                ]}
+              />
+              <Text
+                label="Adresse"
+                name="adresse"
+                value={form.adresse}
+                onChange={ch}
+              />
+              <Text
+                label="Contacts"
+                name="contacts"
+                value={form.contacts}
+                onChange={ch}
+              />
               <Text
                 label="N° passeport"
                 name="numPasseport"
@@ -847,26 +1243,99 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
                 pattern="^[A-Z0-9]{9}$"
                 title="9 caractères alphanumériques (A–Z, 0–9)"
               />
+
+              {/* Voyage depuis la table voyages */}
               <Select
-                label="Offre" name="offre" value={form.offre}
+                label="Voyage"
+                name="voyage"
+                value={form.voyage}
                 onChange={ch}
-                options={[{v:"",l:"—"},{v:"standard",l:"Standard"},{v:"confort",l:"Confort"},{v:"premium",l:"Premium"}]}
+                disabled={loadingVoyages || !nomsVoyage.length}
+                options={[
+                  {
+                    v: "",
+                    l: loadingVoyages ? "Chargement..." : "Sélectionner",
+                  },
+                  ...nomsVoyage.map((n) => ({ v: n, l: n })),
+                ]}
               />
+
+              {/* Année filtrée par voyage */}
               <Select
-                label="Voyage" name="voyage" value={form.voyage}
+                label="Année voyage"
+                name="anneeVoyage"
+                value={form.anneeVoyage}
                 onChange={ch}
-                options={[{v:"",l:"—"},{v:"vol",l:"Vol"},{v:"bus",l:"Bus"},{v:"mixte",l:"Mixte"}]}
+                disabled={!form.voyage || !anneesForSelectedNom.length}
+                options={[
+                  {
+                    v: "",
+                    l: form.voyage
+                      ? "Sélectionner"
+                      : "Choisis d’abord un voyage",
+                  },
+                  ...anneesForSelectedNom.map((y) => ({
+                    v: String(y),
+                    l: String(y),
+                  })),
+                ]}
               />
-              <Text label="Année voyage" name="anneeVoyage" value={form.anneeVoyage} onChange={ch} />
-              <Text label="Urgence — Nom" name="urgenceNom" value={form.urgenceNom} onChange={ch} />
-              <Text label="Urgence — Prénoms" name="urgencePrenoms" value={form.urgencePrenoms} onChange={ch} />
-              <Text label="Urgence — Contact" name="urgenceContact" value={form.urgenceContact} onChange={ch} />
-              <Text label="Urgence — Résidence" name="urgenceResidence" value={form.urgenceResidence} onChange={ch} />
+
+              {/* Offres globales */}
+              <Select
+                label="Offre"
+                name="offre"
+                value={form.offre}
+                onChange={ch}
+                disabled={!offresGlobales.length}
+                options={[
+                  {
+                    v: "",
+                    l: offresGlobales.length
+                      ? "Sélectionner"
+                      : "Aucune offre enregistrée",
+                  },
+                  ...offresGlobales.map((o) => ({ v: o, l: o })),
+                ]}
+              />
+
+              <Text
+                label="Urgence — Nom"
+                name="urgenceNom"
+                value={form.urgenceNom}
+                onChange={ch}
+              />
+              <Text
+                label="Urgence — Prénoms"
+                name="urgencePrenoms"
+                value={form.urgencePrenoms}
+                onChange={ch}
+              />
+              <Text
+                label="Urgence — Contact"
+                name="urgenceContact"
+                value={form.urgenceContact}
+                onChange={ch}
+              />
+              <Text
+                label="Urgence — Résidence"
+                name="urgenceResidence"
+                value={form.urgenceResidence}
+                onChange={ch}
+              />
             </div>
+
+            {errVoyages && (
+              <p className="text-sm text-rose-600">
+                Erreur de chargement des voyages : {errVoyages}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 p-4 border-t bg-white sticky bottom-0">
-            <Btn type="button" onClick={onClose}>Annuler</Btn>
+            <Btn type="button" onClick={onClose}>
+              Annuler
+            </Btn>
             <Btn tone="primary" type="submit" disabled={saving}>
               {saving ? "Enregistrement..." : "Enregistrer"}
             </Btn>
@@ -880,14 +1349,30 @@ function EditModal({ data, onClose, onSave, onOpenPdf, onOpenImage }) {
 /* ====== PDF Viewer ====== */
 function PDFViewer({ src, onClose }) {
   return (
-    <motion.div className="fixed inset-0 z-[70]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div
+      className="fixed inset-0 z-[70]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative z-10 h-full w-full flex flex-col">
         <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/90 text-white px-3 py-2 flex items-center justify-between">
           <div className="font-semibold text-sm truncate">Aperçu PDF</div>
           <div className="flex items-center gap-2">
-            <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
-            <button onClick={onClose} className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Fermer</button>
+            <a
+              href={src}
+              download
+              className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+            >
+              Télécharger
+            </a>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+            >
+              Fermer
+            </button>
           </div>
         </div>
         <div className="flex-1 bg-slate-900">
@@ -901,14 +1386,30 @@ function PDFViewer({ src, onClose }) {
 /* ====== Image Viewer (lightbox) ====== */
 function ImageViewer({ src, onClose }) {
   return (
-    <motion.div className="fixed inset-0 z-[70]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div
+      className="fixed inset-0 z-[70]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <div className="absolute inset-0 bg-black/80" onClick={onClose} />
       <div className="relative z-10 flex h-full w-full flex-col">
         <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/90 text-white px-3 py-2 flex items-center justify-between">
           <div className="font-semibold text-sm truncate">Aperçu image</div>
           <div className="flex items-center gap-2">
-            <a href={src} download className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Télécharger</a>
-            <button onClick={onClose} className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Fermer</button>
+            <a
+              href={src}
+              download
+              className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+            >
+              Télécharger
+            </a>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+            >
+              Fermer
+            </button>
           </div>
         </div>
         <div className="flex-1 grid place-items-center bg-black">
@@ -918,7 +1419,7 @@ function ImageViewer({ src, onClose }) {
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+            transition={{ type: "spring", stiffness: 240, damping: 24 }}
             className="max-h-[92vh] max-w-[96vw] object-contain"
           />
         </div>
@@ -931,7 +1432,9 @@ function ImageViewer({ src, onClose }) {
 function Field({ label, children }) {
   return (
     <div className="grid gap-1">
-      <span className="text-[12px] font-semibold text-slate-700">{label}</span>
+      <span className="text-[12px] font-semibold text-slate-700">
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -954,7 +1457,9 @@ function Select({ label, options, ...props }) {
         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 shadow-sm"
       >
         {options.map((o) => (
-          <option key={o.v} value={o.v}>{o.l}</option>
+          <option key={o.v} value={o.v}>
+            {o.l}
+          </option>
         ))}
       </select>
     </Field>
@@ -966,7 +1471,10 @@ function SkeletonCards() {
   return (
     <div className="grid gap-3">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div
+          key={i}
+          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+        >
           <div className="animate-pulse space-y-3">
             <div className="h-20 w-full bg-slate-100 rounded" />
             <div className="h-4 w-1/2 bg-slate-100 rounded" />
@@ -999,4 +1507,42 @@ function EmptyState() {
       <p className="text-sm">Essayez un autre mot-clé ou retirez les filtres.</p>
     </div>
   );
+}
+
+/* ---------- Helpers voyages (mêmes que dans AjouterPelerin) ---------- */
+function uniqueNoms(list) {
+  const set = new Set();
+  for (const v of list || []) if (v?.nom) set.add(String(v.nom).toUpperCase());
+  return Array.from(set);
+}
+
+function yearsForNom(list, nom) {
+  if (!nom) return [];
+  const ys = new Set();
+  for (const v of list || []) {
+    if (
+      String(v.nom).toUpperCase() === String(nom).toUpperCase() &&
+      Number.isFinite(Number(v.annee))
+    ) {
+      ys.add(Number(v.annee));
+    }
+  }
+  return Array.from(ys).sort((a, b) => b - a);
+}
+
+function parseOffres(txt) {
+  if (!txt) return [];
+  const parts = String(txt)
+    .split(/\r?\n|,/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const seen = new Set();
+  const out = [];
+  for (const p of parts) {
+    if (!seen.has(p)) {
+      seen.add(p);
+      out.push(p);
+    }
+  }
+  return out;
 }
