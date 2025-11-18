@@ -1,6 +1,6 @@
 // src/pages/Factures.jsx
 import React, { useMemo, useState } from "react";
-
+import Logo from "../../src/pages/pelerins/Logo.png";
 /* ========= Config API (CRA OK) ========= */
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
@@ -99,7 +99,7 @@ function openPrintWindow(v, { logoUrl, watermarkText }) {
 
       <div class="entete">
         <div class="brand">
-          <img src="${logoUrl || "https://via.placeholder.com/90x90?text=BMVT"}" alt="logo"/>
+          <img src="${Logo}" alt="logo"/>
           <div>
             <div style="font-weight:900;color:#0b1220">BMVT</div>
             <div style="font-size:12px;color:#334155;margin-top:2px">Bénédiction MAWA Voyages &amp; Tourismes</div>

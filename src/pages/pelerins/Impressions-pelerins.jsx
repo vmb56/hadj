@@ -1,7 +1,7 @@
 // src/pages/Impressions-pelerins.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import Logo from "./Logo.png"
 /* ====================== Config API ====================== */
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
@@ -397,7 +397,7 @@ export default function ImpressionsPelerins() {
               <div className="flex items-center gap-3">
                 <img
                   alt="Logo"
-                  src="https://via.placeholder.com/120x60?text=LOGO"
+                  src={Logo}
                   className="h-16 w-auto object-contain"
                 />
                 <div>

@@ -1,6 +1,6 @@
 // src/pages/medicales/sections/ImpressionMedicale.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
+import Logo from "../../pelerins/Logo.png";
 /* ========= Config API ========= */
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
@@ -537,7 +537,7 @@ export default function ImpressionMedicale() {
 
               <div className="ph-header">
                 <div className="brand">
-                  <img className="logo" alt="Logo" src="https://via.placeholder.com/120x60?text=LOGO" />
+                  <img className="logo" alt="Logo" src={Logo} />
                   <div>
                     <div className="doc-title">FICHE MÉDICALE</div>
                     <div className="doc-sub">{selected.nomVoyage || "—"} — {selected.anneeVoyage || "—"}</div>

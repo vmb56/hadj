@@ -101,7 +101,7 @@ export default function AjouterPelerin() {
     [voyages, form.voyage]
   );
 
-  // ✅ NOUVEAU: toutes les offres disponibles dans la table `voyages` (union)
+  //  NOUVEAU: toutes les offres disponibles dans la table `voyages` (union)
   const offresGlobales = useMemo(() => {
     const set = new Set();
     for (const v of voyages || []) {

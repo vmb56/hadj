@@ -89,7 +89,7 @@ export default function Medicale() {
         <div className="p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-dyn-title font-extrabold text-slate-900">Médicale</h1>
+              <h1 className="text-dyn-title font-extrabold text-slate-900">Dossier Médicale</h1>
               <p className="mt-1 text-dyn-sm text-slate-600">
                 Saisir, consulter et imprimer les informations médicales des pèlerins.
               </p>
