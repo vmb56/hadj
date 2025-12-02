@@ -1,27 +1,14 @@
 // src/pages/paiement/HistoriquesPaiement.jsx
 import React, { useMemo, useState, useEffect } from "react";
 
-/* ======================= Connexion API commune ======================= */
-function getApiBase() {
-  let viteUrl;
-  try {
-    viteUrl = typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL;
-  } catch {}
-  const craUrl =
-    typeof process !== "undefined" &&
-    process?.env &&
-    (process.env.REACT_APP_API_URL || process.env.API_URL);
-
-  const winUrl =
-    typeof window !== "undefined" && typeof window.__API_URL__ !== "undefined"
-      ? window.__API_URL__
-      : undefined;
-
-  let u = viteUrl || craUrl || winUrl || "http://localhost:4000";
-  if (typeof u !== "string") u = String(u ?? "");
-  return u.replace(/\/+$/, "");
-}
-const API_BASE = getApiBase();
+/* ======================= Connexion API BMVT (prod Render) ======================= */
+/**
+ * On force l’URL backend en prod :
+ *   https://hadjbackend.onrender.com
+ * + Auth par token "bmvt_token"
+ * + PAS de cookies (credentials: "omit")
+ */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -43,7 +30,8 @@ async function http(url, opts = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
     },
-    credentials: "include",
+    // 🔒 on NE transmet PAS les cookies au backend Render
+    credentials: "omit",
     ...opts,
   });
   const ct = res.headers.get("content-type") || "";
@@ -77,6 +65,7 @@ function normalizePayment(r = {}) {
 /* ------------------------------- API calls ------------------------------ */
 async function apiGetPaiements({ passeport = "" } = {}) {
   const url = new URL(`${API_BASE}/api/paiements`);
+  // ⚠️ Ton backend filtre par "passeport" (query string)
   if (passeport) url.searchParams.set("passeport", passeport);
   const data = await http(url.toString());
   const items = Array.isArray(data) ? data : data?.items || [];
@@ -84,7 +73,6 @@ async function apiGetPaiements({ passeport = "" } = {}) {
 }
 
 /* ==================================================================== */
-
 export default function HistoriquesPaiement() {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState([]);
@@ -208,7 +196,10 @@ export default function HistoriquesPaiement() {
             </thead>
             <tbody className="[&_tr]:border-t [&_tr]:border-slate-200">
               {filtered.map((x, i) => (
-                <tr key={x.id || `${x.passeport}-${x.ref || i}`} className="hover:bg-slate-50/70 transition-colors">
+                <tr
+                  key={x.id || `${x.passeport}-${x.ref || i}`}
+                  className="hover:bg-slate-50/70 transition-colors"
+                >
                   <Td className="text-slate-600">{i + 1}</Td>
                   <Td className="font-medium text-slate-900">{x.ref || "—"}</Td>
                   <Td className="font-mono text-slate-800">{x.passeport}</Td>
@@ -264,5 +255,9 @@ function Th({ children, className = "" }) {
   return <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
-  return <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>{children}</td>;
+  return (
+    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>
+      {children}
+    </td>
+  );
 }

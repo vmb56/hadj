@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from "react";
 import Logo from "../../src/pages/pelerins/Logo.png";
 
-/* ========= Config API (CRA OK) ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+/* ========= Config API (BMVT backend Render) ========= */
+/**
+ * On force le backend sur Render :
+ *   https://hadjbackend.onrender.com
+ * + Authentification par token "bmvt_token"
+ * + PAS de cookies (credentials: "omit")
+ */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -274,7 +276,7 @@ function openPrintWindow(v, { logoUrl, watermarkText }) {
 
       <div class="entete">
         <div class="brand">
-          <img src="${Logo}" alt="logo"/>
+          <img src="${logo}" alt="logo"/>
           <div>
             <div class="brand-title">BMVT</div>
             <div class="brand-sub">Bakayoko Mawa Voyages et Tourismes</div>
@@ -428,7 +430,8 @@ export default function Factures() {
             Accept: "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          credentials: "include",
+          // ❌ plus de cookies envoyés au backend Render
+          credentials: "omit",
         });
         if (!res.ok) {
           let msg = `HTTP ${res.status}`;
@@ -471,7 +474,7 @@ export default function Factures() {
           matches = matches.filter((v) => {
             if (statusFilter === "all") return true;
             const st = (v.statut || "").toLowerCase();
-            const isSold = st.includes("sold"); // ex: "soldé", "soldé totalement"
+            const isSold = st.includes("sold"); // ex: "soldé"
             if (statusFilter === "sold") return isSold;
             if (statusFilter === "nonsold") return !isSold;
             return true;

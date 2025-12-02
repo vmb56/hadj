@@ -2,27 +2,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /* ======================= Connexion API commune ======================= */
-function getApiBase() {
-  let viteUrl;
-  try {
-    viteUrl =
-      typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL;
-  } catch {}
-  const craUrl =
-    typeof process !== "undefined" &&
-    process?.env &&
-    (process.env.REACT_APP_API_URL || process.env.API_URL);
 
-  const winUrl =
-    typeof window !== "undefined" && typeof window.__API_URL__ !== "undefined"
-      ? window.__API_URL__
-      : undefined;
-
-  let u = viteUrl || craUrl || winUrl || "http://localhost:4000";
-  if (typeof u !== "string") u = String(u ?? "");
-  return u.replace(/\/+$/, "");
-}
-const API_BASE = getApiBase();
+// ✅ Base API FIXE
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -32,6 +14,7 @@ function getToken() {
     return "";
   }
 }
+
 async function http(url, opts = {}) {
   const token = getToken();
   const res = await fetch(url, {
@@ -153,10 +136,7 @@ function lastNMonthsLabels(n = 3) {
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     labels.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}`,
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
       mois: shortMonth(d),
     });
   }

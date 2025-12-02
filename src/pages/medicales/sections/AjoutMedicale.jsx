@@ -3,14 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 /* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  // 🔹 fallback : localhost en dev, backend Render en prod
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:4000"
-    : "https://hadjbackend.onrender.com");
+// On force directement l’API Render en HTTPS pour éviter le contenu mixte
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -20,7 +14,6 @@ function getToken() {
     return "";
   }
 }
-
 
 // ❗ Si tu utilises exclusivement Authorization: Bearer (pas de cookies),
 // il vaut mieux ne PAS envoyer withCredentials, ça évite beaucoup d’erreurs CORS.
@@ -32,7 +25,7 @@ const MEDICALES_POST_URL = `${API_BASE}/api/medicales`;
 /* ========= petit toast ========= */
 function useToast() {
   const [msg, setMsg] = useState(null); // {text,type}
-  const push = (text, type="ok") => {
+  const push = (text, type = "ok") => {
     setMsg({ text, type });
     clearTimeout(push._t);
     push._t = setTimeout(() => setMsg(null), 2200);
@@ -185,7 +178,7 @@ export default function AjoutMedicale() {
 
       await axios.post(MEDICALES_POST_URL, payload, {
         headers: {
-          "Accept": "application/json",
+          Accept: "application/json",
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -238,7 +231,7 @@ export default function AjoutMedicale() {
         console.error("[lookup passeport]", err);
         setFetchError(
           explainAxiosError(err) ||
-          "Erreur lors de la recherche du passeport."
+            "Erreur lors de la recherche du passeport."
         );
         setMatches([]);
         setAutofilled(false);
@@ -408,11 +401,16 @@ export default function AjoutMedicale() {
               aria-describedby="help-pass"
             />
             <small id="help-pass" className="hint">
-              5 à 15 caractères alphanumériques, sans espace (converti en MAJUSCULES).
+              5 à 15 caractères alphanumériques, sans espace (converti en
+              MAJUSCULES).
             </small>
 
-            {searching && <div className="inline-note t-sm">Recherche en cours…</div>}
-            {fetchError && <div className="inline-note error t-sm">{fetchError}</div>}
+            {searching && (
+              <div className="inline-note t-sm">Recherche en cours…</div>
+            )}
+            {fetchError && (
+              <div className="inline-note error t-sm">{fetchError}</div>
+            )}
 
             {!searching && matches.length > 1 && (
               <div className="results">
@@ -423,7 +421,13 @@ export default function AjoutMedicale() {
                     onClick={() => applyMatch(m)}
                     title="Appliquer ces informations"
                   >
-                    {(m.num_passeport || m.passeport || formData.passeport) + " — " + (m.nom || "") + " " + (m.prenoms || "")}
+                    {(m.num_passeport ||
+                      m.passeport ||
+                      formData.passeport) +
+                      " — " +
+                      (m.nom || "") +
+                      " " +
+                      (m.prenoms || "")}
                   </button>
                 ))}
               </div>
@@ -433,7 +437,11 @@ export default function AjoutMedicale() {
               <div className="inline-note success t-sm">
                 Données récupérées (nom/prénoms préremplis).{" "}
                 <span
-                  style={{ textDecoration: "underline", cursor: "pointer", marginLeft: 6 }}
+                  style={{
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    marginLeft: 6,
+                  }}
                   onClick={resetAutofill}
                 >
                   Réinitialiser

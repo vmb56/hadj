@@ -4,11 +4,14 @@ import React, { useEffect, useMemo, useState } from "react";
 /* =============================
    Config API
    ============================= */
-const API_BASE =
+const RAW_API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" &&
     (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+  "https://hadjbackend.onrender.com";
+
+// on nettoie pour éviter les doubles slash (//api/vols)
+const API_BASE = String(RAW_API_BASE || "").replace(/\/+$/, "");
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -24,11 +27,17 @@ async function apiFetch(path, { method = "GET", body, headers } = {}) {
     method,
     headers: {
       Accept: "application/json",
-      ...(body && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
+      ...(body && !(body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+    body: body
+      ? body instanceof FormData
+        ? body
+        : JSON.stringify(body)
+      : undefined,
     credentials: "include",
   });
 
@@ -52,7 +61,11 @@ async function apiFetch(path, { method = "GET", body, headers } = {}) {
    ============================= */
 async function listFlightsAPI() {
   const data = await apiFetch(`/api/vols`);
-  const items = Array.isArray(data?.items) ? data.items : [];
+  const items = Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data)
+    ? data
+    : [];
   return items.map(normalizeFlightRow);
 }
 async function createFlightAPI(payload) {
@@ -67,7 +80,10 @@ async function deleteFlightAPI(id) {
   await apiFetch(`/api/vols/${id}`, { method: "DELETE" });
 }
 async function addPassengerAPI(flightId, payload) {
-  const data = await apiFetch(`/api/vols/${flightId}/passagers`, { method: "POST", body: payload });
+  const data = await apiFetch(`/api/vols/${flightId}/passagers`, {
+    method: "POST",
+    body: payload,
+  });
   return data;
 }
 async function removePassengerAPI(flightId, pid) {
@@ -92,8 +108,14 @@ function normalizeFlightRow(r = {}) {
     id: r.id,
     code: r.code,
     company: r.company,
-    from: { code: r.from?.code || r.fromCode || "", date: normalizeDateStr(r.from?.date) },
-    to:   { code: r.to?.code   || r.toCode   || "", date: normalizeDateStr(r.to?.date)   },
+    from: {
+      code: r.from?.code || r.fromCode || "",
+      date: normalizeDateStr(r.from?.date),
+    },
+    to: {
+      code: r.to?.code || r.toCode || "",
+      date: normalizeDateStr(r.to?.date),
+    },
     duration: r.duration || "",
     passengers: Array.isArray(r.passengers)
       ? r.passengers.map((p) => ({
@@ -181,13 +203,29 @@ export default function Vols() {
 
   const KPIs = useMemo(() => {
     const totalFlights = flights.length;
-    const totalPassengers = flights.reduce((s, f) => s + f.passengers.length, 0);
-    const nextDeparture = flights.map((f) => f.from?.date).filter(Boolean).sort()[0];
+    const totalPassengers = flights.reduce(
+      (s, f) => s + f.passengers.length,
+      0
+    );
+    const nextDeparture = flights
+      .map((f) => f.from?.date)
+      .filter(Boolean)
+      .sort()[0];
     const nextLabel = nextDeparture ? formatDateLabel(nextDeparture) : "—";
     return [
       { icon: "✈️", label: "Total Vols", value: totalFlights, tone: "sky" },
-      { icon: "👥", label: "Total Passagers", value: totalPassengers, tone: "indigo" },
-      { icon: "🕘", label: "Prochain Départ", value: nextLabel, tone: "sky" },
+      {
+        icon: "👥",
+        label: "Total Passagers",
+        value: totalPassengers,
+        tone: "indigo",
+      },
+      {
+        icon: "🕘",
+        label: "Prochain Départ",
+        value: nextLabel,
+        tone: "sky",
+      },
     ];
   }, [flights]);
 
@@ -220,7 +258,10 @@ export default function Vols() {
       push("Code vol invalide (ex: AS401).", "err");
       return;
     }
-    if (!/^[A-Z]{3}$/.test(payload.from.code) || !/^[A-Z]{3}$/.test(payload.to.code)) {
+    if (
+      !/^[A-Z]{3}$/.test(payload.from.code) ||
+      !/^[A-Z]{3}$/.test(payload.to.code)
+    ) {
       push("Codes IATA attendus (ex: DSS, JED).", "err");
       return;
     }
@@ -304,7 +345,8 @@ export default function Vols() {
     const flight = flights.find((f) => f.id === flightId);
     const pax = flight?.passengers?.find((p) => p.id === passengerId);
     if (!flight || !pax) return;
-    if (!window.confirm(`Retirer “${pax.fullname}” du vol ${flight.code} ?`)) return;
+    if (!window.confirm(`Retirer “${pax.fullname}” du vol ${flight.code} ?`))
+      return;
     try {
       await removePassengerAPI(flightId, passengerId);
       push("Pèlerin retiré.");
@@ -339,7 +381,9 @@ export default function Vols() {
           <p className="text-slate-500">
             Gestion des vols et passagers (connecté à l’API)
           </p>
-          {loading && <div className="text-slate-500 text-sm mt-1">Chargement…</div>}
+          {loading && (
+            <div className="text-slate-500 text-sm mt-1">Chargement…</div>
+          )}
           {err && <div className="text-rose-600 text-sm mt-1">{err}</div>}
         </div>
         <button
@@ -353,7 +397,13 @@ export default function Vols() {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {KPIs.map((k, i) => (
-          <StatCard key={i} icon={k.icon} label={k.label} value={k.value} tone={k.tone} />
+          <StatCard
+            key={i}
+            icon={k.icon}
+            label={k.label}
+            value={k.value}
+            tone={k.tone}
+          />
         ))}
         <div className="hidden lg:block" />
       </div>
@@ -365,7 +415,10 @@ export default function Vols() {
           const paxChunks = splitInCols(flight.passengers, 3);
 
           return (
-            <section key={flight.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <section
+              key={flight.id}
+              className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+            >
               {/* Bandeau principal */}
               <div className="relative bg-gradient-to-r from-blue-600 to-blue-500 text-white">
                 <div className="p-5 md:p-6">
@@ -376,7 +429,9 @@ export default function Vols() {
                           <span className="text-xl">✈️</span>
                         </div>
                         <div className="min-w-0">
-                          <div className="text-2xl font-extrabold leading-tight">{flight.code}</div>
+                          <div className="text-2xl font-extrabold leading-tight">
+                            {flight.code}
+                          </div>
                           <div className="text-white/90">{flight.company}</div>
                         </div>
                       </div>
@@ -398,8 +453,12 @@ export default function Vols() {
                   {/* route DSS -> JED */}
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-3 items-center gap-4">
                     <div className="text-center md:text-left">
-                      <div className="text-4xl font-extrabold tracking-wide">{flight.from.code}</div>
-                      <div className="text-white/90">{formatDateLabel(flight.from.date)}</div>
+                      <div className="text-4xl font-extrabold tracking-wide">
+                        {flight.from.code}
+                      </div>
+                      <div className="text-white/90">
+                        {formatDateLabel(flight.from.date)}
+                      </div>
                     </div>
                     <div className="hidden md:flex items-center justify-center">
                       <div className="h-px w-28 bg-white/40" />
@@ -407,8 +466,12 @@ export default function Vols() {
                       <div className="h-px w-28 bg-white/40" />
                     </div>
                     <div className="text-center md:text-right">
-                      <div className="text-4xl font-extrabold tracking-wide">{flight.to.code}</div>
-                      <div className="text-white/90">{formatDateLabel(flight.to.date)}</div>
+                      <div className="text-4xl font-extrabold tracking-wide">
+                        {flight.to.code}
+                      </div>
+                      <div className="text-white/90">
+                        {formatDateLabel(flight.to.date)}
+                      </div>
                     </div>
                   </div>
 
@@ -431,7 +494,8 @@ export default function Vols() {
                       onClick={() => openAssignModal(flight)}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"
                     >
-                      <span className="text-lg leading-none">＋</span> Affecter un pèlerin
+                      <span className="text-lg leading-none">＋</span> Affecter
+                      un pèlerin
                     </button>
                   </div>
                 </div>
@@ -455,9 +519,15 @@ export default function Vols() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                  <ActionBtn onClick={() => openEditModal(flight)}>Modifier le vol</ActionBtn>
-                  <ActionBtn onClick={() => exportPassengersCSV(flight)}>Exporter la liste</ActionBtn>
-                  <ActionBtn onClick={() => printFlight(flight)}>Imprimer le vol</ActionBtn>
+                  <ActionBtn onClick={() => openEditModal(flight)}>
+                    Modifier le vol
+                  </ActionBtn>
+                  <ActionBtn onClick={() => exportPassengersCSV(flight)}>
+                    Exporter la liste
+                  </ActionBtn>
+                  <ActionBtn onClick={() => printFlight(flight)}>
+                    Imprimer le vol
+                  </ActionBtn>
                 </div>
               </div>
             </section>
@@ -470,14 +540,19 @@ export default function Vols() {
 
       {/* ============ MODALE VOL ============ */}
       {flightModalOpen && (
-        <Modal onClose={() => setFlightModalOpen(false)} title={editingFlightId ? "Modifier le vol" : "Nouveau vol"}>
+        <Modal
+          onClose={() => setFlightModalOpen(false)}
+          title={editingFlightId ? "Modifier le vol" : "Nouveau vol"}
+        >
           <form onSubmit={saveFlight} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Code du vol">
                 <input
                   className="input"
                   value={flightForm.code}
-                  onChange={(e) => setFlightForm({ ...flightForm, code: e.target.value })}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, code: e.target.value })
+                  }
                   placeholder="AS401"
                   required
                 />
@@ -486,7 +561,9 @@ export default function Vols() {
                 <input
                   className="input"
                   value={flightForm.company}
-                  onChange={(e) => setFlightForm({ ...flightForm, company: e.target.value })}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, company: e.target.value })
+                  }
                   placeholder="Air Sénégal"
                   required
                 />
@@ -496,7 +573,12 @@ export default function Vols() {
                 <input
                   className="input uppercase"
                   value={flightForm.fromCode}
-                  onChange={(e) => setFlightForm({ ...flightForm, fromCode: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setFlightForm({
+                      ...flightForm,
+                      fromCode: e.target.value.toUpperCase(),
+                    })
+                  }
                   placeholder="DSS"
                   maxLength={3}
                   required
@@ -507,7 +589,9 @@ export default function Vols() {
                   type="datetime-local"
                   className="input"
                   value={flightForm.fromDate}
-                  onChange={(e) => setFlightForm({ ...flightForm, fromDate: e.target.value })}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, fromDate: e.target.value })
+                  }
                   required
                 />
               </Field>
@@ -516,7 +600,12 @@ export default function Vols() {
                 <input
                   className="input uppercase"
                   value={flightForm.toCode}
-                  onChange={(e) => setFlightForm({ ...flightForm, toCode: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setFlightForm({
+                      ...flightForm,
+                      toCode: e.target.value.toUpperCase(),
+                    })
+                  }
                   placeholder="JED"
                   maxLength={3}
                   required
@@ -527,7 +616,9 @@ export default function Vols() {
                   type="datetime-local"
                   className="input"
                   value={flightForm.toDate}
-                  onChange={(e) => setFlightForm({ ...flightForm, toDate: e.target.value })}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, toDate: e.target.value })
+                  }
                   required
                 />
               </Field>
@@ -536,7 +627,12 @@ export default function Vols() {
                 <input
                   className="input"
                   value={flightForm.duration}
-                  onChange={(e) => setFlightForm({ ...flightForm, duration: e.target.value })}
+                  onChange={(e) =>
+                    setFlightForm({
+                      ...flightForm,
+                      duration: e.target.value,
+                    })
+                  }
                   placeholder="10h30"
                   required
                 />
@@ -544,7 +640,11 @@ export default function Vols() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" className="btn-gray" onClick={() => setFlightModalOpen(false)}>
+              <button
+                type="button"
+                className="btn-gray"
+                onClick={() => setFlightModalOpen(false)}
+              >
                 Annuler
               </button>
               <button type="submit" className="btn-blue">
@@ -588,7 +688,12 @@ export default function Vols() {
               </Field>
               <Field label="Photo (optionnelle)">
                 <div className="flex items-center gap-3">
-                  <input type="file" accept="image/*" onChange={handleAssignPhotoChange} className="input !py-1.5" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAssignPhotoChange}
+                    className="input !py-1.5"
+                  />
                   {assignPhotoPreview ? (
                     <img
                       src={assignPhotoPreview}
@@ -605,10 +710,16 @@ export default function Vols() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" className="btn-gray" onClick={() => setAssignModalOpen(false)}>
+              <button
+                type="button"
+                className="btn-gray"
+                onClick={() => setAssignModalOpen(false)}
+              >
                 Annuler
               </button>
-              <button type="submit" className="btn-blue">Affecter</button>
+              <button type="submit" className="btn-blue">
+                Affecter
+              </button>
             </div>
           </form>
         </Modal>
@@ -619,15 +730,20 @@ export default function Vols() {
 
 /* =============== UI bits =============== */
 function StatCard({ icon, label, value, tone = "sky" }) {
-  const toneMap = {
-    sky:    { chip: "bg-sky-50 text-sky-700",       ring: "ring-sky-200" },
-    indigo: { chip: "bg-indigo-50 text-indigo-700", ring: "ring-indigo-200" },
-  }[tone] || { chip: "bg-slate-50 text-slate-700", ring: "ring-slate-200" };
+  const toneMap =
+    {
+      sky: { chip: "bg-sky-50 text-sky-700", ring: "ring-sky-200" },
+      indigo: { chip: "bg-indigo-50 text-indigo-700", ring: "ring-indigo-200" },
+    }[tone] || { chip: "bg-slate-50 text-slate-700", ring: "ring-slate-200" };
 
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ${toneMap.ring}`}>
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ${toneMap.ring}`}
+    >
       <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip}`}>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneMap.chip}`}
+        >
           <span className="text-lg">{icon}</span>
         </div>
         <div className="min-w-0">
@@ -644,17 +760,28 @@ function PassengerItem({ index, fullname, seat, passport, photoUrl, onDelete }) 
     <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
       <div className="flex items-center gap-3 min-w-0">
         {photoUrl ? (
-          <img src={photoUrl} alt={fullname} className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+          <img
+            src={photoUrl}
+            alt={fullname}
+            className="h-10 w-10 rounded-full object-cover border border-slate-200"
+          />
         ) : (
           <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
             {initials}
           </div>
         )}
         <div className="min-w-0">
-          <div className="font-semibold text-slate-800 truncate">{index}. {fullname}</div>
+          <div className="font-semibold text-slate-800 truncate">
+            {index}. {fullname}
+          </div>
           <div className="text-xs text-slate-500 flex flex-wrap gap-3">
             <span>Siège: {seat || "—"}</span>
-            {passport ? <span>• Passeport: <span className="font-medium">{passport}</span></span> : null}
+            {passport ? (
+              <span>
+                • Passeport:{" "}
+                <span className="font-medium">{passport}</span>
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -670,7 +797,10 @@ function PassengerItem({ index, fullname, seat, passport, photoUrl, onDelete }) 
 }
 function ActionBtn({ children, onClick }) {
   return (
-    <button onClick={onClick} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50">
+    <button
+      onClick={onClick}
+      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+    >
       {children}
     </button>
   );
@@ -687,10 +817,15 @@ function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w/full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-          <button onClick={onClose} className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100">✕</button>
+          <button
+            onClick={onClose}
+            className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100"
+          >
+            ✕
+          </button>
         </div>
         <div className="mt-3">{children}</div>
       </div>
@@ -713,7 +848,8 @@ function splitInCols(list, cols) {
 function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = filename;
+  a.href = url;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -724,21 +860,33 @@ function toInputDatetimeLocal(s) {
   const d = new Date(String(s).replace(" ", "T"));
   if (isNaN(d.getTime())) return "";
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+    d.getDate()
+  )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function formatDateLabel(s) {
   const d = new Date(String(s).replace(" ", "T"));
   if (isNaN(d.getTime())) return s || "—";
   return d.toLocaleString("fr-FR", {
-    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 function normalizeFlightForm(f) {
   return {
     code: f.code.trim().toUpperCase().replace(/\s+/g, ""),
     company: f.company.trim(),
-    from: { code: (f.fromCode || "").trim().toUpperCase(), date: (f.fromDate || "").replace("T", " ") },
-    to:   { code: (f.toCode   || "").trim().toUpperCase(), date: (f.toDate   || "").replace("T", " ") },
+    from: {
+      code: (f.fromCode || "").trim().toUpperCase(),
+      date: (f.fromDate || "").replace("T", " "),
+    },
+    to: {
+      code: (f.toCode || "").trim().toUpperCase(),
+      date: (f.toDate || "").replace("T", " "),
+    },
     duration: f.duration.trim(),
   };
 }
@@ -756,8 +904,13 @@ function emptyFlightForm() {
   };
 }
 function getInitials(name) {
-  const parts = String(name || "").split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "?";
+  const parts = String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  return (
+    parts.map((p) => p[0]?.toUpperCase() || "").join("") || "?"
+  );
 }
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -768,7 +921,13 @@ function readFileAsDataURL(file) {
   });
 }
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  return String(s).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[m]));
 }
 function formatSeat(s) {
   if (!s) return "";
@@ -788,8 +947,12 @@ function renderPrintableFlightHTML(f) {
             <div class="avatar">
               ${
                 p.photoUrl
-                  ? `<img src="${p.photoUrl}" alt="${escapeHtml(p.fullname)}"/>`
-                  : `<div class="ph">${escapeHtml(getInitials(p.fullname))}</div>`
+                  ? `<img src="${p.photoUrl}" alt="${escapeHtml(
+                      p.fullname
+                    )}"/>`
+                  : `<div class="ph">${escapeHtml(
+                      getInitials(p.fullname)
+                    )}</div>`
               }
             </div>
             <div>
@@ -842,9 +1005,15 @@ function renderPrintableFlightHTML(f) {
           <div class="sep"></div>
           <span>${escapeHtml(f.to.code)}</span>
         </div>
-        <div class="muted">Départ: ${escapeHtml(formatDateLabel(f.from.date))} — Arrivée: ${escapeHtml(formatDateLabel(f.to.date))} — Durée: ${escapeHtml(f.duration)}</div>
+        <div class="muted">Départ: ${escapeHtml(
+          formatDateLabel(f.from.date)
+        )} — Arrivée: ${escapeHtml(
+    formatDateLabel(f.to.date)
+  )} — Durée: ${escapeHtml(f.duration)}</div>
       </div>
-      <div class="kpi">${(f.passengers||[]).length} passager${(f.passengers||[]).length>1?"s":""}</div>
+      <div class="kpi">${(f.passengers || []).length} passager${
+    (f.passengers || []).length > 1 ? "s" : ""
+  }</div>
     </div>
 
     <table>
@@ -856,7 +1025,10 @@ function renderPrintableFlightHTML(f) {
         </tr>
       </thead>
       <tbody>
-        ${rows || `<tr><td colspan="3" class="muted">Aucun passager.</td></tr>`}
+        ${
+          rows ||
+          `<tr><td colspan="3" class="muted">Aucun passager.</td></tr>`
+        }
       </tbody>
     </table>
   </div>
@@ -867,21 +1039,35 @@ function printViaIframe(html) {
   return new Promise((resolve) => {
     const iframe = document.createElement("iframe");
     Object.assign(iframe.style, {
-      position: "fixed", right: 0, bottom: 0, width: 0, height: 0, border: 0, visibility: "hidden"
+      position: "fixed",
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      border: 0,
+      visibility: "hidden",
     });
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow.document;
-    doc.open(); doc.write(html); doc.close();
+    doc.open();
+    doc.write(html);
+    doc.close();
 
     const run = async () => {
       const imgs = Array.from(doc.images || []);
       await Promise.all(
         imgs.map((img) =>
-          img.complete ? Promise.resolve() : new Promise((r) => { img.onload = img.onerror = r; })
+          img.complete
+            ? Promise.resolve()
+            : new Promise((r) => {
+                img.onload = img.onerror = r;
+              })
         )
       );
-      try { await doc.fonts?.ready; } catch {}
+      try {
+        await doc.fonts?.ready;
+      } catch {}
       iframe.contentWindow.focus?.();
       iframe.contentWindow.print?.();
       setTimeout(() => {

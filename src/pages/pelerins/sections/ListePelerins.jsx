@@ -3,12 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import useAuthUser from "../../../hooks/useAuthUser";
 
-/* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+/* ========= Config API (base fixe) ========= */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {

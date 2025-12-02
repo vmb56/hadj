@@ -1,12 +1,8 @@
 // src/pages/pelerins/AjouterPelerin.jsx
 import React, { useMemo, useState, useEffect } from "react";
 
-/* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+/* ========= Config API (base fixe) ========= */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 /* ========= Récup user ========= */
 const USER_KEYS = ["bmvt_user", "bmvt_me", "user"];

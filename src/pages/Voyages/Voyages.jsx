@@ -4,11 +4,14 @@ import React, { useState, useEffect, useCallback } from "react";
 /* =========================================================================
    CONFIG API
    ========================================================================= */
-const API_BASE =
+const RAW_API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" &&
     (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+  "https://hadjbackend.onrender.com";
+
+// on nettoie pour éviter les doubles slash
+const API_BASE = String(RAW_API_BASE || "").replace(/\/+$/, "");
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {

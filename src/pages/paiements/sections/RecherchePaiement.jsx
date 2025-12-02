@@ -2,13 +2,11 @@
 import React, { useMemo, useState, useEffect } from "react";
 
 /* --------------------------------------------------------------------------
-   CONFIG API
+   CONFIG API — consomme https://hadjbackend.onrender.com
+   - Pas de cookies (credentials: "omit")
+   - Auth via Authorization: Bearer bmvt_token
 -------------------------------------------------------------------------- */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -29,7 +27,8 @@ async function getJson(url, opts = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
     },
-    credentials: "include",
+    // 🔒 pas de cookies
+    credentials: "omit",
     ...opts,
   });
   const ct = res.headers.get("content-type") || "";
@@ -135,7 +134,7 @@ const api = {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
-      credentials: "include",
+      credentials: "omit", // 🔒 pas de cookies
     });
     let data;
     try {
@@ -158,7 +157,7 @@ const api = {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
-      credentials: "include",
+      credentials: "omit", // 🔒 pas de cookies
     });
     let data;
     try {
@@ -501,7 +500,7 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
         statut,
       });
 
-      // ⚠️ aligne avec /api/paiements/versements
+      // aligne avec /api/paiements/versements
       await api.addVersement({
         passeport: row.passeport,
         nom: row.nom,

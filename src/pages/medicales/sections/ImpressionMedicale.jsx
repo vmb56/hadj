@@ -1,12 +1,10 @@
 // src/pages/medicales/sections/ImpressionMedicale.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Logo from "../../pelerins/Logo.png";
+
 /* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+// On force directement l’API Render en HTTPS pour éviter le contenu mixte
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -540,7 +538,9 @@ export default function ImpressionMedicale() {
                   <img className="logo" alt="Logo" src={Logo} />
                   <div>
                     <div className="doc-title">FICHE MÉDICALE</div>
-                    <div className="doc-sub">{selected.nomVoyage || "—"} — {selected.anneeVoyage || "—"}</div>
+                    <div className="doc-sub">
+                      {selected.nomVoyage || "—"} — {selected.anneeVoyage || "—"}
+                    </div>
                   </div>
                 </div>
                 <div className="meta">
@@ -624,7 +624,11 @@ export default function ImpressionMedicale() {
               <div className="footer">
                 <div>Agent enregistreur : <strong>{selected.employeEnregistreur || "—"}</strong></div>
                 <div style={{ textAlign: "center" }}>
-                  <img className="signature" alt="signature" src="https://via.placeholder.com/160x44?text=Signature" />
+                  <img
+                    className="signature"
+                    alt="signature"
+                    src="https://via.placeholder.com/160x44?text=Signature"
+                  />
                 </div>
                 <div>Date création : {formatDate(selected.createdAt)}</div>
               </div>

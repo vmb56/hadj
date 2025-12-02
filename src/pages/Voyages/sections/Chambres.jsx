@@ -5,11 +5,14 @@ import * as XLSX from "xlsx";
 /* =============================
    Config API
    ============================= */
-const API_BASE =
+const RAW_API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" &&
     (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+  "https://hadjbackend.onrender.com";
+
+// on enlève les / de fin pour éviter les doubles //
+const API_BASE = String(RAW_API_BASE || "").replace(/\/+$/, "");
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -33,7 +36,9 @@ async function apiFetch(path, { method = "GET", body, headers } = {}) {
     credentials: "include",
   });
   let data = null;
-  try { data = await res.json(); } catch {}
+  try {
+    data = await res.json();
+  } catch {}
   if (!res.ok) {
     const msg = data?.message || data?.error || `HTTP ${res.status}`;
     const err = new Error(msg);
@@ -49,7 +54,7 @@ async function apiFetch(path, { method = "GET", body, headers } = {}) {
    ============================= */
 async function listRoomsAPI() {
   const data = await apiFetch(`/api/chambres`);
-  const items = Array.isArray(data?.items) ? data.items : [];
+  const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
   return items.map(normalizeRoomRow);
 }
 async function createRoomAPI(payload) {
@@ -162,7 +167,8 @@ export default function Chambres() {
     e?.preventDefault?.();
     const payload = normalizeRoomForm(form);
     if (!payload.hotel || !payload.city) {
-      alert("Hôtel et ville sont requis."); return;
+      alert("Hôtel et ville sont requis.");
+      return;
     }
     try {
       if (editingRoomId) {
@@ -630,7 +636,7 @@ function Modal({ title, onClose, children }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify_between gap-3">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
           <button onClick={onClose} className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100">✕</button>
         </div>

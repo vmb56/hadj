@@ -1,11 +1,9 @@
 // src/pages/utilisateurs/ListeUtilisateurs.jsx
 import React, { useEffect, useMemo, useState } from "react";
 
-/* ================== Config API (sans service) ================== */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
-  (typeof process !== "undefined" && process.env && (process.env.VITE_API_URL || process.env.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+/* ================== Config API BMVT (Render) ================== */
+// On pointe directement sur ton backend Render
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 
@@ -17,17 +15,26 @@ function getToken() {
   }
 }
 
+// Construit une URL absolue propre : apiURL("/api/users")
+function apiURL(path) {
+  const base = API_BASE.replace(/\/+$/, "");
+  const p = String(path || "");
+  return p.startsWith("/") ? `${base}${p}` : `${base}/${p}`;
+}
+
 async function apiFetch(path, { method = "GET", body, headers } = {}) {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(apiURL(path), {
     method,
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
+    // Backend Render, pas de cookie de session
+    credentials: "omit",
   });
 
   let data = null;
@@ -47,6 +54,7 @@ async function apiFetch(path, { method = "GET", body, headers } = {}) {
 /* ===== appels directs au backend ===== */
 async function listUsersAPI({ search = "" } = {}) {
   const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+  // /api/users?search=...
   return apiFetch(`/api/users${qs}`); // -> { items: [...] }
 }
 async function updateUserAPI(id, payload) {

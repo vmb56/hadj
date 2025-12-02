@@ -1,6 +1,6 @@
 // src/pages/medicales/Medicale.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { FilePlus2, ClipboardList, Printer, RefreshCw } from "lucide-react";
 
 /* ========= Config API (même pattern que le reste de l’app) ========= */
@@ -8,20 +8,25 @@ const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" &&
     (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+  // ✅ fallback : backend Render sécurisé en prod
+  "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
 /* ========= Mini util ========= */
-function cls(...xs) { return xs.filter(Boolean).join(" "); }
+function cls(...xs) {
+  return xs.filter(Boolean).join(" ");
+}
 
 /* ========= Page ========= */
 export default function Medicale() {
-  const navigate = useNavigate();
-
   // états “infos rapides” tirées de l’API
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -43,7 +48,10 @@ export default function Medicale() {
       });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j?.message || msg; } catch {}
+        try {
+          const j = await res.json();
+          msg = j?.message || msg;
+        } catch {}
         throw new Error(msg);
       }
       const payload = await res.json();
@@ -53,7 +61,13 @@ export default function Medicale() {
 
       // “dernière mise à jour” = max(created_at/updated_at) parmi le lot renvoyé
       const times = items
-        .map((r) => r.updated_at || r.created_at || r.updatedAt || r.createdAt)
+        .map(
+          (r) =>
+            r.updated_at ||
+            r.created_at ||
+            r.updatedAt ||
+            r.createdAt
+        )
         .filter(Boolean)
         .map((d) => Date.parse(d))
         .filter((n) => !Number.isNaN(n));
@@ -71,14 +85,21 @@ export default function Medicale() {
     }
   }
 
-  useEffect(() => { fetchOverview(); }, []);
+  useEffect(() => {
+    fetchOverview();
+  }, []);
 
   const lastUpdatedText = useMemo(() => {
     if (!lastUpdated) return "—";
     try {
       const d = new Date(lastUpdated);
-      return `${d.toLocaleDateString("fr-FR")} · ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
-    } catch { return "—"; }
+      return `${d.toLocaleDateString("fr-FR")} · ${d.toLocaleTimeString(
+        "fr-FR",
+        { hour: "2-digit", minute: "2-digit" }
+      )}`;
+    } catch {
+      return "—";
+    }
   }, [lastUpdated]);
 
   return (
@@ -89,17 +110,28 @@ export default function Medicale() {
         <div className="p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-dyn-title font-extrabold text-slate-900">Dossier Médicale</h1>
+              <h1 className="text-dyn-title font-extrabold text-slate-900">
+                Dossier Médicale
+              </h1>
               <p className="mt-1 text-dyn-sm text-slate-600">
-                Saisir, consulter et imprimer les informations médicales des pèlerins.
+                Saisir, consulter et imprimer les informations médicales des
+                pèlerins.
               </p>
-              {err && <p className="mt-2 text-rose-600 text-dyn-sm">{err}</p>}
+              {err && (
+                <p className="mt-2 text-rose-600 text-dyn-sm">{err}</p>
+              )}
             </div>
 
             {/* Statistiques rapides */}
             <div className="flex flex-wrap items-center gap-2">
-              <QuickStat label="Dossiers" value={loading ? "…" : String(totalMedicales)} />
-              <QuickStat label="Dernière mise à jour" value={loading ? "…" : lastUpdatedText} />
+              <QuickStat
+                label="Dossiers"
+                value={loading ? "…" : String(totalMedicales)}
+              />
+              <QuickStat
+                label="Dernière mise à jour"
+                value={loading ? "…" : lastUpdatedText}
+              />
               <button
                 type="button"
                 onClick={fetchOverview}
@@ -131,7 +163,9 @@ export default function Medicale() {
           to="liste"
           icon={ClipboardList}
           title="Liste infos médicales"
-          desc={`Rechercher, consulter et mettre à jour les dossiers (${loading ? "…" : totalMedicales}).`}
+          desc={`Rechercher, consulter et mettre à jour les dossiers (${
+            loading ? "…" : totalMedicales
+          }).`}
           cta="Voir la liste"
           accent="indigo"
         />
@@ -168,13 +202,23 @@ function TileLink({ to, icon: Icon, title, desc, cta, accent = "blue" }) {
       }
     >
       {/* Halos discrets */}
-      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full blur-2xl" style={{ background: tone.halo }} />
-      <div className="pointer-events-none absolute -left-16 -bottom-16 h-40 w-40 rounded-full blur-2xl opacity-70" style={{ background: tone.haloSoft }} />
+      <div
+        className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full blur-2xl"
+        style={{ background: tone.halo }}
+      />
+      <div
+        className="pointer-events-none absolute -left-16 -bottom-16 h-40 w-40 rounded-full blur-2xl opacity-70"
+        style={{ background: tone.haloSoft }}
+      />
 
       <div className="flex items-start gap-3 relative">
         <div
           className="rounded-xl p-2 ring-1"
-          style={{ background: tone.iconBg, color: tone.iconFg, borderColor: tone.iconRing }}
+          style={{
+            background: tone.iconBg,
+            color: tone.iconFg,
+            borderColor: tone.iconRing,
+          }}
         >
           <Icon className="h-6 w-6" />
         </div>
@@ -184,7 +228,10 @@ function TileLink({ to, icon: Icon, title, desc, cta, accent = "blue" }) {
         </div>
       </div>
 
-      <div className="mt-4 inline-flex items-center gap-2 font-semibold transition group-hover:translate-x-0.5" style={{ color: tone.cta }}>
+      <div
+        className="mt-4 inline-flex items-center gap-2 font-semibold transition group-hover:translate-x-0.5"
+        style={{ color: tone.cta }}
+      >
         {cta} <span aria-hidden>→</span>
       </div>
     </NavLink>

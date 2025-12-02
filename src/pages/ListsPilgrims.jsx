@@ -3,20 +3,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Printer, Users, Search, X } from "lucide-react";
 
 /* ======================= Connexion API commune ======================= */
-function getApiBase() {
-  let viteUrl;
-  try { viteUrl = typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL; } catch {}
-  const craUrl =
-    typeof process !== "undefined" &&
-    process?.env &&
-    (process.env.REACT_APP_API_URL || process.env.API_URL);
-  const winUrl = typeof window !== "undefined" ? window.__API_URL__ : undefined;
-  let u = viteUrl || craUrl || winUrl || "http://localhost:4000";
-  return String(u || "").replace(/\/+$/, "");
-}
-const API_BASE = getApiBase();
+const API_BASE = "https://hadjbackend.onrender.com".replace(/\/+$/, "");
 const TOKEN_KEY = "bmvt_token";
-const getToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } };
+const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+};
 
 async function http(path, opts = {}) {
   const token = getToken();
@@ -32,15 +27,22 @@ async function http(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   const ct = res.headers.get("content-type") || "";
-  const data = ct.includes("application/json") ? await res.json() : await res.text();
-  if (!res.ok) throw new Error(typeof data === "string" ? data : data?.message || `HTTP ${res.status}`);
+  const data = ct.includes("application/json")
+    ? await res.json()
+    : await res.text();
+  if (!res.ok)
+    throw new Error(
+      typeof data === "string" ? data : data?.message || `HTTP ${res.status}`
+    );
   return data;
 }
 
 /* ============================== API ENDPOINTS (Pèlerins uniquement) ============================== */
 const EP = {
-  PELERINS: (search) => `/api/pelerins${search ? `?search=${encodeURIComponent(search)}` : ""}`,
-  BY_PASSPORT: (passport) => `/api/pelerins/by-passport?passport=${encodeURIComponent(passport)}`,
+  PELERINS: (search) =>
+    `/api/pelerins${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+  BY_PASSPORT: (passport) =>
+    `/api/pelerins/by-passport?passport=${encodeURIComponent(passport)}`,
 };
 
 /* ============================== Normalizers ================================ */
@@ -55,7 +57,9 @@ const normList = (r = {}) => ({
   id: r.id,
   nom: r.nom || "",
   date: (r.date || "").slice(0, 10),
-  sexe: ["H", "F", "T"].includes((r.sexe || "H").toUpperCase()) ? (r.sexe || "H").toUpperCase() : "H",
+  sexe: ["H", "F", "T"].includes((r.sexe || "H").toUpperCase())
+    ? (r.sexe || "H").toUpperCase()
+    : "H",
   pilgrims: Array.isArray(r.pilgrims) ? r.pilgrims.map(normPilgrim) : [],
 });
 
@@ -68,7 +72,11 @@ export default function ListsPilgrims() {
 
   // Bandeau + création
   const [openNew, setOpenNew] = useState(false);
-  const [newForm, setNewForm] = useState({ nom: "", date: todayISO(), sexe: "H" });
+  const [newForm, setNewForm] = useState({
+    nom: "",
+    date: todayISO(),
+    sexe: "H",
+  });
 
   // Modale gestion
   const [manage, setManage] = useState({ open: false, list: null });
@@ -78,14 +86,21 @@ export default function ListsPilgrims() {
 
   useEffect(() => {
     (async () => {
-      setLoading(true); setErr("");
+      setLoading(true);
+      setErr("");
       try {
         const data = await http(EP.PELERINS(""));
-        const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+          ? data
+          : [];
         setTotalPelerins(items.length);
       } catch (e) {
         setErr(e.message || "Impossible de charger les pèlerins");
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -93,7 +108,9 @@ export default function ListsPilgrims() {
   function createList(e) {
     e.preventDefault();
     if (!newForm.nom) return;
-    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const localId = `local-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 7)}`;
     const newList = {
       id: localId,
       nom: newForm.nom.trim(),
@@ -119,9 +136,14 @@ export default function ListsPilgrims() {
           <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-sky-100 ring-1 ring-sky-200 flex items-center justify-center pulse-ring">
             <Users className="h-7 w-7 text-sky-600" />
           </div>
-          <div className="text-lg font-extrabold text-slate-900">Aucune liste créée</div>
+          <div className="text-lg font-extrabold text-slate-900">
+            Aucune liste créée
+          </div>
           <p className="mt-1 text-slate-600">
-            Commencez par créer votre première liste de pèlerins pour organiser<br />vos évènements
+            Commencez par créer votre première liste de pèlerins pour
+            organiser
+            <br />
+            vos évènements
           </p>
           <button
             onClick={() => setOpenNew(true)}
@@ -169,20 +191,28 @@ export default function ListsPilgrims() {
             </div>
             <div>
               <div className="text-slate-600">Pèlerins enregistrés</div>
-              <div className="text-2xl font-extrabold text-slate-900">{totalPelerins}</div>
+              <div className="text-2xl font-extrabold text-slate-900">
+                {totalPelerins}
+              </div>
             </div>
           </div>
           <div className="ml-auto text-right">
             <div className="text-slate-600">Listes créées</div>
-            <div className="text-2xl font-extrabold text-slate-900">{lists.length}</div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {lists.length}
+            </div>
           </div>
         </div>
-        {loading && <div className="text-xs text-slate-500 mt-2 shimmer">Chargement…</div>}
+        {loading && (
+          <div className="text-xs text-slate-500 mt-2 shimmer">
+            Chargement…
+          </div>
+        )}
         {err && <div className="text-xs text-rose-600 mt-2">{err}</div>}
       </div>
 
       {/* CONTENU */}
-      {(!lists.length && !loading) ? (
+      {!lists.length && !loading ? (
         EmptyState
       ) : (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -206,7 +236,9 @@ export default function ListsPilgrims() {
               <input
                 className="input"
                 value={newForm.nom}
-                onChange={(e) => setNewForm(s => ({ ...s, nom: e.target.value }))}
+                onChange={(e) =>
+                  setNewForm((s) => ({ ...s, nom: e.target.value }))
+                }
                 placeholder="ex: formation"
                 required
               />
@@ -217,7 +249,9 @@ export default function ListsPilgrims() {
                   type="date"
                   className="input"
                   value={newForm.date}
-                  onChange={(e) => setNewForm(s => ({ ...s, date: e.target.value }))}
+                  onChange={(e) =>
+                    setNewForm((s) => ({ ...s, date: e.target.value }))
+                  }
                   required
                 />
               </Labelled>
@@ -225,7 +259,9 @@ export default function ListsPilgrims() {
                 <select
                   className="input"
                   value={newForm.sexe}
-                  onChange={(e) => setNewForm(s => ({ ...s, sexe: e.target.value }))}
+                  onChange={(e) =>
+                    setNewForm((s) => ({ ...s, sexe: e.target.value }))
+                  }
                 >
                   <option value="H">Hommes</option>
                   <option value="F">Femmes</option>
@@ -234,8 +270,16 @@ export default function ListsPilgrims() {
               </Labelled>
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setOpenNew(false)} className="btn-outline btn-press">Annuler</button>
-              <button type="submit" className="btn-blue btn-press">Créer</button>
+              <button
+                type="button"
+                onClick={() => setOpenNew(false)}
+                className="btn-outline btn-press"
+              >
+                Annuler
+              </button>
+              <button type="submit" className="btn-blue btn-press">
+                Créer
+              </button>
             </div>
           </form>
         </Modal>
@@ -247,7 +291,9 @@ export default function ListsPilgrims() {
         list={manage.list}
         onClose={() => setManage({ open: false, list: null })}
         onSaved={(updated) => {
-          setLists((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
+          setLists((arr) =>
+            arr.map((x) => (x.id === updated.id ? updated : x))
+          );
           setManage({ open: false, list: null });
         }}
       />
@@ -279,7 +325,7 @@ export default function ListsPilgrims() {
 /* ========================= Manage (Modal) ========================= */
 function ManageModal({ open, list, onClose, onSaved }) {
   const [search, setSearch] = useState("");
-  const [avail, setAvail] = useState([]);          // tous les pèlerins affichables
+  const [avail, setAvail] = useState([]); // tous les pèlerins affichables
   const [picked, setPicked] = useState(new Set()); // ids cochés
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -294,7 +340,11 @@ function ManageModal({ open, list, onClose, onSaved }) {
       setLoading(true);
       try {
         const data = await http(`/api/pelerins`);
-        const raw = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        const raw = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+          ? data
+          : [];
         let rows = raw.map(normPilgrim);
         if (list.sexe === "F") rows = rows.filter((p) => p.sexe === "F");
         if (list.sexe === "H") rows = rows.filter((p) => p.sexe === "H");
@@ -314,9 +364,15 @@ function ManageModal({ open, list, onClose, onSaved }) {
       try {
         setErr("");
         setLoading(true);
-        const url = search.trim() ? EP.PELERINS(search.trim()) : EP.PELERINS("");
+        const url = search.trim()
+          ? EP.PELERINS(search.trim())
+          : EP.PELERINS("");
         const data = await http(url);
-        const raw = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        const raw = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+          ? data
+          : [];
         let rows = raw.map(normPilgrim);
         if (list.sexe === "F") rows = rows.filter((p) => p.sexe === "F");
         if (list.sexe === "H") rows = rows.filter((p) => p.sexe === "H");
@@ -382,14 +438,36 @@ function ManageModal({ open, list, onClose, onSaved }) {
       {/* Compteurs + actions groupées */}
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-center">
         <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3 py-2 text-slate-700 text-sm font-semibold flex items-center gap-3 fade-in">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800">👤</span>
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
+            👤
+          </span>
           <span>{selectedCount} sélectionné(s)</span>
-          <span className="ml-2 text-slate-500">/ {totalCount} affiché(s)</span>
-          {loading && <span className="ml-2 text-xs text-slate-500 shimmer">Chargement…</span>}
-          {err && <span className="ml-2 text-xs text-rose-600">{err}</span>}
+          <span className="ml-2 text-slate-500">
+            / {totalCount} affiché(s)
+          </span>
+          {loading && (
+            <span className="ml-2 text-xs text-slate-500 shimmer">
+              Chargement…
+            </span>
+          )}
+          {err && (
+            <span className="ml-2 text-xs text-rose-600">{err}</span>
+          )}
         </div>
-        <button type="button" onClick={() => toggleAll(true)} className="btn-outline px-3 py-2 text-sm btn-press">Tout sélectionner</button>
-        <button type="button" onClick={() => toggleAll(false)} className="btn-outline px-3 py-2 text-sm btn-press">Tout désélectionner</button>
+        <button
+          type="button"
+          onClick={() => toggleAll(true)}
+          className="btn-outline px-3 py-2 text-sm btn-press"
+        >
+          Tout sélectionner
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleAll(false)}
+          className="btn-outline px-3 py-2 text-sm btn-press"
+        >
+          Tout désélectionner
+        </button>
       </div>
 
       {/* Liste scrollable */}
@@ -399,16 +477,34 @@ function ManageModal({ open, list, onClose, onSaved }) {
           return (
             <label
               key={p.id}
-              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${checked ? "bg-slate-100 border-slate-300" : "bg-white border-slate-200"} cursor-pointer fade-in`}
+              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
+                checked
+                  ? "bg-slate-100 border-slate-300"
+                  : "bg-white border-slate-200"
+              } cursor-pointer fade-in`}
             >
               <div className="flex items-center gap-3">
-                <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} />
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(p.id)}
+                />
                 <div className="min-w-0">
-                  <div className="font-semibold text-slate-800">{p.nom} {p.prenoms}</div>
-                  <div className="text-xs text-slate-500">{p.passeport || "—"}</div>
+                  <div className="font-semibold text-slate-800">
+                    {p.nom} {p.prenoms}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {p.passeport || "—"}
+                  </div>
                 </div>
               </div>
-              <span className={`text-xs rounded-full px-2.5 py-1 ${p.sexe === "F" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"}`}>
+              <span
+                className={`text-xs rounded-full px-2.5 py-1 ${
+                  p.sexe === "F"
+                    ? "bg-rose-100 text-rose-700"
+                    : "bg-sky-100 text-sky-700"
+                }`}
+              >
                 {p.sexe === "F" ? "femme" : "homme"}
               </span>
             </label>
@@ -421,66 +517,101 @@ function ManageModal({ open, list, onClose, onSaved }) {
 
       {/* Actions */}
       <div className="mt-4 flex items-center justify-end gap-2">
-        <button className="btn-outline btn-press" onClick={onClose}>Annuler</button>
-        <button className="btn-blue btn-press" onClick={save}>Enregistrer ({selectedCount})</button>
+        <button className="btn-outline btn-press" onClick={onClose}>
+          Annuler
+        </button>
+        <button className="btn-blue btn-press" onClick={save}>
+          Enregistrer ({selectedCount})
+        </button>
       </div>
     </Modal>
   );
 }
-
 
 /* =========================== Carte de liste =========================== */
 function ListCard({ list, onManage, onPrint, onDelete }) {
   const first = list.pilgrims?.slice(0, 6) || [];
 
   const chip =
-    list.sexe === "F" ? { txt: "Femmes", cls: "bg-rose-100 text-rose-700" } :
-    list.sexe === "T" ? { txt: "Tous",    cls: "bg-slate-100 text-slate-700" } :
-                        { txt: "Hommes",  cls: "bg-sky-100 text-sky-700" };
+    list.sexe === "F"
+      ? { txt: "Femmes", cls: "bg-rose-100 text-rose-700" }
+      : list.sexe === "T"
+      ? { txt: "Tous", cls: "bg-slate-100 text-slate-700" }
+      : { txt: "Hommes", cls: "bg-sky-100 text-sky-700" };
 
   return (
     <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm hover-lift fade-in">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-lg font-bold text-slate-900">{list.nom || "Sans titre"}</div>
+          <div className="text-lg font-bold text-slate-900">
+            {list.nom || "Sans titre"}
+          </div>
           <div className="text-xs text-slate-500 mt-0.5">
             {formatDateFR(list.date)}
           </div>
         </div>
-        <span className={`text-xs rounded-full px-2 py-1 ${chip.cls}`}>{chip.txt}</span>
+        <span className={`text-xs rounded-full px-2 py-1 ${chip.cls}`}>
+          {chip.txt}
+        </span>
       </div>
 
       <div className="mt-3 rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3 py-2">
         <div className="text-sm text-slate-700 font-semibold flex items-center gap-2">
           <Users className="h-4 w-4 text-sky-700" /> Pèlerins inscrits
-          <span className="ml-auto font-extrabold text-slate-900">{list.pilgrims?.length || 0}</span>
+          <span className="ml-auto font-extrabold text-slate-900">
+            {list.pilgrims?.length || 0}
+          </span>
         </div>
       </div>
 
       <div className="mt-3 space-y-1 max-h-40 overflow-auto pr-1">
         <div className="text-sm text-slate-600">Liste des pèlerins :</div>
         {first.map((p) => (
-          <div key={p.id} className="flex items-center justify-between text-sm rounded-lg px-2 py-1">
+          <div
+            key={p.id}
+            className="flex items-center justify-between text-sm rounded-lg px-2 py-1"
+          >
             <div className="flex items-center gap-2">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-500" />
-              <span className="text-slate-800">{p.nom} {p.prenoms}</span>
+              <span className="text-slate-800">
+                {p.nom} {p.prenoms}
+              </span>
             </div>
-            <span className={`text-[11px] rounded-full px-2 py-0.5 ${p.sexe === "F" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"}`}>
+            <span
+              className={`text-[11px] rounded-full px-2 py-0.5 ${
+                p.sexe === "F"
+                  ? "bg-rose-100 text-rose-700"
+                  : "bg-sky-100 text-sky-700"
+              }`}
+            >
               {p.sexe === "F" ? "femme" : "homme"}
             </span>
           </div>
         ))}
-        {(!first.length) && <div className="text-sm text-slate-500">Aucun pèlerin</div>}
+        {!first.length && (
+          <div className="text-sm text-slate-500">Aucun pèlerin</div>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <button onClick={onManage} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white px-3 py-2 text-sm font-semibold hover:brightness-110 btn-press">
+        <button
+          onClick={onManage}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white px-3 py-2 text-sm font-semibold hover:brightness-110 btn-press"
+        >
           <Users className="h-4 w-4" /> Gérer les pèlerins
         </button>
-        <button title="Imprimer" onClick={onPrint} className="rounded-xl border border-slate-300 bg-white p-2 hover:bg-slate-50 btn-press">
+        <button
+          title="Imprimer"
+          onClick={onPrint}
+          className="rounded-xl border border-slate-300 bg-white p-2 hover:bg-slate-50 btn-press"
+        >
           <Printer className="h-4 w-4 text-slate-700" />
         </button>
-        <button title="Supprimer" onClick={onDelete} className="rounded-xl bg-rose-600 p-2 text-white hover:brightness-110 btn-press">
+        <button
+          title="Supprimer"
+          onClick={onDelete}
+          className="rounded-xl bg-rose-600 p-2 text-white hover:brightness-110 btn-press"
+        >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
@@ -492,8 +623,7 @@ function ListCard({ list, onManage, onPrint, onDelete }) {
 function printList(list) {
   const now = new Date();
   const genre =
-    list.sexe === "F" ? "Femmes" :
-    list.sexe === "T" ? "Tous" : "Hommes";
+    list.sexe === "F" ? "Femmes" : list.sexe === "T" ? "Tous" : "Hommes";
 
   const css = `
     :root { --blue:#1e40af; --muted:#6b7280; }
@@ -512,11 +642,14 @@ function printList(list) {
   `;
 
   const rows = (list.pilgrims || [])
-    .map((p, i) => `<tr>
+    .map(
+      (p, i) => `<tr>
       <td style="width:40px">${i + 1}</td>
       <td>${escapeHtml(p.nom)} ${escapeHtml(p.prenoms)}</td>
       <td style="width:120px">${p.sexe === "F" ? "Femme" : "Homme"}</td>
-    </tr>`).join("");
+    </tr>`
+    )
+    .join("");
 
   const w = window.open("", "_blank", "width=1024,height=768");
   if (!w) return;
@@ -534,8 +667,15 @@ function printList(list) {
 
       <table>
         <thead><tr><th>#</th><th>Nom du Pèlerin</th><th>Genre</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="3">Aucun pèlerin</td></tr>`}</tbody>
-        <tfoot><tr><td colspan="3">Imprimé le ${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</td></tr></tfoot>
+        <tbody>${
+          rows || `<tr><td colspan="3">Aucun pèlerin</td></tr>`
+        }</tbody>
+        <tfoot><tr><td colspan="3">Imprimé le ${now.toLocaleDateString(
+          "fr-FR"
+        )} à ${now.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}</td></tr></tfoot>
       </table>
       
       <script>window.onload = () => window.print();</script>
@@ -549,11 +689,16 @@ function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 fade-in">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 w-[min(720px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sky-100 bg-white p-5 shadow-2xl"
-           style={{ animation: "slideUp .35s ease both" }}>
+      <div
+        className="absolute left-1/2 top-1/2 w-[min(720px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sky-100 bg-white p-5 shadow-2xl"
+        style={{ animation: "slideUp .35s ease both" }}
+      >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-          <button onClick={onClose} className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 btn-press">
+          <button
+            onClick={onClose}
+            className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 btn-press"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -570,11 +715,25 @@ function Labelled({ label, children }) {
     </label>
   );
 }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 function formatDateFR(d) {
   if (!d) return "—";
   const dt = new Date(d);
   if (isNaN(dt)) return d;
-  return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  return dt.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 }
-function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;"," >":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[m]));
+}

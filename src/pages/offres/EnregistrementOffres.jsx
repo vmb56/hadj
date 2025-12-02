@@ -10,38 +10,22 @@ import React, { useEffect, useMemo, useState } from "react";
      DELETE /api/offres/:id        -> { ok:true }
 ----------------------------------------------------------- */
 
-/* ===== CONFIG API (Vite / CRA / window.__API_URL__) ===== */
+/* ===== CONFIG API ===== */
 const TOKEN_KEY = "bmvt_token";
 
 function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
-}
-function getApiBase() {
-  let vite, cra, win;
-  try { vite = typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL; } catch {}
   try {
-    cra =
-      typeof process !== "undefined" &&
-      (process?.env?.VITE_API_URL || process?.env?.REACT_APP_API_URL || process?.env?.API_URL);
-  } catch {}
-  try { win = typeof window !== "undefined" ? window.__API_URL__ : undefined; } catch {}
-
-  let base = vite || cra || win || "http://localhost:4000";
-  if (typeof base !== "string") base = String(base ?? "");
-  return base.replace(/\/+$/, "");
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
-const API_BASE = getApiBase();
 
-// Même origine ? -> include, sinon omit (évite erreurs CORS)
-const SAME_ORIGIN =
-  typeof window !== "undefined"
-    ? (!API_BASE || API_BASE === "" || API_BASE.startsWith(window.location.origin))
-    : false;
-const FETCH_CREDENTIALS = SAME_ORIGIN ? "include" : "omit";
-
-// safeURL("/api/offres") → absolue
-const safeURL = (path) =>
-  new URL(path, (API_BASE || (typeof window !== "undefined" ? window.location.origin : "")) + "/").toString();
+/**
+ * 🔗 API fixe en prod : https://hadjbackend.onrender.com
+ * (si tu veux, tu pourras rebrancher VITE_API_URL au-dessus)
+ */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 /* ===== Helpers UI ===== */
 const fmtMoney = (n) =>
@@ -56,7 +40,7 @@ const toFR = (iso) => {
 /* ===== API ===== */
 const api = {
   async list(search = "") {
-    const url = new URL(safeURL("/api/offres"));
+    const url = new URL(`${API_BASE.replace(/\/+$/, "")}/api/offres`);
     if (search) url.searchParams.set("search", search);
 
     const res = await fetch(url.toString(), {
@@ -64,7 +48,8 @@ const api = {
         Accept: "application/json",
         ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       },
-      credentials: FETCH_CREDENTIALS,
+      // 🔐 pas de cookies, comme AjoutMedicale
+      credentials: "omit",
     }).catch((e) => {
       console.error("[offres] list network error:", e);
       throw new Error("Réseau/CORS: impossible de joindre l’API");
@@ -72,17 +57,20 @@ const api = {
 
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+      try {
+        const j = await res.json();
+        msg = j?.message || j?.error || msg;
+      } catch {}
       throw new Error(msg);
     }
+
     const j = await res.json();
-    // La route renvoie déjà dateDepart/dateArrivee (alias camelCase)
     return Array.isArray(j?.items) ? j.items : [];
   },
 
   async create(payload) {
     // payload attendu: { nom, prix, hotel, date_depart, date_arrivee }
-    const res = await fetch(safeURL("/api/offres"), {
+    const res = await fetch(`${API_BASE.replace(/\/+$/, "")}/api/offres`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -90,52 +78,69 @@ const api = {
         ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       },
       body: JSON.stringify(payload),
-      credentials: FETCH_CREDENTIALS,
+      credentials: "omit",
     }).catch((e) => {
       console.error("[offres] create network error:", e);
       throw new Error("Réseau/CORS: impossible de joindre l’API");
     });
 
-    let j = null; try { j = await res.json(); } catch {}
+    let j = null;
+    try {
+      j = await res.json();
+    } catch {}
+
     if (!res.ok) throw new Error(j?.message || j?.error || `HTTP ${res.status}`);
     return j;
   },
 
   async update(id, payload) {
-    const res = await fetch(safeURL(`/api/offres/${id}`), {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: JSON.stringify(payload),
-      credentials: FETCH_CREDENTIALS,
-    }).catch((e) => {
+    const res = await fetch(
+      `${API_BASE.replace(/\/+$/, "")}/api/offres/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        credentials: "omit",
+      }
+    ).catch((e) => {
       console.error("[offres] update network error:", e);
       throw new Error("Réseau/CORS: impossible de joindre l’API");
     });
 
-    let j = null; try { j = await res.json(); } catch {}
+    let j = null;
+    try {
+      j = await res.json();
+    } catch {}
+
     if (!res.ok) throw new Error(j?.message || j?.error || `HTTP ${res.status}`);
     return j;
   },
 
   async remove(id) {
-    const res = await fetch(safeURL(`/api/offres/${id}`), {
-      method: "DELETE",
-      headers: {
-        Accept: "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      credentials: FETCH_CREDENTIALS,
-    }).catch((e) => {
+    const res = await fetch(
+      `${API_BASE.replace(/\/+$/, "")}/api/offres/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+        credentials: "omit",
+      }
+    ).catch((e) => {
       console.error("[offres] remove network error:", e);
       throw new Error("Réseau/CORS: impossible de joindre l’API");
     });
 
     if (!res.ok) {
-      let j = null; try { j = await res.json(); } catch {}
+      let j = null;
+      try {
+        j = await res.json();
+      } catch {}
       throw new Error(j?.message || j?.error || `HTTP ${res.status}`);
     }
     return { ok: true };
@@ -151,12 +156,19 @@ export default function EnregistrementOffres() {
   const [q, setQ] = useState("");
 
   const [form, setForm] = useState({
-    id: null, nom: "", prix: "", hotel: "", dateDepart: "", dateArrivee: "",
+    id: null,
+    nom: "",
+    prix: "",
+    hotel: "",
+    dateDepart: "",
+    dateArrivee: "",
   });
+
   const isEditing = form.id != null;
 
   async function reload() {
-    setLoading(true); setErr("");
+    setLoading(true);
+    setErr("");
     try {
       const items = await api.list(q.trim());
       setRows(items);
@@ -168,13 +180,16 @@ export default function EnregistrementOffres() {
     }
   }
 
-  useEffect(() => { reload(); }, []); // au montage
+  useEffect(() => {
+    reload();
+  }, []); // au montage
 
   const onChange = (e) => {
     const { name, value } = e.target;
     if (name === "prix") {
       const v = value.replace(/\s/g, "");
-      if (v === "" || /^\d+$/.test(v)) setForm((f) => ({ ...f, prix: v }));
+      if (v === "" || /^\d+$/.test(v))
+        setForm((f) => ({ ...f, prix: v }));
       return;
     }
     setForm((f) => ({ ...f, [name]: value }));
@@ -188,13 +203,20 @@ export default function EnregistrementOffres() {
     if (!v.dateDepart) e.dateDepart = "Date de départ requise";
     if (!v.dateArrivee) e.dateArrivee = "Date d’arrivée requise";
     if (v.dateDepart && v.dateArrivee && v.dateArrivee < v.dateDepart) {
-      e.dateArrivee = "Arrivée doit être après le départ";
+      e.dateArrivee = "La date d’arrivée doit être après la date de départ";
     }
     return e;
   }
 
   const resetForm = () =>
-    setForm({ id: null, nom: "", prix: "", hotel: "", dateDepart: "", dateArrivee: "" });
+    setForm({
+      id: null,
+      nom: "",
+      prix: "",
+      hotel: "",
+      dateDepart: "",
+      dateArrivee: "",
+    });
 
   const onRowClick = (r) => {
     // r vient déjà en camelCase de l’API: dateDepart/dateArrivee
@@ -203,8 +225,8 @@ export default function EnregistrementOffres() {
       nom: r.nom || "",
       prix: String(r.prix ?? ""),
       hotel: r.hotel || "",
-      dateDepart: (r.dateDepart || "").slice(0,10),
-      dateArrivee: (r.dateArrivee || "").slice(0,10),
+      dateDepart: (r.dateDepart || "").slice(0, 10),
+      dateArrivee: (r.dateArrivee || "").slice(0, 10),
     });
   };
 
@@ -247,7 +269,6 @@ export default function EnregistrementOffres() {
         nom: form.nom.trim(),
         prix: Number(form.prix || 0),
         hotel: form.hotel.trim(),
-        // Backend attend snake_case
         date_depart: form.dateDepart,
         date_arrivee: form.dateArrivee,
       });
@@ -284,24 +305,30 @@ export default function EnregistrementOffres() {
     <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
       <div className="text-center mb-6">
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide text-blue-700">
-          ENREGISTREMENT OFFRES
+          ENREGISTREMENT DES OFFRES
         </h1>
       </div>
 
+      {/* Formulaire */}
       <div className="rounded-2xl border border-blue-100 bg-white p-4 sm:p-6 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Nom offres">
+          <Field label="Nom de l’offre">
             <input
-              name="nom" value={form.nom} onChange={onChange}
+              name="nom"
+              value={form.nom}
+              onChange={onChange}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
               placeholder="OPTION 1"
             />
           </Field>
 
-          <Field label="Prix offres (FCFA)">
+          <Field label="Prix de l’offre (FCFA)">
             <div className="flex items-center gap-2">
               <input
-                name="prix" inputMode="numeric" value={form.prix} onChange={onChange}
+                name="prix"
+                inputMode="numeric"
+                value={form.prix}
+                onChange={onChange}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300 font-mono"
                 placeholder="5350000"
               />
@@ -309,24 +336,32 @@ export default function EnregistrementOffres() {
             </div>
           </Field>
 
-          <Field label="Hotel">
+          <Field label="Hôtel">
             <input
-              name="hotel" value={form.hotel} onChange={onChange}
+              name="hotel"
+              value={form.hotel}
+              onChange={onChange}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
               placeholder="HOTEL RIYAD DEEFAH"
             />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Date départ">
+            <Field label="Date de départ">
               <input
-                type="date" name="dateDepart" value={form.dateDepart} onChange={onChange}
+                type="date"
+                name="dateDepart"
+                value={form.dateDepart}
+                onChange={onChange}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
               />
             </Field>
-            <Field label="Date arrivée">
+            <Field label="Date d’arrivée">
               <input
-                type="date" name="dateArrivee" value={form.dateArrivee} onChange={onChange}
+                type="date"
+                name="dateArrivee"
+                value={form.dateArrivee}
+                onChange={onChange}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
               />
             </Field>
@@ -352,38 +387,45 @@ export default function EnregistrementOffres() {
 
           <div className="ml-auto flex items-center gap-2">
             <input
-              type="search" value={q} onChange={(e)=>setQ(e.target.value)}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
               placeholder="Rechercher (nom, hôtel)…"
               className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-2 ring-transparent focus:ring-blue-300"
-              onKeyDown={(e)=>{ if(e.key==='Enter') reload(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") reload();
+              }}
             />
             <Button onClick={reload}>Rechercher</Button>
           </div>
         </div>
 
-        {loading && <p className="text-slate-500 text-sm mt-2">Chargement…</p>}
+        {loading && (
+          <p className="text-slate-500 text-sm mt-2">Chargement…</p>
+        )}
         {err && (
           <div className="text-rose-600 text-sm mt-2">
             {err}
             <div className="text-[11px] text-slate-500 mt-1">
-              API_BASE: <span className="font-mono">{API_BASE || "(vide)"}</span>{" "}
-              — credentials: <span className="font-mono">{FETCH_CREDENTIALS}</span>
+              API_BASE:{" "}
+              <span className="font-mono">{API_BASE}</span>
             </div>
           </div>
         )}
       </div>
 
+      {/* Tableau des offres */}
       <div className="mt-6 rounded-2xl border border-blue-100 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[900px] w-full text-[14px]">
             <thead>
               <tr className="bg-blue-50 text-blue-700">
-                <Th>IDENTIFIANT DE OFFRES</Th>
-                <Th>NOM OFFRES</Th>
-                <Th>PRIX OFFRES</Th>
-                <Th>HOTEL</Th>
-                <Th>DATE DEPART</Th>
-                <Th>DATEARRIVE</Th>
+                <Th>IDENTIFIANT OFFRE</Th>
+                <Th>NOM OFFRE</Th>
+                <Th>PRIX OFFRE</Th>
+                <Th>HÔTEL</Th>
+                <Th>DATE DÉPART</Th>
+                <Th>DATE ARRIVÉE</Th>
               </tr>
             </thead>
             <tbody>
@@ -396,10 +438,16 @@ export default function EnregistrementOffres() {
                 >
                   <Td className="text-slate-500">{r.id}</Td>
                   <Td className="font-medium text-slate-900">{r.nom}</Td>
-                  <Td className="font-mono">{fmtMoney(r.prix)} FCFA</Td>
+                  <Td className="font-mono">
+                    {fmtMoney(r.prix)} FCFA
+                  </Td>
                   <Td className="text-slate-700">{r.hotel}</Td>
-                  <Td className="text-slate-700">{toFR((r.dateDepart || "").slice(0,10))}</Td>
-                  <Td className="text-slate-700">{toFR((r.dateArrivee || "").slice(0,10))}</Td>
+                  <Td className="text-slate-700">
+                    {toFR((r.dateDepart || "").slice(0, 10))}
+                  </Td>
+                  <Td className="text-slate-700">
+                    {toFR((r.dateArrivee || "").slice(0, 10))}
+                  </Td>
                 </tr>
               ))}
               {tableRows.length === 0 && !loading && (
@@ -421,15 +469,20 @@ export default function EnregistrementOffres() {
 function Field({ label, children }) {
   return (
     <div className="grid gap-1">
-      <span className="text-[12px] font-semibold text-blue-700">{label}</span>
+      <span className="text-[12px] font-semibold text-blue-700">
+        {label}
+      </span>
       {children}
     </div>
   );
 }
+
 function Button({ children, tone = "default", className = "", ...props }) {
   const styles = {
-    default: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-    primary: "border border-transparent bg-blue-600 text-white hover:bg-blue-700",
+    default:
+      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    primary:
+      "border border-transparent bg-blue-600 text-white hover:bg-blue-700",
     warn: "border border-transparent bg-rose-600 text-white hover:bg-rose-700",
   };
   return (
@@ -442,6 +495,7 @@ function Button({ children, tone = "default", className = "", ...props }) {
     </button>
   );
 }
+
 function Th({ children }) {
   return (
     <th className="text-left px-4 py-3 text-[12px] uppercase tracking-wide whitespace-nowrap">
@@ -449,9 +503,13 @@ function Th({ children }) {
     </th>
   );
 }
+
 function Td({ children, className = "", colSpan }) {
   return (
-    <td colSpan={colSpan} className={`px-4 py-3 align-middle whitespace-nowrap ${className}`}>
+    <td
+      colSpan={colSpan}
+      className={`px-4 py-3 align-middle whitespace-nowrap ${className}`}
+    >
       {children}
     </td>
   );

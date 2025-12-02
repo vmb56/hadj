@@ -1,12 +1,8 @@
 // src/pages/Impression-photo-passeport.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+/* ========= Config API — backend Render BMVT ========= */
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -94,7 +90,11 @@ export default function ImpressionPhotoPasseport() {
     const hdrs = { ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
     async function call(url) {
-      const res = await fetch(url, { headers: hdrs, credentials: "include" });
+      const res = await fetch(url, {
+        headers: hdrs,
+        // backend Render : pas de cookies
+        credentials: "omit",
+      });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
         try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
@@ -105,14 +105,14 @@ export default function ImpressionPhotoPasseport() {
 
     try {
       // tentative #1 : endpoint direct des photos
-      const url1 = new URL(`${API_BASE}/api/pelerins/passport-photos`);
+      const url1 = new URL(`${API_BASE.replace(/\/+$/, "")}/api/pelerins/passport-photos`);
       url1.searchParams.set("passport", p);
       let j = await call(url1.toString());
 
       let item = Array.isArray(j) ? j[0] : j;
       if (!item || typeof item !== "object") {
         // tentative #2 : endpoint générique by-passport (retourne le pelerin complet)
-        const url2 = new URL(`${API_BASE}/api/pelerins/by-passport`);
+        const url2 = new URL(`${API_BASE.replace(/\/+$/, "")}/api/pelerins/by-passport`);
         url2.searchParams.set("passport", p);
         j = await call(url2.toString());
         item = Array.isArray(j) ? j[0] : j;
@@ -164,7 +164,7 @@ export default function ImpressionPhotoPasseport() {
 
   function handlePrint() {
     if (!record || (!record.recto && !record.verso)) {
-      alert("Aucune photo trouvée pour ce numéro de passeport.");
+      alert("Aucune photo trouvée pentru ce numéro de passeport.");
       return;
     }
     window.print();

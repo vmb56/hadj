@@ -1,5 +1,5 @@
 // src/layout/mainlayout.jsx
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import LogoutButton from "../components/LogoutButton.jsx";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
@@ -16,7 +16,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Bell,
   LayoutDashboard,
   Sun,
   Moon,
@@ -29,9 +28,11 @@ import useAuthUser from "../hooks/useAuthUser";
 import Logo from "../pages/pelerins/Logo.png";
 
 /** Thème clair / sombre */
-const APP_GRADIENT_LIGHT = "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
+const APP_GRADIENT_LIGHT =
+  "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-600";
 const CONTENT_BG_LIGHT = "bg-slate-100";
-const APP_GRADIENT_DARK = "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-700";
+const APP_GRADIENT_DARK =
+  "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-700";
 const CONTENT_BG_DARK = "bg-slate-900";
 
 /** Chrome latéral (verre) */
@@ -43,8 +44,7 @@ const linkBase =
   "group relative flex items-center gap-3 rounded-xl px-3 py-2 font-semibold outline-none transition-all duration-200 will-change-transform";
 const linkIdle =
   "text-white/90 hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40";
-const linkActive =
-  "text-blue-700 bg-white shadow ring-2 ring-blue-300";
+const linkActive = "text-blue-700 bg-white shadow ring-2 ring-blue-300";
 
 /** Petite barre d’accent à gauche */
 function ActiveAccent() {
@@ -55,6 +55,16 @@ function ActiveAccent() {
 
 export default function MainLayout() {
   const authUser = useAuthUser();
+
+  // === Infos utilisateur connecté ===
+  const fullName =
+    authUser?.name?.trim() ||
+    authUser?.email?.split("@")[0] ||
+    "Utilisateur";
+
+  const roleLabel = authUser?.role || "—";
+  const role = (authUser?.role || "").toLowerCase();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { pathname } = useLocation();
@@ -64,20 +74,22 @@ export default function MainLayout() {
     const v = localStorage.getItem("app_theme") || "light";
     return v === "dark" ? "dark" : "light";
   });
+
   useEffect(() => {
     localStorage.setItem("app_theme", theme);
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("app-dark");
     else root.classList.remove("app-dark");
   }, [theme]);
+
   const isDark = theme === "dark";
   const APP_GRADIENT = isDark ? APP_GRADIENT_DARK : APP_GRADIENT_LIGHT;
   const CONTENT_BG = isDark ? CONTENT_BG_DARK : CONTENT_BG_LIGHT;
 
-  /** ====== Taille de police ====== */
+  /** ====== Base font ====== */
   const baseFont = 16;
 
-  // Ferme le menu mobile quand on change de page
+  // Fermer drawer mobile au changement de route
   useEffect(() => setMobileOpen(false), [pathname]);
 
   // Bloquer scroll body quand menu mobile ouvert
@@ -99,31 +111,7 @@ export default function MainLayout() {
       .join(" ");
   }, [pathname]);
 
-  /** ====== Notifications (mock) ====== */
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: "n1", title: "Nouveau pèlerin ajouté", ts: "Il y a 5 min", read: false },
-    { id: "n2", title: "Paiement partiel enregistré", ts: "Hier", read: false },
-    { id: "n3", title: "Export vols généré", ts: "Lun 10:43", read: true },
-  ]);
-  const unread = notifications.filter((n) => !n.read).length;
-  const notifRef = useRef(null);
-
-  useEffect(() => {
-    function onDocClick(e) {
-      if (!notifRef.current) return;
-      if (!notifRef.current.contains(e.target)) setNotifOpen(false);
-    }
-    if (notifOpen) document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [notifOpen]);
-
-  function markAllRead() {
-    setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
-  }
-
   /** ====== Permissions par rôle ====== */
-  const role = (authUser?.role || "").toLowerCase();
   const isAdmin = role === "admin";
   const isAgent = role === "agent";
   const isSuperviseur = role === "superviseur";
@@ -142,6 +130,28 @@ export default function MainLayout() {
     if (key === "comptes") return false;
     return true;
   }
+
+  // Style dynamique badge rôle
+  const roleBadgeClass = (() => {
+    if (role === "admin") {
+      return isDark
+        ? "bg-rose-500/20 text-rose-100 border border-rose-500/60"
+        : "bg-rose-50 text-rose-700 border border-rose-200";
+    }
+    if (role === "superviseur") {
+      return isDark
+        ? "bg-violet-500/20 text-violet-100 border border-violet-500/60"
+        : "bg-violet-50 text-violet-700 border border-violet-200";
+    }
+    if (role === "agent") {
+      return isDark
+        ? "bg-emerald-500/20 text-emerald-100 border border-emerald-500/60"
+        : "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    }
+    return isDark
+      ? "bg-blue-500/20 text-blue-100 border border-blue-500/60"
+      : "bg-blue-50 text-blue-700 border border-blue-200";
+  })();
 
   return (
     <div
@@ -195,11 +205,7 @@ export default function MainLayout() {
         <div className="relative px-4 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm shrink-0">
-              <img
-                src={Logo}
-                alt="Logo BMVT"
-                className="h-8 w-8 object-contain"
-              />
+              <img src={Logo} alt="Logo BMVT" className="h-8 w-8 object-contain" />
             </div>
 
             {!collapsed && (
@@ -230,43 +236,108 @@ export default function MainLayout() {
         <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
           {canSee("dashboard") && (
             <Section title="Tableau de bord" collapsed={collapsed}>
-              <Item to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" collapsed={collapsed} />
+              <Item
+                to="/tableau-de-bord"
+                icon={LayoutDashboard}
+                label="Tableau de bord"
+                collapsed={collapsed}
+              />
             </Section>
           )}
 
           <Section title="Pèlerins" collapsed={collapsed}>
-            <Item to="/pelerins" icon={Users} label="Ajouter / Liste" collapsed={collapsed} />
-            <Item to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" collapsed={collapsed} />
-            <Item to="/stats-pelerins" icon={BarChart3} label="Statistiques" collapsed={collapsed} />
-            <Item to="/listes-pelerins" icon={List} label="Lists-pelerins" collapsed={collapsed} />
+            <Item
+              to="/pelerins"
+              icon={Users}
+              label="Ajouter / Liste"
+              collapsed={collapsed}
+            />
+            <Item
+              to="/Impressions-Pelerins"
+              icon={Printer}
+              label="Impression fiche"
+              collapsed={collapsed}
+            />
+            <Item
+              to="/stats-pelerins"
+              icon={BarChart3}
+              label="Statistiques"
+              collapsed={collapsed}
+            />
+            <Item
+              to="/listes-pelerins"
+              icon={List}
+              label="Lists-pelerins"
+              collapsed={collapsed}
+            />
           </Section>
 
           <Section title="Médicale" collapsed={collapsed}>
-            <Item to="/medicale" icon={Stethoscope} label="Suivi médical" collapsed={collapsed} />
+            <Item
+              to="/medicale"
+              icon={Stethoscope}
+              label="Suivi médical"
+              collapsed={collapsed}
+            />
           </Section>
 
           <Section title="Offres" collapsed={collapsed}>
-            <Item to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" collapsed={collapsed} />
+            <Item
+              to="/Enregistrement_Offres"
+              icon={HandCoins}
+              label="Enregistrement Des Offres"
+              collapsed={collapsed}
+            />
           </Section>
 
           <Section title="Paiement" collapsed={collapsed}>
-            <Item to="/paiement" icon={Wallet} label="Règlements & échéances" collapsed={collapsed} />
-            <Item to="/factures" icon={FileText} label="Factures" collapsed={collapsed} />
+            <Item
+              to="/paiement"
+              icon={Wallet}
+              label="Règlements & échéances"
+              collapsed={collapsed}
+            />
+            <Item
+              to="/factures"
+              icon={FileText}
+              label="Factures"
+              collapsed={collapsed}
+            />
           </Section>
 
           <Section title="Voyage" collapsed={collapsed}>
-            <Item to="/voyages" icon={Plane} label="Voyages" collapsed={collapsed} />
-            <Item to="/voyage" icon={Plane} label="Vols & Chambres" collapsed={collapsed} />
+            <Item
+              to="/voyages"
+              icon={Plane}
+              label="Voyages"
+              collapsed={collapsed}
+            />
+            <Item
+              to="/voyage"
+              icon={Plane}
+              label="Vols & Chambres"
+              collapsed={collapsed}
+            />
           </Section>
 
           <Section title="Utilisateurs" collapsed={collapsed}>
             {canSee("comptes") && (
-              <Item to="/utilisateurs" icon={UserCircle2} label="Comptes" collapsed={collapsed} />
+              <Item
+                to="/utilisateurs"
+                icon={UserCircle2}
+                label="Comptes"
+                collapsed={collapsed}
+              />
             )}
           </Section>
 
           <Section title="AGENCE" collapsed={collapsed}>
-            <Item to="/Discussion" icon={House} label="Disscusion Entre Agence" collapsed={collapsed} />
+            <Item
+              to="/Discussion"
+              icon={House}
+              label="Disscusion Entre Agence"
+              collapsed={collapsed}
+            />
           </Section>
         </nav>
       </aside>
@@ -276,16 +347,23 @@ export default function MainLayout() {
         {/* Topbar */}
         <header
           className={`sticky top-0 z-30 border-b ${
-            isDark ? "border-slate-800 bg-slate-900/80" : "border-slate-200/60 bg-white/70"
+            isDark
+              ? "border-slate-800 bg-slate-900/80"
+              : "border-slate-200/60 bg-white/70"
           } backdrop-blur supports-[backdrop-filter]:bg-white/60`}
         >
           <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 h-[60px] sm:h-[70px] flex items-center justify-between gap-3">
+            {/* Gauche : titre page */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setMobileOpen(true)}
                 className="rounded-lg p-2 hover:bg-blue-50/30 focus-visible:ring-2 focus-visible:ring-blue-300 md:hidden transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
               >
-                <Menu className={`${isDark ? "text-slate-100" : "text-blue-700"} icon-dyn`} />
+                <Menu
+                  className={`icon-dyn ${
+                    isDark ? "text-slate-100" : "text-blue-700"
+                  }`}
+                />
               </button>
               <div
                 className={`hidden md:block text-dyn-title ${
@@ -294,7 +372,6 @@ export default function MainLayout() {
               >
                 {pageTitle}
               </div>
-              {/* Sur mobile on peut afficher un titre plus petit si tu veux */}
               <div
                 className={`md:hidden text-sm font-semibold ${
                   isDark ? "text-slate-100" : "text-slate-800"
@@ -304,20 +381,28 @@ export default function MainLayout() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Droite : actions + profil responsive */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Thème */}
               <button
-                className="btn-chips shine-on-hover"
-                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-                title={isDark ? "Passer en thème clair" : "Passer en thème sombre"}
+                className="btn-chips shine-on-hover hidden xs:inline-flex"
+                onClick={() =>
+                  setTheme((t) => (t === "dark" ? "light" : "dark"))
+                }
+                title={
+                  isDark ? "Passer en thème clair" : "Passer en thème sombre"
+                }
               >
-                {isDark ? <Sun className="icon-dyn-sm" /> : <Moon className="icon-dyn-sm" />}
+                {isDark ? (
+                  <Sun className="icon-dyn-sm" />
+                ) : (
+                  <Moon className="icon-dyn-sm" />
+                )}
               </button>
 
-              {/* Déconnexion (desktop) */}
+              {/* Déconnexion (desktop uniquement) */}
               <LogoutButton
-                className={`hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-1.5 font-semibold 
+                className={`hidden md:inline-flex items-center gap-2 rounded-xl px-3 py-1.5 font-semibold 
                             transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.98] ring-1
                             ${
                               isDark
@@ -326,86 +411,39 @@ export default function MainLayout() {
                             }`}
               />
 
-              <div className={`hidden sm:block h-8 w-[1px] ${isDark ? "bg-slate-700" : "bg-slate-200"} mx-1`} />
-
-              {/* Notifications */}
-              <div className="relative" ref={notifRef}>
-                <button
-                  className="btn-chips shine-on-hover relative pr-3"
-                  onClick={() => setNotifOpen((v) => !v)}
-                  title="Notifications"
-                >
-                  <Bell className="icon-dyn-sm transition-transform duration-200" />
-                  {unread > 0 && (
-                    <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-white">
-                      {unread}
-                    </span>
-                  )}
-                </button>
-
-                {notifOpen && (
-                  <div
-                    className={`absolute right-0 mt-2 w-80 rounded-2xl border p-3 shadow-xl panel-card ${
-                      isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
-                    }`}
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="font-bold">Notifications</div>
-                      {unread > 0 && (
-                        <button onClick={markAllRead} className="text-dyn-xs text-blue-600 hover:underline">
-                          Tout marquer comme lu
-                        </button>
-                      )}
-                    </div>
-                    <ul className="max-h-80 overflow-auto space-y-2">
-                      {notifications.map((n) => (
-                        <li
-                          key={n.id}
-                          className={`rounded-xl border p-2.5 ${
-                            isDark ? "border-slate-700 bg-slate-900/40" : "border-slate-200 bg-slate-50"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}>
-                                {n.title}
-                              </div>
-                              <div className="text-dyn-xs text-slate-500">{n.ts}</div>
-                            </div>
-                            {!n.read && <span className="mt-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-rose-600" />}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Profil rapide */}
+              {/* Profil rapide : avatar + badge NOM • RÔLE */}
               {(() => {
-                const fullName =
-                  authUser?.name?.trim() || authUser?.email?.split("@")[0] || "Compte";
-                const roleLabel = authUser?.role || "—";
                 const seed = encodeURIComponent(fullName);
                 const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
+
                 return (
                   <div
-                    className={`hidden xs:flex items-center gap-3 rounded-xl border ${
-                      isDark ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"
-                    } px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+                    className={`flex items-center gap-2 sm:gap-3 rounded-2xl border ${
+                      isDark
+                        ? "border-slate-700 bg-slate-800/95"
+                        : "border-slate-200 bg-white/95"
+                    } px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md max-w-[70vw]`}
                     title={authUser?.email || ""}
                   >
                     <img
                       src={avatar}
                       alt={fullName}
-                      className="rounded-full ring-1 ring-slate-200 object-cover transition-transform duration-200 hover:scale-105"
-                      style={{ width: `calc(var(--app-fs) + 10px)`, height: `calc(var(--app-fs) + 10px)` }}
+                      className="rounded-full ring-2 ring-blue-400/70 object-cover transition-transform duration-200 hover:scale-105"
+                      style={{
+                        width: `calc(var(--app-fs) + 6px)`,
+                        height: `calc(var(--app-fs) + 6px)`,
+                      }}
                     />
-                    <div className="hidden sm:block">
-                      <div className={`${isDark ? "text-slate-100" : "text-slate-800"} font-semibold text-dyn-sm truncate`}>
-                        {fullName}
-                      </div>
-                      <div className="text-slate-500 text-dyn-xs truncate">{roleLabel}</div>
+                    <div className="flex flex-col min-w-0">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 sm:px-3 py-[2px] text-[10px] sm:text-[11px] font-semibold ${roleBadgeClass}`}
+                        title={`${fullName} • ${roleLabel}`}
+                      >
+                        <UserCircle2 className="h-3 w-3" />
+                        <span className="truncate max-w-[9rem] sm:max-w-[12rem]">
+                          {fullName} • {roleLabel}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 );
@@ -437,14 +475,12 @@ export default function MainLayout() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="h-9 w-9 rounded-xl bg-white/90 flex items-center justify-center ring-1 ring-white/60 overflow-hidden shadow-sm shrink-0">
-                    <img
-                      src={Logo}
-                      alt="Logo BMVT"
-                      className="h-8 w-8 object-contain"
-                    />
+                    <img src={Logo} alt="Logo BMVT" className="h-8 w-8 object-contain" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <div className="text-white text-dyn-brand truncate">BMVT HADJ &amp; OUMRA</div>
+                    <div className="text-white text-dyn-brand truncate">
+                      BMVT HADJ &amp; OUMRA
+                    </div>
                     <div className="text-[11px] uppercase tracking-[0.2em] text-white/70 truncate">
                       Bakayoko Mawa Voyages &amp; Tourismes
                     </div>
@@ -462,41 +498,89 @@ export default function MainLayout() {
               <nav className="p-3 space-y-5 overflow-y-auto h-[calc(100%-56px)]">
                 {canSee("dashboard") && (
                   <MobileGroup title="Tableau de bord">
-                    <MobileItem to="/tableau-de-bord" icon={LayoutDashboard} label="Tableau de bord" />
+                    <MobileItem
+                      to="/tableau-de-bord"
+                      icon={LayoutDashboard}
+                      label="Tableau de bord"
+                    />
                   </MobileGroup>
                 )}
 
                 <MobileGroup title="Pèlerins">
                   <MobileItem to="/pelerins" icon={Users} label="Ajouter / Liste" />
-                  <MobileItem to="/Impressions-Pelerins" icon={Printer} label="Impression fiche" />
-                  <MobileItem to="/stats-pelerins" icon={BarChart3} label="Statistiques" />
-                  <MobileItem to="/listes-pelerins" icon={List} label="Lists Pilgrims" />
-                </MobileGroup>
-                <MobileGroup title="Médicale">
-                  <MobileItem to="/medicale" icon={Stethoscope} label="Suivi médical" />
-                </MobileGroup>
-                <MobileGroup title="Offres">
-                  <MobileItem to="/Enregistrement_Offres" icon={HandCoins} label="Enregistrement Des Offres" />
-                </MobileGroup>
-                <MobileGroup title="Paiement">
-                  <MobileItem to="/paiement" icon={Wallet} label="Règlements & échéances" />
-                  <MobileItem to="/factures" icon={FileText} label="Factures" />
-                </MobileGroup>
-                <MobileGroup title="Voyage">
-                  <MobileItem to="/voyage" icon={Plane} label="Vols & Chambres" />
-                  <MobileItem to="/voyages" icon={Plane} label="Voyages" />
-                </MobileGroup>
-                <MobileGroup title="Utilisateurs">
-                  {canSee("comptes") && <MobileItem to="/utilisateurs" icon={UserCircle2} label="Comptes" />}
-                </MobileGroup>
-                <MobileGroup title="Agence">
-                  <MobileItem to="/Discussion" icon={House} label="Disscusion Entre Agence" />
+                  <MobileItem
+                    to="/Impressions-Pelerins"
+                    icon={Printer}
+                    label="Impression fiche"
+                  />
+                  <MobileItem
+                    to="/stats-pelerins"
+                    icon={BarChart3}
+                    label="Statistiques"
+                  />
+                  <MobileItem
+                    to="/listes-pelerins"
+                    icon={List}
+                    label="Lists Pilgrims"
+                  />
                 </MobileGroup>
 
-                {/* Déconnexion (mobile) */}
+                <MobileGroup title="Médicale">
+                  <MobileItem
+                    to="/medicale"
+                    icon={Stethoscope}
+                    label="Suivi médical"
+                  />
+                </MobileGroup>
+
+                <MobileGroup title="Offres">
+                  <MobileItem
+                    to="/Enregistrement_Offres"
+                    icon={HandCoins}
+                    label="Enregistrement Des Offres"
+                  />
+                </MobileGroup>
+
+                <MobileGroup title="Paiement">
+                  <MobileItem
+                    to="/paiement"
+                    icon={Wallet}
+                    label="Règlements & échéances"
+                  />
+                  <MobileItem to="/factures" icon={FileText} label="Factures" />
+                </MobileGroup>
+
+                <MobileGroup title="Voyage">
+                  <MobileItem
+                    to="/voyage"
+                    icon={Plane}
+                    label="Vols & Chambres"
+                  />
+                  <MobileItem to="/voyages" icon={Plane} label="Voyages" />
+                </MobileGroup>
+
+                <MobileGroup title="Utilisateurs">
+                  {canSee("comptes") && (
+                    <MobileItem
+                      to="/utilisateurs"
+                      icon={UserCircle2}
+                      label="Comptes"
+                    />
+                  )}
+                </MobileGroup>
+
+                <MobileGroup title="Agence">
+                  <MobileItem
+                    to="/Discussion"
+                    icon={House}
+                    label="Disscusion Entre Agence"
+                  />
+                </MobileGroup>
+
+                {/* Déconnexion mobile */}
                 <div className="pt-2">
                   <LogoutButton
-                    className={`w-full inline-flex items-center gap-2 rounded-xl px-3 py-2.5 font-semibold 
+                    className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 font-semibold 
                                 transition-all duration-200 hover:translate-x-1 ring-1
                                 ${
                                   isDark
@@ -568,7 +652,9 @@ function Item({ to, icon: Icon, label, collapsed }) {
 function MobileGroup({ title, children }) {
   return (
     <div>
-      <div className="mb-1 text-white/90 text-dyn-xs font-black uppercase tracking-widest">{title}</div>
+      <div className="mb-1 text-white/90 text-dyn-xs font-black uppercase tracking-widest">
+        {title}
+      </div>
       <div className="space-y-1.5">{children}</div>
     </div>
   );
@@ -581,7 +667,11 @@ function MobileItem({ to, icon: Icon, label }) {
       end
       className={({ isActive }) =>
         `flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold transition-all duration-200 text-dyn
-         ${isActive ? "bg-white/15 text-white ring-2 ring-white/40" : "text-white/90 hover:bg-white/10 hover:translate-x-1"}`
+         ${
+           isActive
+             ? "bg-white/15 text-white ring-2 ring-white/40"
+             : "text-white/90 hover:bg-white/10 hover:translate-x-1"
+         }`
       }
     >
       <Icon className="text-white icon-dyn-sm transition-transform duration-200 group-hover:scale-110" />

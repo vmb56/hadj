@@ -2,13 +2,12 @@
 import React, { useMemo, useState, useEffect } from "react";
 
 /* --------------------------------------------------------------------------
-   CONFIG API — aligné sur RecherchePaiement.jsx
+   CONFIG API — même logique que RecherchePaiement.jsx
+   - API_BASE forcé: https://hadjbackend.onrender.com
+   - Pas de cookies (credentials: "omit")
+   - Auth via Authorization: Bearer bmvt_token
 -------------------------------------------------------------------------- */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -29,7 +28,8 @@ async function getJson(url, opts = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
     },
-    credentials: "include",
+    // 🔒 pas de cookies envoyés au backend Render
+    credentials: "omit",
     ...opts,
   });
   const ct = res.headers.get("content-type") || "";
@@ -252,5 +252,9 @@ function Th({ children, className = "" }) {
   return <th className={`text-left px-4 py-3 whitespace-nowrap ${className}`}>{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
-  return <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>{children}</td>;
+  return (
+    <td colSpan={colSpan} className={`px-4 py-3 whitespace-nowrap ${className}`}>
+      {children}
+    </td>
+  );
 }

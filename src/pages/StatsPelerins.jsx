@@ -2,11 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /* ================= Config API ================= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -118,7 +114,8 @@ function dossierState(x) {
   const lacksPhoto = !x.photoPelerin;
   const lacksPassPhoto = !x.photoPasseport;
   const lacksNum = !(x.numPasseport || "").trim();
-  const missing = [lacksPhoto, lacksPassPhoto, lacksNum].filter(Boolean).length;
+  const missing = [lacksPhoto, lacksPassPhoto, lacksNum].filter(Boolean)
+    .length;
   if (missing === 0) return "Complet";
   if (missing > 1) return "À compléter";
   if (lacksPhoto) return "Photo pèlerin manquante";
@@ -376,6 +373,7 @@ export default function StatsPelerins() {
         </div>
 
         <div className="print:hidden flex gap-2">
+          {/* Bouton impression si besoin plus tard */}
           {/* <button
             onClick={handlePrint}
             className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-60"
@@ -599,7 +597,7 @@ function Bars({ data, total }) {
     <ul className="space-y-2">
       {entries.map(([label, count]) => (
         <li key={label} className="grid grid-cols-1 gap-2">
-          <div className="flex items-center justify-between text-dyn-sm">
+          <div className="flex items-center justify_between text-dyn-sm">
             <span className="truncate text-slate-800 print:text-black">
               {label}
             </span>

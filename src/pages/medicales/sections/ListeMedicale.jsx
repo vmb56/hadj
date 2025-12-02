@@ -1,13 +1,9 @@
 // src/pages/medicales/ListeMedicale.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 /* ========= Config API ========= */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" &&
-    (process.env?.VITE_API_URL || process.env?.REACT_APP_API_URL)) ||
-  "http://localhost:4000";
+// On pointe directement vers le backend Render en HTTPS
+const API_BASE = "https://hadjbackend.onrender.com";
 
 const TOKEN_KEY = "bmvt_token";
 function getToken() {
@@ -35,7 +31,7 @@ function normalizeRow(r = {}) {
     vulnerabilite: r.vulnerabilite || "",
     diabete: r.diabete || "",
     maladieCardiaque: r.maladie_cardiaque || r.maladieCardiaque || "",
-    analysePsychiatrique: r.analyse_psychiatrique || r.analysePsychiatrique || "",
+    analysePsychiatrique: r.analyse_psychiatrique || r.analysePsychiatrie || "",
     accompagnements: r.accompagnements || "",
     examenParaclinique: r.examen_paraclinique || r.examenParaclinique || "",
     antecedents: r.antecedents || "",
@@ -77,7 +73,11 @@ function Badge({ children, tone = "slate" }) {
     amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   };
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tones[tone] || tones.slate}`}>
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${
+        tones[tone] || tones.slate
+      }`}
+    >
       {children}
     </span>
   );
@@ -94,7 +94,9 @@ function ActionButton({ children, onClick, tone = "default" }) {
     <button
       onClick={onClick}
       type="button"
-      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${styles[tone] || styles.default}`}
+      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+        styles[tone] || styles.default
+      }`}
     >
       {children}
     </button>
@@ -108,15 +110,17 @@ function Th({ children }) {
   );
 }
 function Td({ children, className = "" }) {
-  return <td className={`px-4 py-3 whitespace-nowrap text-slate-700 ${className}`}>{children}</td>;
+  return (
+    <td className={`px-4 py-3 whitespace-nowrap text-slate-700 ${className}`}>
+      {children}
+    </td>
+  );
 }
 
 /* ==========================
    Composant principal
 ========================== */
 export default function ListeMedicale() {
-  const navigate = useNavigate();
-
   const [data, setData] = useState([]);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(null); // détail
@@ -161,7 +165,9 @@ export default function ListeMedicale() {
     }
   }
 
-  useEffect(() => { fetchList(""); }, []);
+  useEffect(() => {
+    fetchList("");
+  }, []);
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchList(q.trim()), 400);
@@ -173,7 +179,6 @@ export default function ListeMedicale() {
 
   /* --------- Actions --------- */
   function onEdit(row) {
-    // ✳️ ouvre la modale d'édition (comme sur les pèlerins)
     setEditing({ ...row });
   }
 
@@ -191,7 +196,10 @@ export default function ListeMedicale() {
       });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
         throw new Error(msg);
       }
     } catch (e) {
@@ -201,7 +209,6 @@ export default function ListeMedicale() {
   }
 
   async function saveEdit(form) {
-    // PUT JSON comme dans ModifierMedicale.jsx
     try {
       const token = getToken();
       const res = await fetch(`${API_BASE}/api/medicales/${form.id}`, {
@@ -216,7 +223,10 @@ export default function ListeMedicale() {
       });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        try {
+          const j = await res.json();
+          msg = j?.message || j?.error || msg;
+        } catch {}
         throw new Error(msg);
       }
       setEditing(null);
@@ -231,11 +241,16 @@ export default function ListeMedicale() {
       {/* En-tête + recherche */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-dyn-title font-extrabold text-slate-900">Liste Médicale des Pèlerins</h2>
+          <h2 className="text-dyn-title font-extrabold text-slate-900">
+            Liste Médicale des Pèlerins
+          </h2>
           <p className="text-dyn-sm text-slate-600">
-            Toutes les informations médicales enregistrées (pouls, tension, groupe sanguin, etc.)
+            Toutes les informations médicales enregistrées (pouls, tension,
+            groupe sanguin, etc.)
           </p>
-          {loading && <p className="text-slate-500 text-sm mt-1">Chargement…</p>}
+          {loading && (
+            <p className="text-slate-500 text-sm mt-1">Chargement…</p>
+          )}
           {err && <p className="text-rose-600 text-sm mt-1">{err}</p>}
         </div>
 
@@ -253,10 +268,15 @@ export default function ListeMedicale() {
       {/* ======= Vue Mobile (cartes) ======= */}
       <div className="mt-6 grid gap-3 sm:hidden">
         {filtered.length === 0 ? (
-          <p className="text-slate-500">{loading ? "Chargement…" : "Aucune donnée trouvée."}</p>
+          <p className="text-slate-500">
+            {loading ? "Chargement…" : "Aucune donnée trouvée."}
+          </p>
         ) : (
           filtered.map((m) => (
-            <article key={m.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <article
+              key={m.id}
+              className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
               <div className="font-bold text-slate-900 text-base">
                 {m.nom} {m.prenoms}
               </div>
@@ -283,7 +303,9 @@ export default function ListeMedicale() {
                 </div>
                 <div>
                   <dt className="text-slate-500">Cardiaque</dt>
-                  <dd className="text-slate-800">{m.maladieCardiaque || "—"}</dd>
+                  <dd className="text-slate-800">
+                    {m.maladieCardiaque || "—"}
+                  </dd>
                 </div>
               </dl>
 
@@ -306,7 +328,9 @@ export default function ListeMedicale() {
       {/* ======= Vue Desktop/Tablette (tableau) ======= */}
       <div className="mt-6 overflow-x-auto hidden sm:block">
         {filtered.length === 0 ? (
-          <p className="text-slate-500">{loading ? "Chargement…" : "Aucune donnée médicale trouvée."}</p>
+          <p className="text-slate-500">
+            {loading ? "Chargement…" : "Aucune donnée médicale trouvée."}
+          </p>
         ) : (
           <table className="min-w-[1280px] border-separate border-spacing-y-6 text-[14px]">
             <thead>
@@ -330,7 +354,10 @@ export default function ListeMedicale() {
             </thead>
             <tbody>
               {filtered.map((m, i) => (
-                <tr key={m.id} className="bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all">
+                <tr
+                  key={m.id}
+                  className="bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all"
+                >
                   <Td className="text-slate-500">{i + 1}</Td>
                   <Td className="font-medium">{m.numeroCMAH}</Td>
                   <Td className="font-semibold text-slate-900">
@@ -374,7 +401,7 @@ export default function ListeMedicale() {
         <DetailModal data={selected} onClose={() => setSelected(null)} />
       )}
 
-      {/* ✳️ Modale d'édition (UX identique aux pèlerins) */}
+      {/* ✳️ Modale d'édition */}
       {editing && (
         <EditModal
           data={editing}
@@ -412,7 +439,10 @@ function Info({ label, value }) {
 function DetailModal({ data, onClose }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
       <div className="relative z-10 w-[min(900px,95vw)] max-h-[90vh] overflow-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-lg text-slate-900">
         <div className="flex items-start justify-between gap-4">
           <h3 className="text-xl font-bold text-slate-900">
@@ -430,7 +460,10 @@ function DetailModal({ data, onClose }) {
           <DetailSection title="Informations de base">
             <Info label="CMAH" value={data.numeroCMAH} />
             <Info label="Passeport" value={data.passeport} />
-            <Info label="Nom & Prénoms" value={`${data.nom} ${data.prenoms}`} />
+            <Info
+              label="Nom & Prénoms"
+              value={`${data.nom} ${data.prenoms}`}
+            />
             <Info label="Groupe sanguin" value={data.groupeSanguin} />
           </DetailSection>
 
@@ -451,7 +484,10 @@ function DetailModal({ data, onClose }) {
             <Info label="Examens" value={data.examenParaclinique} />
             <Info label="Antécédents" value={data.antecedents} />
             <Info label="Accompagnements" value={data.accompagnements} />
-            <Info label="Analyse psychiatrique" value={data.analysePsychiatrique} />
+            <Info
+              label="Analyse psychiatrique"
+              value={data.analysePsychiatrique}
+            />
           </DetailSection>
         </div>
       </div>
@@ -459,7 +495,7 @@ function DetailModal({ data, onClose }) {
   );
 }
 
-/* ====== Modale Edition (UX similaire aux pèlerins) ====== */
+/* ====== Modale Edition ====== */
 function EditModal({ data, onClose, onSave }) {
   const [form, setForm] = useState(data);
   const [saving, setSaving] = useState(false);
@@ -467,7 +503,10 @@ function EditModal({ data, onClose, onSave }) {
   function ch(e) {
     const { name, value } = e.target;
     if (name === "passeport") {
-      setForm((f) => ({ ...f, passeport: value.replace(/\s+/g, "").toUpperCase() }));
+      setForm((f) => ({
+        ...f,
+        passeport: value.replace(/\s+/g, "").toUpperCase(),
+      }));
       return;
     }
     if (name === "nom") {
@@ -479,7 +518,8 @@ function EditModal({ data, onClose, onSave }) {
 
   function validate(v) {
     const e = {};
-    if (!v.passeport || !/^[A-Z0-9]{5,15}$/.test(v.passeport)) e.passeport = "Passeport invalide (5–15 alphanum.).";
+    if (!v.passeport || !/^[A-Z0-9]{5,15}$/.test(v.passeport))
+      e.passeport = "Passeport invalide (5–15 alphanum.).";
     if (!v.nom) e.nom = "Nom requis.";
     if (!v.prenoms) e.prenoms = "Prénoms requis.";
     return e;
@@ -517,38 +557,148 @@ function EditModal({ data, onClose, onSave }) {
           "
         >
           <div className="flex items-center justify-between gap-4 p-4 border-b bg-white sticky top-0">
-            <h4 className="text-base sm:text-lg font-extrabold">Modifier la fiche médicale</h4>
-            <button type="button" className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50" onClick={onClose}>
+            <h4 className="text-base sm:text-lg font-extrabold">
+              Modifier la fiche médicale
+            </h4>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
+              onClick={onClose}
+            >
               Fermer
             </button>
           </div>
 
           <div className="p-4 space-y-4 overflow-y-auto">
-            {/* Champs texte */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <Text label="Numéro CMAH" name="numeroCMAH" value={form.numeroCMAH} onChange={ch} />
-              <Text label="N° Passeport" name="passeport" value={form.passeport} onChange={ch} placeholder="A12345678" />
-              <Text label="Nom" name="nom" value={form.nom} onChange={ch} placeholder="NOM (MAJUSCULES)" />
-              <Text label="Prénoms" name="prenoms" value={form.prenoms} onChange={ch} />
-              <Text label="Groupe sanguin" name="groupeSanguin" value={form.groupeSanguin} onChange={ch} placeholder="O+, A-, AB+" />
-              <Text label="Poids" name="poids" value={form.poids} onChange={ch} placeholder="74 kg" />
-              <Text label="Tension" name="tension" value={form.tension} onChange={ch} placeholder="12/8" />
-              <Text label="Pouls" name="pouls" value={form.pouls} onChange={ch} placeholder="72 bpm" />
+              <Text
+                label="Numéro CMAH"
+                name="numeroCMAH"
+                value={form.numeroCMAH}
+                onChange={ch}
+              />
+              <Text
+                label="N° Passeport"
+                name="passeport"
+                value={form.passeport}
+                onChange={ch}
+                placeholder="A12345678"
+              />
+              <Text
+                label="Nom"
+                name="nom"
+                value={form.nom}
+                onChange={ch}
+                placeholder="NOM (MAJUSCULES)"
+              />
+              <Text
+                label="Prénoms"
+                name="prenoms"
+                value={form.prenoms}
+                onChange={ch}
+              />
+              <Text
+                label="Groupe sanguin"
+                name="groupeSanguin"
+                value={form.groupeSanguin}
+                onChange={ch}
+                placeholder="O+, A-, AB+"
+              />
+              <Text
+                label="Poids"
+                name="poids"
+                value={form.poids}
+                onChange={ch}
+                placeholder="74 kg"
+              />
+              <Text
+                label="Tension"
+                name="tension"
+                value={form.tension}
+                onChange={ch}
+                placeholder="12/8"
+              />
+              <Text
+                label="Pouls"
+                name="pouls"
+                value={form.pouls}
+                onChange={ch}
+                placeholder="72 bpm"
+              />
 
-              <Select label="Diabète" name="diabete" value={form.diabete} onChange={ch} options={[{v:"",l:"—"},{v:"Oui",l:"Oui"},{v:"Non",l:"Non"}]} />
-              <Select label="Maladie cardiaque" name="maladieCardiaque" value={form.maladieCardiaque} onChange={ch} options={[{v:"",l:"—"},{v:"Oui",l:"Oui"},{v:"Non",l:"Non"}]} />
-              <Select label="Covid-19" name="covid" value={form.covid} onChange={ch} options={[{v:"",l:"—"},{v:"Négatif",l:"Négatif"},{v:"Positif",l:"Positif"},{v:"Vacciné",l:"Vacciné"}]} />
-              <Text label="Vulnérabilité" name="vulnerabilite" value={form.vulnerabilite} onChange={ch} placeholder="Âge, pathologie…" />
+              <Select
+                label="Diabète"
+                name="diabete"
+                value={form.diabete}
+                onChange={ch}
+                options={[
+                  { v: "", l: "—" },
+                  { v: "Oui", l: "Oui" },
+                  { v: "Non", l: "Non" },
+                ]}
+              />
+              <Select
+                label="Maladie cardiaque"
+                name="maladieCardiaque"
+                value={form.maladieCardiaque}
+                onChange={ch}
+                options={[
+                  { v: "", l: "—" },
+                  { v: "Oui", l: "Oui" },
+                  { v: "Non", l: "Non" },
+                ]}
+              />
+              <Select
+                label="Covid-19"
+                name="covid"
+                value={form.covid}
+                onChange={ch}
+                options={[
+                  { v: "", l: "—" },
+                  { v: "Négatif", l: "Négatif" },
+                  { v: "Positif", l: "Positif" },
+                  { v: "Vacciné", l: "Vacciné" },
+                ]}
+              />
+              <Text
+                label="Vulnérabilité"
+                name="vulnerabilite"
+                value={form.vulnerabilite}
+                onChange={ch}
+                placeholder="Âge, pathologie…"
+              />
 
-              <Area label="Examens paracliniques" name="examenParaclinique" value={form.examenParaclinique} onChange={ch} />
-              <Area label="Antécédents" name="antecedents" value={form.antecedents} onChange={ch} />
-              <Area label="Accompagnements" name="accompagnements" value={form.accompagnements} onChange={ch} />
-              <Area label="Analyse psychiatrique" name="analysePsychiatrique" value={form.analysePsychiatrique} onChange={ch} />
+              <Area
+                label="Examens paracliniques"
+                name="examenParaclinique"
+                value={form.examenParaclinique}
+                onChange={ch}
+              />
+              <Area
+                label="Antécédents"
+                name="antecedents"
+                value={form.antecedents}
+                onChange={ch}
+              />
+              <Area
+                label="Accompagnements"
+                name="accompagnements"
+                value={form.accompagnements}
+                onChange={ch}
+              />
+              <Area
+                label="Analyse psychiatrique"
+                name="analysePsychiatrique"
+                value={form.analysePsychiatrique}
+                onChange={ch}
+              />
             </div>
           </div>
 
           <div className="flex justify-end gap-2 p-4 border-t bg-white sticky bottom-0">
-            <Btn type="button" onClick={onClose}>Annuler</Btn>
+            <Btn type="button" onClick={onClose}>
+              Annuler
+            </Btn>
             <Btn tone="primary" type="submit" disabled={saving}>
               {saving ? "Enregistrement..." : "Enregistrer"}
             </Btn>
@@ -563,7 +713,9 @@ function EditModal({ data, onClose, onSave }) {
 function Field({ label, children }) {
   return (
     <div className="grid gap-1">
-      <span className="text-[12px] font-semibold text-slate-700">{label}</span>
+      <span className="text-[12px] font-semibold text-slate-700">
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -597,13 +749,15 @@ function Select({ label, options, ...props }) {
         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none ring-2 ring-transparent focus:ring-blue-300"
       >
         {options.map((o) => (
-          <option key={o.v} value={o.v}>{o.l}</option>
+          <option key={o.v} value={o.v}>
+            {o.l}
+          </option>
         ))}
       </select>
     </Field>
   );
 }
-function Btn({ children, tone = "default", type = "button", className="", ...props }) {
+function Btn({ children, tone = "default", type = "button", className = "", ...props }) {
   const styles = {
     default: "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50",
     primary: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent",
