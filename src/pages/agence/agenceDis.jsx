@@ -1,8 +1,9 @@
+// src/pages/chat/BMVTChatSimple.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import useAuthUser from "../../hooks/useAuthUser"; // { id, name, email, role }
 
 /**
- * BMVTChatSimple.jsx — + fonctionnalités UI (backend inchangé)
+ * BMVTChatSimple.jsx — version responsive mobile + UI avancée
  * - Recherche live (surlignage)
  * - Séparateurs de jour
  * - Badge “N nouveaux messages” + scroll-to-bottom
@@ -11,6 +12,7 @@ import useAuthUser from "../../hooks/useAuthUser"; // { id, name, email, role }
  * - Aide raccourcis (touche "?")
  * - Export JSON
  * - Mode compact
+ * - Header + tabs figés, composer figé en bas
  */
 
 /* ======================== helpers API ======================== */
@@ -220,13 +222,13 @@ function Toasts({ items, onClose }) {
 function Header({ user, onExport, compact, setCompact, query, setQuery, onHelp }) {
   return (
     <header className="sticky top-0 z-40 border-b bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white">
-      <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-3">
+      <div className="container mx-auto flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-xl bg-white/15 ring-1 ring-white/20 grid place-items-center font-semibold">
             💬
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-semibold tracking-wide drop-shadow-sm">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold tracking-wide drop-shadow-sm truncate">
               BMVT · Chat
             </h1>
             <p className="text-[11px] sm:text-xs text-white/80">
@@ -239,7 +241,7 @@ function Header({ user, onExport, compact, setCompact, query, setQuery, onHelp }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher un message…"
-            className="flex-1 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-white placeholder-white/70 outline-none focus:bg-white/25"
+            className="flex-1 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-xs sm:text-sm text-white placeholder-white/70 outline-none focus:bg-white/25"
           />
         </div>
         <div className="flex items-center gap-2 text-xs sm:text-sm">
@@ -263,7 +265,7 @@ function Header({ user, onExport, compact, setCompact, query, setQuery, onHelp }
             ?
           </button>
           {user ? (
-            <span className="px-2.5 py-1.5 rounded-lg border border-white/20 bg-white/10 backdrop-blur">
+            <span className="hidden xs:inline px-2.5 py-1.5 rounded-lg border border-white/20 bg-white/10 backdrop-blur max-w-[140px] sm:max-w-none truncate">
               {user.name}
               {user.role ? <span className="text-white/80"> · {user.role}</span> : null}
             </span>
@@ -282,7 +284,7 @@ function Tabs({ channels, active, onChange }) {
   return (
     <div className="sticky top-[60px] sm:top-[68px] z-30 border-b bg-white/70 backdrop-blur">
       <div className="container mx-auto px-3 py-2">
-        <div className="inline-flex items-center rounded-full border bg-white shadow-sm overflow-hidden">
+        <div className="inline-flex max-w-full overflow-x-auto no-scrollbar items-center rounded-full border bg-white shadow-sm">
           {channels.map((c, idx) => {
             const isActive = active === c.id;
             return (
@@ -291,7 +293,7 @@ function Tabs({ channels, active, onChange }) {
                 type="button"
                 onClick={() => onChange(c.id)}
                 className={cn(
-                  "px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition",
+                  "px-3 sm:px-4 py-1.5 text-xs sm:text-sm transition whitespace-nowrap",
                   isActive ? "bg-indigo-600 text-white" : "text-slate-700 hover:bg-slate-50",
                   idx !== channels.length - 1 && "border-r border-slate-200/80"
                 )}
@@ -456,9 +458,7 @@ function Message({
         mine ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-900 border-slate-200",
         selected ? (mine ? "ring-2 ring-white/70" : "ring-2 ring-indigo-300") : "ring-0",
         isDeleted && "opacity-70",
-        compact
-          ? "py-1.5 max-w-[88%]"
-          : "py-2.5 max-w-[72%] md:max-w-[64%] lg:max-w-[52%]"
+        compact ? "py-1.5 max-w-[88%]" : "py-2.5 max-w-[72%] md:max-w-[64%] lg:max-w-[52%]"
       )}
       disabled={isDeleted}
     >
@@ -484,9 +484,7 @@ function Message({
           <span
             className={cn(
               "px-1.5 py-0.5 rounded border",
-              mine
-                ? "bg-white/15 border-white/30"
-                : "bg-rose-50 border-rose-200 text-rose-700"
+              mine ? "bg-white/15 border-white/30" : "bg-rose-50 border-rose-200 text-rose-700"
             )}
           >
             supprimé
@@ -757,7 +755,7 @@ function Composer({
         </div>
       )}
 
-      <div className="container mx-auto px-3 sm:px-4 pb-3">
+      <div className="container mx-auto px-3 sm:px-4 pb-2 sm:pb-3">
         <div className="relative">
           <div className="rounded-full border bg-white/80 backdrop-blur shadow-lg px-2 py-1.5 flex items-end gap-2">
             <button
@@ -802,7 +800,7 @@ function Composer({
                 }
                 if (e.key === "Escape") onCancel?.();
               }}
-              className="flex-1 min-h-[38px] max-h-40 resize-y rounded-xl border border-transparent px-3 py-2 outline-none focus:ring-0 text-sm bg-transparent"
+              className="flex-1 min-h-[38px] max-h-40 resize-y rounded-xl border border-transparent px-3 py-2 outline-none focus:ring-0 text-xs sm:text-sm bg-transparent"
             />
             {isEditing ? (
               <div className="flex items-center gap-2 pr-1.5">
@@ -810,7 +808,7 @@ function Composer({
                   <button
                     type="button"
                     onClick={onDelete}
-                    className="px-3 py-2 rounded-full border text-rose-700 border-rose-200 hover:bg-rose-50"
+                    className="px-3 py-2 rounded-full border text-rose-700 border-rose-200 hover:bg-rose-50 text-xs sm:text-sm"
                   >
                     Supprimer
                   </button>
@@ -818,14 +816,14 @@ function Composer({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-3 py-2 rounded-full border hover:bg-slate-50"
+                  className="px-3 py-2 rounded-full border hover:bg-slate-50 text-xs sm:text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="button"
                   onClick={onSend}
-                  className="px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-600"
+                  className="px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-600 text-xs sm:text-sm"
                 >
                   Valider
                 </button>
@@ -834,7 +832,7 @@ function Composer({
               <button
                 type="button"
                 onClick={onSend}
-                className="px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-600"
+                className="px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-600 text-xs sm:text-sm"
                 title="Envoyer"
               >
                 ➤
@@ -847,9 +845,8 @@ function Composer({
             onRemove={onRemoveAttachment}
             progress={uploadProgress}
           />
-          <div className="mt-1 ml-2 text-[11px] text-slate-500">
-            Entrée pour envoyer · Maj+Entrée = retour à la ligne · Coller/Glisser pour
-            joindre
+          <div className="mt-1 ml-2 text-[10px] sm:text-[11px] text-slate-500">
+            Entrée pour envoyer · Maj+Entrée = retour à la ligne · Coller/Glisser pour joindre
           </div>
         </div>
       </div>
@@ -1464,60 +1461,64 @@ export default function BMVTChatSimple() {
 
   /* ---------- rendu ---------- */
   return (
-    <div className="min-h-dvh w-full text-slate-900 flex flex-col pb-[env(safe-area-inset-bottom)] bg-[radial-gradient(ellipse_at_top_left,rgba(99,102,241,0.08),transparent_45%),radial-gradient(ellipse_at_bottom_right,rgba(168,85,247,0.08),transparent_45%)]">
-      <Header
-        user={user}
-        onExport={handleExport}
-        compact={compact}
-        setCompact={setCompact}
-        query={query}
-        setQuery={setQuery}
-        onHelp={openHelp}
-      />
-      <Tabs
-        channels={channels}
-        active={active}
-        onChange={(id) => {
-          setActive(id);
-          setUnread(0);
-        }}
-      />
+    <div className="h-dvh w-full text-slate-900 flex flex-col pb-[env(safe-area-inset-bottom)] bg-[radial-gradient(ellipse_at_top_left,rgba(99,102,241,0.08),transparent_45%),radial-gradient(ellipse_at_bottom_right,rgba(168,85,247,0.08),transparent_45%)]">
+      {/* Partie fixe en haut : header + tabs + barre info */}
+      <div className="shrink-0">
+        <Header
+          user={user}
+          onExport={handleExport}
+          compact={compact}
+          setCompact={setCompact}
+          query={query}
+          setQuery={setQuery}
+          onHelp={openHelp}
+        />
+        <Tabs
+          channels={channels}
+          active={active}
+          onChange={(id) => {
+            setActive(id);
+            setUnread(0);
+          }}
+        />
 
-      <div className="border-b bg-white/70 backdrop-blur text-sm">
-        <div className="container mx-auto px-3 py-2 flex items-center justify-between gap-2">
-          {selectedMsg ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-slate-700 hidden xs:inline">
-                Message sélectionné :
+        <div className="border-b bg-white/80 backdrop-blur text-sm">
+          <div className="container mx-auto px-3 py-2 flex items-center justify-between gap-2">
+            {selectedMsg ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-slate-700 hidden xs:inline">
+                  Message sélectionné :
+                </span>
+                <span className="px-2 py-0.5 rounded bg-white border text-slate-700 max-w-[50ch] truncate text-xs sm:text-sm">
+                  {selectedMsg.text ||
+                    (selectedMsg.attachments?.[0]?.name ?? "(Pièce jointe)")}
+                </span>
+              </div>
+            ) : (
+              <span className="text-slate-600 truncate text-xs sm:text-sm">
+                Astuce : double-clic pour répondre · clic pour les actions.
               </span>
-              <span className="px-2 py-0.5 rounded bg-white border text-slate-700 max-w-[50ch] truncate">
-                {selectedMsg.text ||
-                  (selectedMsg.attachments?.[0]?.name ?? "(Pièce jointe)")}
-              </span>
+            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedId(null);
+                  setReplyTo(null);
+                  setEditingId(null);
+                }}
+                className="px-2.5 py-1.5 rounded-lg border hover:bg-white text-xs bg-white"
+              >
+                Annuler
+              </button>
             </div>
-          ) : (
-            <span className="text-slate-600 truncate">
-              Astuce : double-clic pour répondre · clic pour les actions.
-            </span>
-          )}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedId(null);
-                setReplyTo(null);
-                setEditingId(null);
-              }}
-              className="px-2.5 py-1.5 rounded-lg border hover:bg-white text-xs bg-white"
-            >
-              Annuler
-            </button>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 grid grid-rows-[1fr_auto]">
-        <div className="flex-1 overflow-auto" ref={viewportRef}>
+      {/* Zone centrale : messages scrollables + composer fixé en bas */}
+      <main className="flex-1 min-h-0 flex flex-col relative">
+        <div className="flex-1 overflow-y-auto" ref={viewportRef}>
           <div
             className={cn(
               "container mx-auto",
@@ -1545,7 +1546,6 @@ export default function BMVTChatSimple() {
                   text={m.text}
                   time={m.time}
                   replyTo={(() => {
-                    // simple résolution locale
                     const ref = (data[active] || []).find(
                       (x) => x.id === m.replyToId
                     );
@@ -1587,14 +1587,15 @@ export default function BMVTChatSimple() {
                   block: "end",
                 });
               }}
-              className="pointer-events-auto px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-lg border border-indigo-700"
+              className="pointer-events-auto px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-lg border border-indigo-700 text-xs sm:text-sm"
             >
               {unread} nouveau{xPlural(unread)} – Aller en bas
             </button>
           </div>
         )}
 
-        <div className="border-t bg-transparent">
+        {/* Composer fixé en bas du main */}
+        <div className="border-t bg-white/80 backdrop-blur shrink-0">
           <Composer
             value={draft}
             onChange={(v) =>
@@ -1626,6 +1627,7 @@ export default function BMVTChatSimple() {
         </div>
       </main>
 
+      {/* Footer (optionnel) */}
       <footer className="p-3 text-[11px] sm:text-xs text-slate-500 border-t bg-white/60 backdrop-blur text-center">
         © {new Date().getFullYear()} BMVT · Chat
       </footer>
