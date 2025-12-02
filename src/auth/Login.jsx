@@ -1,6 +1,6 @@
 // src/pages/auth/Login.jsx
 import React, { useState } from "react";
-import { Eye, EyeOff, LogIn, CheckCircle2, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, LogIn, CheckCircle2, Mail, Lock, Loader2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, saveSession } from "../services/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,11 +41,27 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // pré-remplissage remember
-  const rememberedEmail = typeof window !== "undefined" ? localStorage.getItem("bmvt_email") || "" : "";
-  const rememberedPref = typeof window !== "undefined" ? localStorage.getItem("bmvt_remember") === "1" : true;
+  // pré-remplissage remember (coché par défaut si jamais utilisé)
+  let rememberedEmail = "";
+  let rememberedPref = true; // ✅ coché par défaut
 
-  const [form, setForm] = useState({ email: rememberedEmail, password: "", remember: rememberedPref });
+  if (typeof window !== "undefined") {
+    try {
+      rememberedEmail = localStorage.getItem("bmvt_email") || "";
+      const stored = localStorage.getItem("bmvt_remember");
+      // si jamais la clé n'existe pas => on laisse à true
+      rememberedPref = stored == null ? true : stored === "1";
+    } catch {
+      rememberedEmail = "";
+      rememberedPref = true;
+    }
+  }
+
+  const [form, setForm] = useState({
+    email: rememberedEmail,
+    password: "",
+    remember: rememberedPref,
+  });
 
   // états overlay succès
   const [ok, setOk] = useState(false);
@@ -84,7 +100,11 @@ export default function LoginPage() {
         nav(from, { replace: true });
       }, 950);
     } catch (err) {
-      push({ tone: "error", title: "Connexion échouée", desc: err.message || "Réessaie." });
+      push({
+        tone: "error",
+        title: "Connexion échouée",
+        desc: err.message || "Réessaie.",
+      });
     } finally {
       setLoading(false);
     }
@@ -96,18 +116,14 @@ export default function LoginPage() {
 
       {/* === FOND ANIMÉ === */}
       <div className="absolute inset-0 -z-10">
-        {/* gradient principal */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#dbeafe] via-white to-[#c7d2fe]" />
-        {/* blobs */}
         <div className="absolute -top-24 -left-24 h-[28rem] w-[28rem] rounded-full bg-blue-400/25 blur-[70px] animate-float-slow" />
         <div className="absolute -bottom-24 -right-24 h-[30rem] w-[30rem] rounded-full bg-indigo-400/25 blur-[80px] animate-float-slower" />
-        {/* lignes radiales */}
         <div className="absolute inset-0 bg-[radial-gradient(60rem_30rem_at_50%_10%,rgba(59,130,246,0.18),transparent_70%)]" />
       </div>
 
-      {/* === CONTENEUR CENTRÉ === */}
-      <div className="grid min-h-screen place-items-center px-4">
-        {/* CARTE GLASS AVEC CADRE ANIMÉ */}
+      {/* === CONTENEUR CENTRÉ (responsive) === */}
+      <div className="grid min-h-screen place-items-center px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 22, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -118,55 +134,64 @@ export default function LoginPage() {
           <div className="pointer-events-none absolute -inset-[2px] rounded-[28px] bg-gradient-to-r from-blue-500 to-indigo-500 opacity-60 blur-md" />
           {/* bordure gradient animée */}
           <div className="absolute -inset-[1px] rounded-[28px] bg-[conic-gradient(from_180deg_at_50%_50%,#60a5fa_0%,#818cf8_25%,#60a5fa_50%,#3b82f6_75%,#60a5fa_100%)] animate-rotate-slow opacity-30" />
-          
+
           {/* contenu carte */}
-          <div className="relative rounded-[26px] border border-white/60 bg-white/80 p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
+          <div className="relative rounded-[26px] border border-white/60 bg-white/80 p-5 sm:p-7 md:p-8 backdrop-blur-xl shadow-2xl">
             {/* en-tête */}
             <div className="mb-5 flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center shadow">
+              <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center shadow">
                 <LogIn className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
                   Connexion
                 </h1>
-                <p className="text-slate-600 text-sm">Accède à ton espace BMVT</p>
+                <p className="text-slate-600 text-xs sm:text-sm">
+                  Accède à ton espace BMVT
+                </p>
               </div>
             </div>
 
-            {/* formulaire */}
-            <form onSubmit={onSubmit} className="space-y-5">
+            {/* formulaire (responsive) */}
+            <form onSubmit={onSubmit} className="space-y-4 sm:space-y-5">
               {/* email */}
               <label className="grid gap-1">
-                <span className="text-sm font-medium text-slate-700">Email</span>
+                <span className="text-xs sm:text-sm font-medium text-slate-700">Email</span>
                 <div className="relative group">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                    <Mail className="h-5 w-5 text-slate-400 transition-colors group-focus-within:text-blue-500" />
-                  </span>
+                  {/* Icône visible seulement si l'email est vide */}
+                  {form.email.length === 0 && (
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                      <Mail className="h-5 w-5 text-slate-400 transition-colors group-focus-within:text-blue-500" />
+                    </span>
+                  )}
                   <input
                     type="email"
                     className="input pl-10"
-                    placeholder="ex: admin@bmvt.ci"
+                    placeholder="       ex: admin@bmvt.ci"
                     value={form.email}
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                     required
                   />
-                  {/* anneau pulsé au focus */}
-                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-0 ring-blue-200 opacity-0 group-focus-within:animate-pulse-ring" />
+                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-0 ring-blue-200 opacity-0 animate-pulse-ring" />
                 </div>
               </label>
 
               {/* password */}
               <label className="grid gap-1">
-                <span className="text-sm font-medium text-slate-700">Mot de passe</span>
+                <span className="text-xs sm:text-sm font-medium text-slate-700">
+                  Mot de passe
+                </span>
                 <div className="relative group">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                    <Lock className="h-5 w-5 text-slate-400 transition-colors group-focus-within:text-blue-500" />
-                  </span>
+                  {/* Icône visible seulement si le mot de passe est vide */}
+                  {form.password.length === 0 && (
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                      <Lock className="h-5 w-5 text-slate-400 transition-colors group-focus-within:text-blue-500" />
+                    </span>
+                  )}
                   <input
                     type={show ? "text" : "password"}
                     className="input pl-10 pr-12"
-                    placeholder="••••••••"
+                    placeholder="       ••••••••"
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                     minLength={6}
@@ -180,36 +205,48 @@ export default function LoginPage() {
                   >
                     {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
-                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-0 ring-blue-200 opacity-0 group-focus-within:animate-pulse-ring" />
+                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-0 ring-blue-200 opacity-0 animate-pulse-ring" />
                 </div>
               </label>
 
-              {/* remember */}
-              <div className="flex items-center justify-between">
+              {/* remember (coché par défaut) */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <label className="inline-flex items-center gap-2 select-none">
                   <input
                     type="checkbox"
                     checked={form.remember}
-                    onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, remember: e.target.checked }))
+                    }
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300"
                   />
-                  <span className="text-sm text-slate-600">Se souvenir de moi</span>
+                  <span className="text-xs sm:text-sm text-slate-600">
+                    Se souvenir de moi
+                  </span>
                 </label>
               </div>
 
-              {/* submit */}
+              {/* submit avec indicateur visuel */}
               <motion.button
                 type="submit"
                 disabled={!canSubmit || loading}
-                className="btn-blue relative inline-flex w-full items-center justify-center gap-2 overflow-hidden"
-                whileHover={{ scale: 1.015 }}
-                whileTap={{ scale: 0.985 }}
+                className="btn-blue relative inline-flex w-full items-center justify-center gap-2 overflow-hidden text-sm sm:text-base"
+                whileHover={{ scale: !loading ? 1.015 : 1 }}
+                whileTap={{ scale: !loading ? 0.985 : 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 18 }}
               >
-                {/* shimmer */}
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)] animate-shimmer" />
-                <LogIn className="h-4 w-4" />
-                {loading ? "Connexion..." : "Se connecter"}
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Connexion...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    Se connecter
+                  </>
+                )}
               </motion.button>
             </form>
           </div>
@@ -226,16 +263,18 @@ export default function LoginPage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-3 px-4 text-center"
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 220, damping: 18 }}
             >
-              <CheckCircle2 className="h-20 w-20 text-emerald-600" />
-              <div className="text-3xl font-extrabold text-slate-900 text-center">
+              <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-600" />
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 Bienvenue, {userName?.split(" ")[0] || "!"}
               </div>
-              <div className="text-slate-600">Connexion réussie</div>
+              <div className="text-slate-600 text-sm sm:text-base">
+                Connexion réussie
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -261,23 +300,81 @@ export default function LoginPage() {
         }
         .group:focus-within .animate-pulse-ring { animation: pulse-ring .9s ease-out 1; }
 
-        .input { 
-          @apply w-full rounded-xl border bg-white/95 shadow-sm 
-                 border-slate-200 outline-none 
-                 py-3 px-3 text-base sm:text-[15px]
-                 ring-2 ring-transparent
-                 placeholder:text-slate-400
-                 focus:border-blue-300 focus:ring-blue-200 transition;
+        /* Champs input responsives avec bordures */
+        .input {
+          width: 100%;
+          border-radius: 0.75rem;
+          border: 1px solid rgba(148, 163, 184, 1); /* slate-300 */
+          background-color: rgba(255, 255, 255, 0.95);
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+          padding: 0.7rem 0.75rem;
+          font-size: 0.9rem;
+          color: #0f172a;
+          outline: none;
+          transition:
+            box-shadow 0.15s ease,
+            border-color 0.15s ease,
+            background-color 0.15s ease,
+            transform 0.08s ease;
         }
-        .btn-blue { 
-          @apply rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 
-                 px-5 py-3.5 font-semibold text-white shadow 
-                 hover:from-blue-700 hover:to-indigo-700 
-                 disabled:opacity-50 disabled:cursor-not-allowed;
+        @media (min-width: 640px) {
+          .input {
+            font-size: 0.95rem;
+            padding: 0.75rem 0.85rem;
+          }
         }
-        .btn-eye { 
-          @apply absolute right-3 top-1/2 -translate-y-1/2 
-                 text-slate-500 hover:text-slate-700;
+        .input::placeholder {
+          color: #9ca3af;
+        }
+        .input:focus {
+          border-color: #60a5fa;
+          box-shadow: 0 0 0 2px rgba(191, 219, 254, 1);
+          background-color: #ffffff;
+          transform: translateY(-1px);
+        }
+
+        .btn-blue {
+          border-radius: 0.75rem;
+          border: 1px solid rgba(37, 99, 235, 1);
+          background-image: linear-gradient(to right, #2563eb, #4f46e5);
+          padding: 0.8rem 1.25rem;
+          font-weight: 600;
+          color: #ffffff;
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.32);
+          cursor: pointer;
+          transition:
+            transform 0.08s ease,
+            box-shadow 0.15s ease,
+            filter 0.15s ease,
+            opacity 0.15s ease;
+        }
+        .btn-blue:hover:not(:disabled) {
+          filter: brightness(1.05);
+          box-shadow: 0 12px 30px rgba(37, 99, 235, 0.38);
+        }
+        .btn-blue:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          box-shadow: 0 4px 12px rgba(148, 163, 184, 0.4);
+        }
+
+        .btn-eye {
+          position: absolute;
+          right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #6b7280;
+          background: transparent;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          transition: color 0.15s ease;
+        }
+        .btn-eye:hover {
+          color: #111827;
         }
       `}</style>
     </div>

@@ -281,14 +281,14 @@ export default function RecherchePaiement() {
         </p>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[13.5px] text-slate-600">Rechercher un pèlerin</span>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={onEnter}
               placeholder="N° passeport / Nom / Contact"
-              className="w-64 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
+              className="w-full sm:w-64 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[14px] outline-none ring-2 ring-transparent focus:ring-sky-200 placeholder:text-slate-400"
             />
             <button
               className="rounded-xl bg-sky-600/90 text-white px-3 py-2 text-[13.5px] hover:brightness-110 disabled:opacity-60"
@@ -315,7 +315,7 @@ export default function RecherchePaiement() {
       {/* Tableau */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-[1100px] text-[15px]">
+          <table className="min-w-[900px] text-[15px]">
             <thead>
               <tr className="bg-slate-50 text-slate-700 uppercase tracking-wide text-[12.5px]">
                 <Th>Photo du pèlerin</Th>
@@ -371,7 +371,7 @@ export default function RecherchePaiement() {
                       {r.hotelOffre && (
                         <div className="text-xs text-slate-600 mt-0.5">Hôtel : {r.hotelOffre}</div>
                       )}
-                      <div className="mt-1 inline-flex items-center gap-2 text-xs">
+                      <div className="mt-1 inline-flex flex-wrap items-center gap-2 text-xs">
                         {statut === "Soldé" && <Chip tone="emerald">Soldé</Chip>}
                         {statut === "En cours" && (
                           <>
@@ -425,6 +425,7 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
   const [mode, setMode] = useState("Espèces");
   const [reduction, setReduction] = useState(0);
   const [montantPayer, setMontantPayer] = useState(0);
+  const [success, setSuccess] = useState(null); // ✅ infos à afficher après paiement
 
   const paiementsPrecedents = useMemo(
     () => (payments || []).filter((p) => p.passeport === row.passeport),
@@ -479,7 +480,17 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
       e.soldé = "Dossier soldé : aucun paiement autorisé.";
     }
     setErrors(e);
-  }, [datePaiement, mode, reduction, montantPayer, redSafe, paySafe, montantMax, lockedReduction, hasListedPrice]);
+  }, [
+    datePaiement,
+    mode,
+    reduction,
+    montantPayer,
+    redSafe,
+    paySafe,
+    montantMax,
+    lockedReduction,
+    hasListedPrice,
+  ]);
 
   const valider = async () => {
     if (Number(montantPayer) <= 0 || Object.keys(errors).length) return;
@@ -500,7 +511,6 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
         statut,
       });
 
-      // aligne avec /api/paiements/versements
       await api.addVersement({
         passeport: row.passeport,
         nom: row.nom,
@@ -511,15 +521,26 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
         statut: hasListedPrice ? (resteApres === 0 ? "Soldé" : "En cours") : "En cours",
       });
 
-      alert(
-        `Paiement enregistré (#${created?.ref || "N/A"})\n` +
-          `Déjà payé (avant): ${fmt(dejaPaye)} FCFA\n` +
-          (hasListedPrice ? `Total dû: ${fmt(totalSouhaite)} FCFA\n` : "") +
-          `Payé maintenant: ${fmt(paySafe)} FCFA\n` +
-          (hasListedPrice ? `Reste: ${fmt(resteApres)} FCFA` : "")
-      );
+      // ✅ On met à jour la liste coté parent
       await onSaved?.();
-      onClose();
+
+      // ✅ Et on ouvre une modale de récapitulatif
+      setSuccess({
+        ref: created?.ref || null,
+        nom: row.nom,
+        prenoms: row.prenoms,
+        passeport: row.passeport,
+        prixOffre,
+        reduction: hasListedPrice ? reductionToPersist : 0,
+        totalDu: hasListedPrice ? totalSouhaite : dejaPaye + paySafe,
+        dejaPayeAvant: dejaPaye,
+        dejaPayeApres: dejaPaye + paySafe,
+        payeMaintenant: paySafe,
+        resteApres: hasListedPrice ? resteApres : 0,
+        mode,
+        date: datePaiement,
+        statutFinal: hasListedPrice ? (resteApres === 0 ? "Soldé" : "En cours") : "En cours",
+      });
     } catch (e) {
       alert(e.message || "Erreur lors de l’enregistrement du paiement.");
     }
@@ -536,11 +557,16 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
     if (/^\d+$/.test(v)) setMontantPayer(Number(v));
   };
 
+  const closeAll = () => {
+    setSuccess(null);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center">
+    <div className="fixed inset-0 z-40 grid place-items-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-[min(1180px,98vw)] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between">
+      <div className="relative z-10 w-[min(1180px,98vw)] max-h-[95vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-2">
           <h3 className="text-xl md:text-2xl font-extrabold text-slate-900">Paiement</h3>
           <button
             onClick={onClose}
@@ -633,7 +659,9 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
             <div className="grid sm:grid-cols-3 gap-3">
               <Read
                 label="Total dû (après réduction)"
-                value={hasListedPrice ? `${fmt(totalSouhaite)} FCFA` : "— (offre sans prix)"}
+                value={
+                  hasListedPrice ? `${fmt(totalSouhaite)} FCFA` : "— (offre sans prix, paiement libre)"
+                }
               />
               <FieldMoney
                 label="Montant payé maintenant"
@@ -678,6 +706,9 @@ function PaiementModal({ row, payments, onClose, onSaved }) {
           )}
         </div>
       </div>
+
+      {/* ✅ Modale de confirmation affichée juste après le paiement */}
+      {success && <PaymentSuccessModal info={success} onClose={closeAll} />}
     </div>
   );
 }
@@ -714,6 +745,87 @@ function SoldModal({ info, onClose }) {
           </div>
           <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-emerald-700 text-sm">
             Aucun paiement supplémentaire n’est autorisé pour ce dossier.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --------- Modale “Paiement effectué” --------- */
+function PaymentSuccessModal({ info, onClose }) {
+  if (!info) return null;
+  const {
+    ref,
+    nom,
+    prenoms,
+    passeport,
+    prixOffre,
+    reduction,
+    totalDu,
+    dejaPayeAvant,
+    dejaPayeApres,
+    payeMaintenant,
+    resteApres,
+    mode,
+    date,
+    statutFinal,
+  } = info;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 w-[min(680px,95vw)] rounded-2xl border border-sky-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-xl font-extrabold text-sky-700 flex items-center gap-2">
+              Paiement enregistré
+            </h3>
+            {ref && (
+              <div className="mt-0.5 text-xs text-slate-500">
+                Référence : <span className="font-mono">{ref}</span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50"
+            type="button"
+          >
+            Fermer
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-4 text-sm">
+          <div className="rounded-xl bg-sky-50 border border-sky-100 p-3">
+            <div className="font-semibold text-slate-900">
+              {nom} {prenoms}
+            </div>
+            <div className="text-xs text-slate-600 mt-0.5">
+              Passeport : <span className="font-mono">{passeport}</span>
+            </div>
+            <div className="text-xs text-slate-600 mt-0.5">
+              Date : {date || "—"} · Mode : {mode}
+            </div>
+            <div className="mt-1 inline-flex items-center gap-2">
+              <Chip tone={statutFinal === "Soldé" ? "emerald" : "amber"}>
+                Statut : {statutFinal}
+              </Chip>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Detail label="Prix offre" value={`${fmt(prixOffre)} FCFA`} />
+            <Detail label="Réduction" value={`${fmt(reduction)} FCFA`} />
+            <Detail label="Total dû" value={`${fmt(totalDu)} FCFA`} />
+            <Detail label="Déjà payé (avant)" value={`${fmt(dejaPayeAvant)} FCFA`} />
+            <Detail label="Montant payé maintenant" value={`${fmt(payeMaintenant)} FCFA`} />
+            <Detail label="Déjà payé (après)" value={`${fmt(dejaPayeApres)} FCFA`} />
+            <Detail label="Reste après paiement" value={`${fmt(resteApres)} FCFA`} />
+          </div>
+
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-[13px] text-slate-700">
+            Tu peux maintenant fermer cette fenêtre ou revenir à la liste des pèlerins.
           </div>
         </div>
       </div>
